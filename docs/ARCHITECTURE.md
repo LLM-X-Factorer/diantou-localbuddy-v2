@@ -1,5 +1,7 @@
 # LocalBuddy V2 Architecture
 
+> **状态基线**：2026-08-09，`v0.9.0 / M10`。本文件描述当前架构事实；各 `M*-SPEC.md` 保留对应阶段当时的范围，不因后续实现而回写历史。
+
 ## 1. 产品判断
 
 LocalBuddy V2 的目标不是复刻完整 Craft，而是拥有一个可审计、可恢复、可扩展的本地 Agent 控制面。它默认服务单个本地用户，但允许多个 Run、多个 Task 和多个 Agent 并行工作。
@@ -66,7 +68,9 @@ Agent 是逻辑执行角色，不等于一个永久驻留进程。它至少包�
 
 因此两个 Run 不能各自把“并发 3”扩张成实际并发 6，同一逻辑工作区的写锁也不会因 Run 边界失效。
 
-M5 在 Task lease 外再增加跨 OS 进程的工作区租约。CLI 整次运行、Desktop Run/恢复/回放、worktree 清理、Integration 变更与启动对账都必须先原子获取 `<workspace>/.localbuddy/runtime-lock/`。同一 Desktop 进程可重入以保留多 Run；其他 LocalBuddy PID 存活时快速失败，崩溃残留只在同主机 PID 已不存在时隔离并回收。它防止 Desktop 与 CLI 跨进程争用，但不共享跨进程 Task 容量。
+M5 在 Task lease 外再增加跨 OS 进程的工作区租约。CLI 整次运行、Desktop Run/恢复/回放、worktree 清理、Integration 变更与启动对账都必须先原子获取 `<workspace>/.localbuddy/runtime-lock/`。同一 Desktop 进程可重入以保留多 Run；其他 LocalBuddy PID 存活时快速失败，崩溃残留只在同主机 PID 已不存在时隔离并回收。
+
+M7 再通过机器级协调目录补齐跨进程、跨工作区的共享 Task 容量和 Provider 配额：Task slot、Provider 并发、最小请求间隔与每日 token 账本都使用带 PID/hostname/ownerId 的文件 lease。它只持久化容量和计数，不保存 Prompt、响应、URL 或凭证。工作区读写互斥仍由各工作区的进程租约和 Run 内 `ExecutionCoordinator` 负责，二者不能互相替代。
 
 ### 2.4 Coding worktree
 
@@ -79,7 +83,7 @@ M3.1 的代码写入遵守以下顺序：
 5. 控制器运行 `git diff --check`，捕获 binary/full-index patch 并登记 Artifact。
 6. Integrator 只写运行总结；主工作区应用、合并、提交都不在 M3.1 授权范围内。
 
-worktree 是 Git 版本与文件副作用隔离，不是 OS 安全沙箱。`pnpm test` 等项目检查仍会执行仓库自身代码；容器化、网络隔离和交互式执行审批属于后续安全层。
+worktree 是 Git 版本与文件副作用隔离，不是 OS 安全沙箱。M6 已让模型触发的 allowlisted 检查命令在 macOS Seatbelt 或 Linux 固定容器宿主内执行，并加入默认断网、精确 mount、资源限制、进程树取消和审计；Windows 尚无受支持的本地进程隔离宿主，因此进程型工具 fail closed。即使存在执行宿主，worktree 与 OS 隔离仍是两层独立边界。
 
 ### 2.5 Controlled integration
 
@@ -141,7 +145,7 @@ Coding 恢复采用两层完成语义：Agent checkpoint 的 `succeeded` 只证�
 
 若进程在批准写回的 `applying` 状态退出，Desktop 启动对账只接受可证明的三种现场：原 baseline 且无效果、精确等于批准 patch 的未提交 diff、或 baseline 之上的单一精确批准 commit。前两种分别投影为 failed/applied，后一种投影为 committed；出现额外路径、不同 diff、多余 commit 或损坏 Proposal 时进入 `recovery_required` 并保留现场，不自动 stash、reset 或覆盖。
 
-Research 与 Coding checkpoint 都没有 Provider continuation token；它们恢复的是本地可证明的消息、工具与控制器边界，不是远端模型进程。当前同 Run resume 只在 Desktop 暴露，CLI 仍没有 `--resume` 命令。
+Research 与 Coding checkpoint 都没有 Provider continuation token；它们恢复的是本地可证明的消息、工具与控制器边界，不是远端模型进程。M7 已把同 Run resume 暴露给 CLI：`--resume-run` 只能加载持久化 Request 合同，不能替换原目标、Provider、并发、扩展或信任档。
 
 worktree 生命周期同样由事件投影：清理只接受已经达到 Run 终态、没有受保护 Integration 状态、同时存在于 `workspace.created` 和 Git worktree registry 的路径。删除使用 `git worktree remove --force`，因此必须由 Desktop 原生确认；成功后追加 `workspace.removed`，但保留 Request、事件和 Artifact。
 
@@ -162,7 +166,7 @@ M4 的 Extension Runtime 在规划前一次性解析本 Run 的 Provider/Skills/
 
 MCP 与浏览器不绕过既有 Tool Runtime：MCP 只有本地配置明确列入 `readOnlyTools` 才是 read，其余默认 execute；浏览器导航/快照是 read，点击/填表/按键是 execute。M5 Desktop 把总开关改成逐次审批资格：每个 execute 调用按精确参数哈希进入队列，用户批准只消费一次；CLI 仍保留显式 Run 级开关用于无人值守执行。审批事件不写原始参数，预览对 secret 与表单值脱敏。
 
-MCP transport 支持本地 stdio 与 Streamable HTTP。HTTP 只接受 HTTPS 或 loopback HTTP；静态 Bearer token 通过环境变量名解析，不进入持久契约。完整 OAuth 2.1 仍未实现。
+MCP transport 支持本地 stdio 与 Streamable HTTP。HTTP 只接受 HTTPS 或 loopback HTTP；静态 Bearer token 通过环境变量名解析，不进入持久契约。M8 已实现 Protected Resource/Authorization Server Metadata 发现、Authorization Code + PKCE S256、loopback/state、动态注册、refresh、revoke 和 resource binding；token 按服务端点、Server 与账户隔离在操作系统凭证库。当前未完成的是指定第三方生产服务和真实账户的外部验收，不是本地 OAuth 协议代码。
 
 安全计算工具会生成稳定的 `calculationId`。Artifact Gate 要求：
 
@@ -178,9 +182,9 @@ MCP transport 支持本地 stdio 与 Streamable HTTP。HTTP 只接受 HTTPS 或 
 - 本地单用户。
 - 默认全局最多 3 个并发 Task，可配置但不能无限制。
 - DeepSeek 与 OpenAI 使用同一 Provider 接口；Run Request 固定实际 Provider 选择。
-- 凭证只从进程环境或 macOS Keychain 解析，不进入 Run Request、checkpoint 或事件日志。
+- 凭证从进程环境或平台凭证库解析：macOS Keychain、Linux Secret Service、Windows Credential Manager；不进入 Run Request、checkpoint 或事件日志。
 - 内建工具包括受限文件读写、搜索、patch、确定性计算和受控检查命令；M4/M5 增加显式选择的 MCP stdio/Streamable HTTP 与浏览器工具。
-- Skills 仅从工作区本地加载；Skill 市场、云同步和团队账号仍不在当前边界。
+- Skills 支持显式选择的工作区本地内容，以及经发布者信任、版本锁、权限声明、内容哈希和撤销校验的签名包；远程 Skill 市场、云同步和团队账号仍不在当前边界。
 
 ## 6. 桌面安全边界
 
@@ -198,7 +202,7 @@ M5 使用注册为 standard + secure 的 `localbuddy://app/` 从 ASAR 加载 Ren
 
 DesktopRunManager 默认允许 2 个活跃 Run，并向所有 Research/Coding Workflow 注入同一个 `ExecutionCoordinator`。用户可以分别停止当前选中的 Run；Run 内上限和全局上限分开显示。
 
-Desktop 使用 Electron single-instance lock，避免两个桌面进程同时拥有同一套内存态；工作区进程租约进一步阻止 Desktop 与 CLI 同时拥有同一工作区的写入/对账权。跨进程全局 Task 容量仍不共享。
+Desktop 使用 Electron single-instance lock，避免两个桌面进程同时拥有同一套内存态；工作区进程租约进一步阻止 Desktop 与 CLI 同时拥有同一工作区的写入/对账权。M7 的机器级文件 lease 让不同 LocalBuddy 进程共享 Task 容量、Provider 并发/限速和每日 token 预算；它不允许第二个进程绕过工作区所有权。
 
 ## 7. 实施阶段
 
@@ -216,3 +220,6 @@ Desktop 使用 Electron single-instance lock，避免两个桌面进程同时拥
 12. **M7 Recovery + Coordination（已完成）**：CLI same-Run resume、revert commit、preview Merge Agent、跨进程 Task/Provider 容量与预算账本。
 13. **M8 MCP OAuth 2.1（已完成本地协议验收）**：RFC 9728/8414 discovery、DCR、Authorization Code + PKCE、loopback/state、refresh/revoke、resource binding 和 OS 凭证隔离。
 14. **M9 Distribution Protocol + Platforms + Skills（已完成本地可证明范围）**：Ed25519 更新 staging、回滚保护、Linux/Windows native build contracts、签名/锁定/撤销 Skill。正式 Developer ID、Hardened Runtime 与 notarization 按用户决策暂缓。
+15. **M10 Dogfooding + Productization（已完成代码、本机与原生 Runner 范围）**：Desktop Provider/凭证设置、持久信任档、哈希校验 inline diff、脱敏诊断导出、macOS 包复验、Linux/Windows 原生构建和 Windows GitHub Release。Windows 真机端到端与生产 MCP OAuth 仍是外部门禁。
+
+M11 尚未立项。持续会话、Project/Workspace 首页、资料摄取、内嵌产物预览和更可控的多 Agent 交互属于候选方向，必须在真实 dogfooding 后再确定范围，不能写成已承诺能力。

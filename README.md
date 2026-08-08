@@ -4,7 +4,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 
 这不是 Craft Agents 的分支，也不包含腾讯 WorkBuddy 的私有实现。仓库只参考公开产品行为、通用 Agent 架构模式，以及我们自行定义的验收契约。
 
-> **产品判断（2026-08-08）**：`0.9.0` 是可供 macOS 内部连续使用的 Engineering Alpha。M0-M7 已完成本机工程验收，M8-M9 已完成本地协议/产物验收；它不是公开分发版，也还不是与 WorkBuddy 功能对等的商业产品。
+> **产品判断（2026-08-09）**：`0.9.0 / M10` 是可安装、可审计、可恢复的内部 Engineering Alpha。M0-M10 的代码与确定性验收已经完成，macOS 包完成本机烟测，Linux/Windows 完成原生 Runner 构建；Windows 真机安装和真实业务运行仍等待设备。它不是公开分发版，也还不是与 WorkBuddy 功能对等的商业产品。
 
 ## 一页状态
 
@@ -18,10 +18,20 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 | 代码写回 | 独立 worktree、组合预检、人工 Gate、apply/commit/revert commit |
 | 恢复 | Research/Coding 同 Run checkpoint resume，并保留 replay 兜底 |
 | 扩展 | 本地/签名 Skill、MCP stdio/HTTP/OAuth、受限 Playwright Browser |
-| 分发 | macOS ad-hoc DMG/ZIP、Linux DEB、Windows Setup/ZIP 均经原生环境验收；Windows `v0.9.0` 已发布到私有 GitHub Release |
+| 分发 | macOS ad-hoc DMG/ZIP 已完成本机验收；Linux DEB、Windows Setup/ZIP 已完成原生 Runner 构建；Windows `v0.9.0` 已发布到私有 GitHub Release |
 | 当前主动暂缓 | Developer ID、生产 Hardened Runtime、notarization、公开 Gatekeeper |
 
-M10 已补齐 Desktop Provider/信任设置、哈希校验的可视化 diff 和脱敏诊断导出，并完成 macOS、Linux、Windows 原生 CI。当前产品化缺口收敛为生产 MCP OAuth、远程 Skill 市场与公开分发签名；不会把“代码已写”冒充“外部环境已验收”。
+M10 已补齐 Desktop Provider/信任设置、哈希校验的可视化 diff 和脱敏诊断导出，并完成 macOS、Linux、Windows 原生 CI。`v0.9.0` 工程里程碑已经发布，但连续真实 dogfooding 仍是开放验证门；当前产品化缺口还包括 Windows 真机端到端验收、持续会话/工作区体验、生产 MCP OAuth、远程 Skill 市场与公开分发签名。不会把“代码已写”“Runner 已打包”冒充“真实设备/真实业务已验收”。
+
+## 文档入口
+
+- [`docs/QUICKSTART.md`](docs/QUICKSTART.md)：内部试用者从安装、凭证到第一个 Run 的最短路径；
+- [`docs/KNOWN-LIMITATIONS.md`](docs/KNOWN-LIMITATIONS.md)：`v0.9.0` 的已知限制和不能宣称的能力；
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)：当前 M10 架构事实；
+- [`docs/ROADMAP.md`](docs/ROADMAP.md)：已完成里程碑、外部门禁和待确认的下一阶段；
+- [`docs/RELEASE.md`](docs/RELEASE.md)：版本、Tag、CI、Release 与校验流程；
+- [`docs/DOGFOOD.md`](docs/DOGFOOD.md)：真实任务试用矩阵与退出口径；
+- [`CHANGELOG.md`](CHANGELOG.md)：已发布版本的变更记录。
 
 ## 当前状态
 
@@ -145,7 +155,7 @@ M10 已补齐 Desktop Provider/信任设置、哈希校验的可视化 diff 和�
 - 签名 Skill 支持发布者信任、版本锁、权限声明、内容哈希和撤销；工作区本地自编 Skill 仍以显式选择的 `workspace-local` 层保留。
 - 规格与验收见 [`docs/M9-SPEC.md`](docs/M9-SPEC.md) 和 [`docs/M9-VALIDATION.md`](docs/M9-VALIDATION.md)。
 
-**M10 Dogfooding + Productization** 已完成本地与原生 Runner 范围：
+**M10 Dogfooding + Productization** 已完成实现、本机和原生 Runner 范围；连续 dogfooding 验证门开放：
 
 - Desktop 增加 Provider 模型/Base URL 配置和系统凭证写入；
 - 把 strict/balanced/automation 信任档从内核能力变成 Run 可选合同；
@@ -153,10 +163,11 @@ M10 已补齐 Desktop Provider/信任设置、哈希校验的可视化 diff 和�
 - 增加脱敏诊断包导出，供内部 dogfooding 复盘；
 - Run Request 升级为 v3；旧 v1/v2 Request 读取时默认迁移为 `balanced`，但不会改写历史文件；resume/replay 固定复用原信任档。
 - 私有仓库已建立在 `LLM-X-Factorer/diantou-localbuddy-v2`；Linux DEB、Windows Squirrel Setup/ZIP 和跨平台合同已由 GitHub 原生 Runner 验收。
+- 连续 7-14 天的真实任务 dogfooding 尚未执行，计划与退出口径见 [`docs/DOGFOOD.md`](docs/DOGFOOD.md)。
 - 真实第三方 MCP OAuth 仍以指定生产服务和账户为外部验收门。
 - 规格和当前 macOS 验收见 [`docs/M10-SPEC.md`](docs/M10-SPEC.md) 与 [`docs/M10-VALIDATION.md`](docs/M10-VALIDATION.md)。
 
-当前唯一主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。Windows/Linux 首次原生产物验收已经完成；第三方生产 MCP OAuth 仍需要服务方账户验收，不能用本地夹具冒充。
+当前主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。Windows/Linux 首次原生 Runner 产物已经生成，但 Windows 真机安装/启动/业务运行尚未验收；第三方生产 MCP OAuth 仍需要服务方账户验收，不能用本地夹具冒充。
 
 ## 核心模型
 
@@ -297,4 +308,4 @@ pnpm desktop
 
 Desktop 的“扩展配置”可填写 Provider model/base URL，并把新 API Key 直接写入操作系统安全存储；Renderer 不读取既有 secret。代码集成审批区可在写回前校验并查看组合 Diff，顶部可导出脱敏诊断包。
 
-架构边界见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)，当前工程路线与暂缓项见 [`docs/ROADMAP.md`](docs/ROADMAP.md)。M0-M9 的规格和验证记录均在 [`docs/`](docs/) 下。
+架构边界见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)，当前工程路线与暂缓项见 [`docs/ROADMAP.md`](docs/ROADMAP.md)。M0-M10 的规格和验证记录均在 [`docs/`](docs/) 下；面向内部安装包用户的入口见 [`docs/QUICKSTART.md`](docs/QUICKSTART.md)。

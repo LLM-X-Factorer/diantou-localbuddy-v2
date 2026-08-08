@@ -61,5 +61,8 @@ The published assets were downloaded back to the macOS host and `shasum -a 256 -
 
 ## External gates
 
+- Continuous 7-14 day dogfooding on real work has not started; package smoke and deterministic fixtures are not a substitute. The plan and exit criteria live in [`DOGFOOD.md`](DOGFOOD.md).
+- Windows native CI proves contracts and artifact generation, not installation, launch, credential storage, a real Provider Run, recovery, or uninstall on a Windows device. That matrix is waiting for hardware.
+- Linux native CI proves contracts and DEB generation, not a graphical desktop install/launch session.
 - Production MCP OAuth still requires a named real service and account; local loopback protocol fixtures are not production acceptance.
 - Developer ID, production Hardened Runtime, notarization and public Gatekeeper acceptance remain intentionally deferred.
