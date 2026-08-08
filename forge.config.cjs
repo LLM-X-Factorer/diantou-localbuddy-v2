@@ -46,8 +46,9 @@ module.exports = {
       name: "@electron-forge/maker-deb",
       config: {
         options: {
+          bin: "LocalBuddy",
           maintainer: "Diantou Education",
-          homepage: "https://github.com/diantou-edu",
+          homepage: "https://github.com/LLM-X-Factorer/diantou-localbuddy-v2",
           categories: ["Development"],
         },
       },
