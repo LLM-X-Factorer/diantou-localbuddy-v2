@@ -34,4 +34,3 @@ Renderer：React 19.2.8 + Vite 8.2.1<br>
 ## 边界结论
 
 M2 已证明 Desktop UI 与真实 Runtime、持久事件和真实 Artifact 是同一条链，而不是静态样稿。它尚未证明跨 Run 的共享全局并发、代码修改或可发布安装包；这些能力继续保持为后续阶段。
-

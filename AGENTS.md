@@ -25,4 +25,3 @@ This repository is an independent implementation of a local multi-agent desktop 
 - Use `pnpm` for dependency and script execution.
 - Run `pnpm check` before handoff.
 - Do not push or configure a remote unless the user explicitly asks.
-

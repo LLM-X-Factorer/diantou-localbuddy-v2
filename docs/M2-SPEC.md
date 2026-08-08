@@ -43,4 +43,3 @@ React Renderer
 - Security Checklist：<https://www.electronjs.org/docs/latest/tutorial/security>
 
 官方明确建议启用 context isolation 与 sandbox、关闭 Renderer Node integration，不直接暴露完整 `ipcRenderer`，并校验 IPC sender。本仓首版按这些边界实现；`file://` 到自定义协议的迁移已记录为发布阶段欠项。
-

@@ -5,4 +5,3 @@
 - Two demo bookings were postponed to next week because customer stakeholders were unavailable.
 - The sales team reports that education-industry leads convert faster than generic consulting leads.
 - No paid-order attribution audit was completed this week; channel-level ROI remains unknown.
-

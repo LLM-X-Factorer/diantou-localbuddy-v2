@@ -10,4 +10,3 @@ test("keeps sandbox preload channel names aligned with the main contract", async
     assert.ok(preloadSource.includes(`\"${channel}\"`), `preload is missing ${channel}`);
   }
 });
-

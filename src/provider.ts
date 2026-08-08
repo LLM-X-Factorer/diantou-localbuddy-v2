@@ -48,4 +48,3 @@ export interface ModelStreamOptions {
 export interface ModelProvider {
   complete(request: ModelRequest, options?: ModelStreamOptions): Promise<ModelResponse>;
 }
-
