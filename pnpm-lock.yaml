@@ -64,6 +64,9 @@ importers:
       electron:
         specifier: ^43.3.0
         version: 43.3.0
+      lodash:
+        specifier: 4.18.1
+        version: 4.18.1
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
