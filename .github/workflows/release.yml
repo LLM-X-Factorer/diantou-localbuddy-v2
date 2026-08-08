@@ -1,0 +1,72 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows-release:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm build:core
+      - name: Run platform-neutral contracts
+        run: >-
+          node --test
+          dist/test/deepseek-provider.test.js
+          dist/test/openai-provider.test.js
+          dist/test/process-shared-provider.test.js
+          dist/test/provider-factory.test.js
+          dist/test/run-request-store.test.js
+          dist/test/scheduler.test.js
+          dist/test/tool-runtime.test.js
+          dist/test/trust-policy.test.js
+          dist/test/update-manifest.test.js
+          dist/test/workspace-process-lock.test.js
+      - name: Build Windows installer and portable ZIP
+        run: pnpm make:win
+      - name: Collect release assets and checksums
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release-assets | Out-Null
+          $assets = Get-ChildItem .localbuddy/forge-out/make -Recurse -File |
+            Where-Object { $_.Extension -in @(".exe", ".zip") }
+          if ($assets.Count -lt 2) {
+            throw "Expected both a Windows installer and portable ZIP"
+          }
+          foreach ($asset in $assets) {
+            Copy-Item $asset.FullName -Destination release-assets/$($asset.Name)
+          }
+          Get-ChildItem release-assets -File | Sort-Object Name | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)"
+          } | Set-Content release-assets/SHA256SUMS-windows.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: localbuddy-windows-${{ github.ref_name }}
+          path: release-assets/**
+          if-no-files-found: error
+      - name: Publish GitHub Release assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view $env:GITHUB_REF_NAME *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $env:GITHUB_REF_NAME --verify-tag --generate-notes --title "LocalBuddy $env:GITHUB_REF_NAME"
+          }
+          $releaseAssets = Get-ChildItem release-assets -File | ForEach-Object { $_.FullName }
+          gh release upload $env:GITHUB_REF_NAME $releaseAssets --clobber

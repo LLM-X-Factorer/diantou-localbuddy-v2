@@ -196,6 +196,8 @@ pnpm make:win
 
 它们应分别在 Linux/Windows Runner 上执行；仓库不会把交叉编译配置冒充成目标平台运行验收。
 
+推送 `v*` Tag 会在 GitHub 的 Windows Runner 上运行平台合同测试与 `pnpm make:win`，随后把 Squirrel `Setup.exe`、便携 ZIP 和 `SHA256SUMS-windows.txt` 发布到对应 GitHub Release。Release 只有在原生构建成功后才会创建或更新。
+
 ## Headless 真实运行
 
 在操作系统凭证库保存 DeepSeek Key（macOS Keychain、Linux Secret Service、Windows Credential Manager）：

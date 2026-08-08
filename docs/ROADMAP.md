@@ -50,6 +50,7 @@
 - 可导出省略目标正文、模型内容、工具参数、凭据和绝对路径的诊断 JSON；
 - macOS ad-hoc 包已重新构建并完成真实 Renderer、Fuse、ASAR、内置浏览器、ZIP 与 DMG 验收；
 - 私有远端需要确认 GitHub owner，Linux/Windows 需要原生 Runner，生产 MCP OAuth 需要指定真实服务和账户。
+- Windows Release 采用 Tag 驱动的原生 Runner：构建成功后发布 `Setup.exe`、便携 ZIP 与 SHA-256 清单。
 
 ## 完成口径
 
