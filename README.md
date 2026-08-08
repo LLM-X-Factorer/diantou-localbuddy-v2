@@ -1,0 +1,263 @@
+# LocalBuddy V2
+
+LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单个本地用户，通过远程 LLM API 完成规划、研究、编码、审查和产物生成；本地负责文件、权限、任务调度、状态恢复与审计。
+
+这不是 Craft Agents 的分支，也不包含腾讯 WorkBuddy 的私有实现。仓库只参考公开产品行为、通用 Agent 架构模式，以及我们自行定义的验收契约。
+
+## 当前状态
+
+**M0 并发运行时内核**已经完成：
+
+- 一个 Run 可以包含有依赖关系的多个 Task。
+- Task 可以动态分配给不同能力和容量的 Agent。
+- 全局并发数与单 Agent 并发数分别受控。
+- 同一共享工作区允许并发读取，但写入互斥。
+- 并发写任务可以声明独立隔离区，后续由 Integrator Agent 串行整合。
+- 运行与任务状态通过 append-only Event Store 留痕。
+
+**M1 Headless Agent** 已经完成首条真实纵向链路：
+
+- DeepSeek Chat Completions SSE 流式适配器。
+- Orchestrator 使用 JSON Output 生成 1-3 个并行 Worker Task。
+- Worker 通过受限工具读取本地工作区，Integrator 等待依赖后写产物。
+- 工具参数由本地代码解析，路径逃逸、角色越权和未知工具会被拒绝。
+- API Key 优先从环境变量读取，macOS 下可存入系统钥匙串。
+- 确定性比例计算会生成 `calculationId`；含无来源数字、缺失计算底稿或擅自舍入的产物无法写入。
+- 真实 DeepSeek smoke 已完成，验收记录见 [`docs/M1-VALIDATION.md`](docs/M1-VALIDATION.md)。
+
+**M2 Desktop Control Plane** 已完成首版：
+
+- Electron Main 驱动真实 Headless Runtime，不在 Renderer 中执行模型或文件操作。
+- React 工作台展示历史 Run、Agent Task Graph、实时事件、状态和登记产物。
+- 从 `.localbuddy/runs/*/events.jsonl` 重建历史状态，重启应用后仍可查看。
+- 支持选择工作区、设置单 Run 并发数、启动和取消运行、打开登记产物。
+- Preload 使用 context isolation 和 sandbox，只暴露逐项 IPC 方法。
+- Electron 真实窗口已经完成构建和截图验收，记录见 [`docs/M2-VALIDATION.md`](docs/M2-VALIDATION.md)。
+
+**M3.1 Multi-Run + Isolated Coding** 已完成：
+
+- 进程级 `ExecutionCoordinator` 让多个 Run 共享全局执行容量与工作区读写锁；桌面默认最多同时启动 2 个 Run，全部 Run 合计最多执行 3 个 Task。
+- Code Orchestrator 将目标拆成 1-3 个文件所有权不重叠的任务，每个 Code Worker 使用独立 detached Git worktree。
+- Code Worker 可读取仓库、做精确文本替换、创建已授权的新文件，并运行固定枚举的检查命令；没有任意 shell 字符串入口。
+- 控制器强制执行 `git diff --check`，以 binary/full-index 格式捕获补丁，登记 `.patch` Artifact，再由 Integrator 生成明确标注“未合并”的总结。
+- 主工作区不会被自动修改、提交或合并；worktree 会保留给用户检查。真实 DeepSeek 双 Worker smoke 与桌面截图见 [`docs/M3-VALIDATION.md`](docs/M3-VALIDATION.md)。
+
+**M3.2 Controlled Integration** 已完成：
+
+- 多个 Worker patch 先在独立 integration-preview worktree 依次应用；文本冲突、空组合结果或组合测试失败都会在主工作区之前终止。
+- 预检成功后持久化 `integration-proposal.json`，记录 baseline HEAD、patch 哈希、组合 patch、变更路径和检查结果。
+- Agent 没有批准权。CLI 必须显式传入 `--apply`，Desktop 必须点击批准按钮并通过原生确认框。
+- 批准时再次检查主工作区 clean、HEAD 未漂移、组合 patch 哈希一致，再以 Git 默认原子语义写回。
+- 用户可选择保持未提交、创建一个显式 commit，或在未继续编辑时反向撤销；commit 失败会自动恢复 index 与工作区。
+- 真实 DeepSeek “双 Worker → 组合测试 → 人工批准 → commit”验收见 [`docs/M3.2-VALIDATION.md`](docs/M3.2-VALIDATION.md)。
+
+**M3.3 Safe Recovery + Worktree Lifecycle** 已完成：
+
+- 每个 Desktop/CLI Run 在模型调用前原子持久化 `run-request.json`；Desktop Request 记录执行模式、并发数和恢复来源。
+- Desktop 启动或读取历史时，把属于 Desktop 且没有终态的持久 Run 追加标记为 `interrupted`，重复读取不会重复写事件。
+- 用户可以按原始请求创建全新 Run；旧 Run 只追加 `run.restarted` 链接，历史事件不改写。界面明确说明这是 replay，不是模型 turn checkpoint resume。
+- Desktop 展示 Run 登记过的 Worker/preview worktree。显式清理前需要原生确认，并同时核对事件登记与 `git worktree list`。
+- `awaiting_approval`、`applying`、`applied`、`recovery_required` 状态保护 worktree；成功清理只删除隔离目录，Run Request、事件和 Artifact 保留。
+- 契约与验收见 [`docs/M3.3-SPEC.md`](docs/M3.3-SPEC.md) 和 [`docs/M3.3-VALIDATION.md`](docs/M3.3-VALIDATION.md)。
+
+**M3.4 Research Checkpoint Resume** 已完成：
+
+- Research Run 会原子保存计划、Task 消息历史、模型/工具阶段和工具执行回执；Artifact 与确定性计算登记也改为持久化注册表。
+- Desktop 可在应用重启后对同一 Run ID 执行 checkpoint resume。已完成 Task 直接恢复，未完成 Task 继续使用原 Agent 与原消息前缀。
+- 已完成工具结果会复用；中断中的只读/计算工具可以重试。无法确认是否已产生副作用的写入/执行工具会阻断续跑，不会盲目重复执行。
+- 恢复前校验原始 Request、持久计划、Task/Agent/工具契约和工作区内容快照。工作区漂移、checkpoint 损坏或超过快照上限时，用户仍可选择 M3.3 的从头重放。
+- M3.4 阶段本身只覆盖 Research Run；Coding Run 的独立恢复协议由 M3.5 补齐。
+- 契约与验收见 [`docs/M3.4-SPEC.md`](docs/M3.4-SPEC.md) 和 [`docs/M3.4-VALIDATION.md`](docs/M3.4-VALIDATION.md)。
+
+**M3.5 Coding Run Checkpoint Recovery** 已完成：
+
+- Coding Run 原子保存代码计划、baseline HEAD、Task/Agent 契约、Git worktree 清单、工具回执、Worker 结果和预检进度。
+- Desktop 可对异常退出的 Coding Run 使用同一 Run ID 继续；恢复前重新核对主仓库、Git 登记的隔离工作树、当前 diff、patch Artifact 与 Integration Proposal。
+- Agent checkpoint 与 Coding Task 结果采用两层完成语义：只有 patch/Artifact/工作树状态完整落盘并通过复核，Scheduler 才会跳过已完成任务。
+- 已完成工具回执会复用；只有 started 回执的写入/执行工具、工作树漂移或产物不一致会阻断自动恢复。
+- 未完成的 integration preview 会保留并改用新编号重新预检；完整 Proposal 可复核后恢复，主工作区仍必须经过人类批准才会写回。
+- `applying` 中断只在 Git 状态能精确证明结果时自动对账为 applied/committed；任何额外改动进入 `recovery_required`，不覆盖现场。
+- 故障注入、真实 DeepSeek 与桌面验收见 [`docs/M3.5-SPEC.md`](docs/M3.5-SPEC.md) 和 [`docs/M3.5-VALIDATION.md`](docs/M3.5-VALIDATION.md)。
+
+**M4 Extensions** 已完成：
+
+- Provider 可按 Run 选择 DeepSeek 或 OpenAI；两者都支持流式文本、工具调用、JSON Output、usage 与 Keychain/环境变量凭证。
+- 本地 Skill 从 `.localbuddy/skills/<id>/SKILL.md` 显式加载，校验 YAML、大小、路径、符号链接与内容哈希；Skill 不能绕过工具策略。
+- MCP stdio server 从 `.localbuddy/mcp.json` 显式选择，发现与调用均进入审计；本地未声明只读的工具一律按外部副作用处理。
+- Playwright Chromium 使用每 Run 独立 context 和 exact-origin 网络白名单；导航/快照与点击/填表分开授权。
+- Provider 与扩展选择进入 Run Request、Desktop 历史和 checkpoint contract；扩展漂移会阻断旧 Run 续跑。
+- 69 项自动测试、真实 DeepSeek + Chromium + MCP 纵向烟测及 Electron 实窗验收见 [`docs/M4-SPEC.md`](docs/M4-SPEC.md) 和 [`docs/M4-VALIDATION.md`](docs/M4-VALIDATION.md)。
+
+**M5 Hardening + Packaging** 已完成：
+
+- Desktop 对 effectful MCP/browser 调用逐次排队；批准只消费一次，并显示脱敏参数预览与精确参数哈希。
+- MCP 新增 Streamable HTTP transport，静态 Bearer 只从环境变量注入；stdio 配置保持兼容。
+- CLI 与 Desktop 使用跨进程工作区租约，避免两个 LocalBuddy 进程同时修改或对账同一工作区；同一 Desktop 内多 Run 仍可并行。
+- Renderer 使用 `localbuddy://app/`、全局 sandbox 和严格 CSP；macOS ASAR 包固定 Electron 43 全部 9 项 fuse。
+- Forge 生成 macOS arm64 `.app`/ZIP，原生 `hdiutil` 生成 DMG；包内含锁定版本的 Chromium headless shell。
+- 79 项测试、真实 DeepSeek、多进程故障、包内浏览器、实际 fuse、签名和 Renderer 启动验收见 [`docs/M5-SPEC.md`](docs/M5-SPEC.md) 和 [`docs/M5-VALIDATION.md`](docs/M5-VALIDATION.md)。
+
+**M6 Safe Execution + Unified Trust** 已完成：
+
+- macOS 中模型触发的检查和 MCP stdio 进入 Seatbelt；工作区按声明只读/写、默认断网、限制输出/时间并取消进程树。
+- Linux 提供只读 rootfs、cap drop、no-new-privileges、资源上限和显式 mount 的容器执行宿主；Windows 没有受支持隔离宿主时对本地进程工具 fail closed。
+- 文件、计算、产物、worktree、进程、外部读取和外部副作用统一映射为七类权限，按 strict/balanced/automation 信任档执行。
+- 规格见 [`docs/M6-SPEC.md`](docs/M6-SPEC.md)。
+
+**M7 Recovery + Coordination** 已完成：
+
+- CLI 可用 `--resume-run` 续跑同一 Run checkpoint，且不能覆盖持久化的目标、Provider、并发和扩展合同。
+- 已提交 Integration 通过新的 revert commit 撤销，不改写 Git 历史；异常落盘进入 `recovery_required`。
+- Integration 冲突只在 preview worktree 交给 Merge Agent 建议，控制器复核、跑组合检查后仍需人工 Gate。
+- 多进程/多工作区共享全局 Task 容量、Provider 并发、最小请求间隔和每日 token 预算。
+- 规格见 [`docs/M7-SPEC.md`](docs/M7-SPEC.md)。
+
+**M8 MCP OAuth 2.1** 已完成本地可验证范围：
+
+- 支持 Protected Resource/Authorization Server Metadata 发现、Authorization Code + PKCE S256、loopback state 校验、动态注册、refresh、revoke 和 resource 绑定。
+- MCP token 按服务端点/Server/账户隔离存入操作系统凭证库，不进入配置、事件或 checkpoint。
+- OAuth 只完成身份认证，不会绕过 MCP 外部副作用的逐次授权。
+- 规格与真实 loopback 协议夹具见 [`docs/M8-SPEC.md`](docs/M8-SPEC.md)。
+
+**M9 Distribution Protocol + Platforms + Skill Supply Chain** 已完成本地可验证范围：
+
+- 更新清单使用 Ed25519 签名，artifact 校验 SHA-256、字节数、平台和版本回滚；当前只 staging，绝不自动替换 macOS 应用。
+- macOS/Windows/Linux 有各自凭证库和状态目录适配；Linux/Windows 原生打包命令与 CI matrix 已定义。
+- 签名 Skill 支持发布者信任、版本锁、权限声明、内容哈希和撤销；工作区本地自编 Skill 仍以显式选择的 `workspace-local` 层保留。
+- 规格与验收见 [`docs/M9-SPEC.md`](docs/M9-SPEC.md) 和 [`docs/M9-VALIDATION.md`](docs/M9-VALIDATION.md)。
+
+当前唯一主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。Windows/Linux 安装包需要各目标 CI Runner 的首次真实产物验收；第三方生产 MCP OAuth 仍需要服务方账户验收，不能用本地夹具冒充。
+
+## 核心模型
+
+```text
+Run
+ ├─ Task A ── Research Agent ── read:workspace
+ ├─ Task B ── Research Agent ── read:workspace
+ ├─ Task C ── Coding Agent   ── write:worktree-C ── patch-C
+ ├─ Task D ── Integrator     ── depends on A/B/C ── write:artifact-only
+ └─ Human Gate ── combined preflight ── approve ── apply / commit
+```
+
+“多 Agent”和“多任务”是两个独立维度：Agent 定义角色、指令与能力；Task 定义可调度工作、依赖关系和工作区访问方式。
+
+## 开发
+
+```bash
+pnpm install
+pnpm exec playwright install chromium
+pnpm check
+```
+
+生成并验证本机 macOS arm64 内部试用包：
+
+```bash
+pnpm make:mac
+pnpm verify:mac-package
+```
+
+产物保存在 `.localbuddy/forge-out/make/`。当前是 ad-hoc、未公证的内部试用包，不等于可公开分发的 Developer ID release。
+
+目标平台原生构建命令：
+
+```bash
+pnpm make:linux
+pnpm make:win
+```
+
+它们应分别在 Linux/Windows Runner 上执行；仓库不会把交叉编译配置冒充成目标平台运行验收。
+
+## Headless 真实运行
+
+在操作系统凭证库保存 DeepSeek Key（macOS Keychain、Linux Secret Service、Windows Credential Manager）：
+
+```bash
+pnpm credentials:set
+```
+
+指定 Provider 时分别保存凭证：
+
+```bash
+pnpm credentials:set -- --provider deepseek
+pnpm credentials:set -- --provider openai
+```
+
+执行一个多 Agent 本地任务：
+
+```bash
+pnpm cli -- \
+  --workspace ./fixtures/m1-weekly-report \
+  --goal "读取本地材料并生成一份中文周报" \
+  --concurrency 3
+```
+
+按 Run 启用本地 Skill、MCP 和受限浏览器：
+
+```bash
+pnpm cli -- \
+  --provider deepseek \
+  --workspace /path/to/workspace \
+  --goal "读取本地材料、浏览指定页面，并调用本地 MCP 工具生成报告" \
+  --skill evidence-review \
+  --mcp-server local-tools \
+  --browser-origin https://example.com
+```
+
+浏览器点击/填表和 MCP 副作用工具默认拒绝；CLI 仅在确认该 Run 需要时添加 `--allow-browser-actions` 或 `--allow-mcp-writes`。Desktop 中这两个选项只允许调用进入逐次审批队列，不会提前批准。stdio/Streamable HTTP 配置和安全边界见 [`docs/M4-SPEC.md`](docs/M4-SPEC.md) 与 [`docs/M5-SPEC.md`](docs/M5-SPEC.md)。
+
+CLI 同 Run 恢复：
+
+```bash
+pnpm cli -- --workspace /path/to/workspace --resume-run run-id
+```
+
+恢复会复用原 Request 合同；只允许额外选择 `--apply`/`--commit-message` 处理已持久化的 Code Integration。OAuth MCP 配置示例与凭证边界见 [`docs/M8-SPEC.md`](docs/M8-SPEC.md)。
+
+签名更新只下载到 staging：
+
+```bash
+pnpm update:stage -- \
+  --manifest-url https://updates.example.com/localbuddy/manifest.json \
+  --public-key BASE64_ED25519_SPKI
+```
+
+发布方签名工具与 Skill 包签名工具分别是 `pnpm update:sign -- ...`、`pnpm skill:sign -- ...`；私钥不得放入本仓库。
+
+对一个干净、已经提交且忽略 `.localbuddy/` 的 Git 仓库运行代码隔离模式：
+
+```bash
+pnpm cli -- \
+  --mode code \
+  --workspace /path/to/clean-git-repo \
+  --goal "把两个互不重叠的修改交给并行 Code Worker，运行检查并输出未合并补丁" \
+  --concurrency 3
+```
+
+代码模式的输出包括每个 Worker 的 worktree 路径、补丁 Artifact、SHA-256 和总结文件。它不会自动把补丁应用到主工作区。
+
+先生成并审阅 Integration Proposal，不写回：
+
+```bash
+pnpm cli -- --mode code --workspace /path/to/repo --goal "完成修改并运行组合测试"
+```
+
+用户明确批准后写回；只有提供 commit message 时才创建 commit：
+
+```bash
+pnpm cli -- \
+  --mode code \
+  --workspace /path/to/repo \
+  --goal "完成修改并运行组合测试" \
+  --apply \
+  --commit-message "Apply approved LocalBuddy integration"
+```
+
+运行请求、事件和产物保存在工作区 `.localbuddy/runs/<run-id>/`，该目录默认不进入 Git。`run-request.json` 包含用户目标，属于本地私有运行状态，不应提交或同步到公开仓库。
+
+启动桌面工作台：
+
+```bash
+pnpm desktop
+```
+
+架构边界见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)，当前工程路线与暂缓项见 [`docs/ROADMAP.md`](docs/ROADMAP.md)。M0-M9 的规格和验证记录均在 [`docs/`](docs/) 下。

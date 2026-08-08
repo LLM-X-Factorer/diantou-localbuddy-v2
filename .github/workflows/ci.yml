@@ -1,0 +1,82 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+
+  platform-contract:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm build:core
+      - name: Run platform-neutral contracts
+        run: >-
+          node --test
+          dist/test/deepseek-provider.test.js
+          dist/test/openai-provider.test.js
+          dist/test/process-shared-provider.test.js
+          dist/test/provider-factory.test.js
+          dist/test/run-request-store.test.js
+          dist/test/scheduler.test.js
+          dist/test/tool-runtime.test.js
+          dist/test/trust-policy.test.js
+          dist/test/update-manifest.test.js
+          dist/test/workspace-process-lock.test.js
+
+  package-native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            command: make:linux
+          - os: windows-2025
+            command: make:win
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm ${{ matrix.command }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: localbuddy-${{ matrix.os }}
+          path: .localbuddy/forge-out/make/**
+          if-no-files-found: error
