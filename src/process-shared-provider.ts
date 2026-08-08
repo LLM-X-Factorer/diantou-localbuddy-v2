@@ -238,6 +238,7 @@ async function tryAcquireNamedLease(directory: string): Promise<FileLease | unde
   } catch (error) {
     if (!(isNodeError(error) && error.code === "EEXIST")) throw error;
     const existing = await inspectLease(directory);
+    if (existing === undefined) return undefined;
     if (!isStale(existing.owner)) return undefined;
     if (existing.owner === undefined && Date.now() - existing.modifiedAt < INCOMPLETE_GRACE_MS) {
       return undefined;
@@ -273,7 +274,7 @@ async function tryAcquireNamedLease(directory: string): Promise<FileLease | unde
       if (released) return;
       released = true;
       const existing = await inspectLease(directory);
-      if (existing.owner?.ownerId !== owner.ownerId) {
+      if (existing?.owner?.ownerId !== owner.ownerId) {
         throw new Error("shared Provider lease ownership changed before release");
       }
       await rm(directory, { recursive: true });
@@ -281,8 +282,16 @@ async function tryAcquireNamedLease(directory: string): Promise<FileLease | unde
   };
 }
 
-async function inspectLease(directory: string): Promise<{ owner?: LeaseOwner; modifiedAt: number }> {
-  const metadata = await stat(directory);
+async function inspectLease(
+  directory: string,
+): Promise<{ owner?: LeaseOwner; modifiedAt: number } | undefined> {
+  let metadata;
+  try {
+    metadata = await stat(directory);
+  } catch (error) {
+    if (isNodeError(error) && error.code === "ENOENT") return undefined;
+    throw error;
+  }
   try {
     const raw = JSON.parse(await readFile(resolve(directory, "owner.json"), "utf8")) as unknown;
     return { owner: parseOwner(raw), modifiedAt: metadata.mtimeMs };

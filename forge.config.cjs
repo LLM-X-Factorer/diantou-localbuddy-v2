@@ -1,4 +1,7 @@
 const { resolve } = require("node:path");
+const { MakerDeb } = require("@electron-forge/maker-deb");
+const { MakerSquirrel } = require("@electron-forge/maker-squirrel");
+const { MakerZIP } = require("@electron-forge/maker-zip");
 const { FusesPlugin } = require("@electron-forge/plugin-fuses");
 const { FuseV1Options, FuseVersion } = require("@electron/fuses");
 
@@ -31,20 +34,16 @@ module.exports = {
     ],
   },
   makers: [
-    {
-      name: "@electron-forge/maker-zip",
-      platforms: ["darwin", "win32"],
-    },
-    {
-      name: "@electron-forge/maker-squirrel",
-      config: {
+    new MakerZIP({}, ["darwin", "win32"]),
+    new MakerSquirrel(
+      {
         name: "LocalBuddy",
         setupExe: "LocalBuddy-Setup.exe",
       },
-    },
-    {
-      name: "@electron-forge/maker-deb",
-      config: {
+      ["win32"],
+    ),
+    new MakerDeb(
+      {
         options: {
           bin: "LocalBuddy",
           maintainer: "Diantou Education",
@@ -52,7 +51,8 @@ module.exports = {
           categories: ["Development"],
         },
       },
-    },
+      ["linux"],
+    ),
   ],
   plugins: [
     new FusesPlugin({
