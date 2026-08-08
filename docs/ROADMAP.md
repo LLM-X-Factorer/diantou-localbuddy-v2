@@ -42,6 +42,15 @@
 - Skill manifest、版本锁、权限声明、签名、撤销与本地受信目录；
 - 在执行隔离不可用的平台上，对本地进程型扩展 fail closed。
 
+### M10 · Dogfooding + Productization — completed locally; external gates pending
+
+- Desktop Provider model/base URL 与系统安全凭据写入；Renderer 不持久化、回显或读取 secret；
+- `strict` / `balanced` / `automation` 成为持久化 Run 合同，并由 resume/replay 复用；
+- Integration Gate 只通过受限 IPC 读取登记且 SHA-256 校验通过的组合补丁；
+- 可导出省略目标正文、模型内容、工具参数、凭据和绝对路径的诊断 JSON；
+- macOS ad-hoc 包已重新构建并完成真实 Renderer、Fuse、ASAR、内置浏览器、ZIP 与 DMG 验收；
+- 私有远端需要确认 GitHub owner，Linux/Windows 需要原生 Runner，生产 MCP OAuth 需要指定真实服务和账户。
+
 ## 完成口径
 
 每个里程碑都要区分：

@@ -1,6 +1,6 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readdir, realpath } from "node:fs/promises";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 
 import type {
   ApproveDesktopIntegrationRequest,
@@ -17,7 +17,7 @@ import type { EventStore, PendingRuntimeEvent, RuntimeEvent } from "./event-stor
 import { JsonlEventStore } from "./event-store.js";
 import { ExecutionCoordinator } from "./execution-coordinator.js";
 import { HeadlessWorkflow } from "./headless-workflow.js";
-import { IntegrationManager } from "./integration-manager.js";
+import { IntegrationManager, readVerifiedIntegrationPatch } from "./integration-manager.js";
 import type { ModelProvider } from "./provider.js";
 import type { ProcessSharedCapacity } from "./process-shared-provider.js";
 import type { OAuthRedirectHandler } from "./mcp-oauth.js";
@@ -39,6 +39,7 @@ import {
   InteractiveToolApprovalBroker,
   type PendingToolApproval,
 } from "./tool-approval.js";
+import { normalizeTrustProfile } from "./tool-runtime.js";
 
 export interface DesktopRunManagerOptions {
   createProvider(selection: ProviderSelection): Promise<ModelProvider>;
@@ -117,6 +118,7 @@ export class DesktopRunManager {
           concurrency: persisted.concurrency,
           mode: persisted.mode,
           provider: persisted.provider,
+          trustProfile: persisted.trustProfile,
           extensions: persisted.extensions,
         },
         request.runId,
@@ -207,6 +209,7 @@ export class DesktopRunManager {
               executionCoordinator: this.#executionCoordinator,
               runtimeOwner: "desktop",
               providerId: persisted.provider.id,
+              trustProfile: persisted.trustProfile,
               extensions: persisted.extensions,
               extensionApprovalHandler: approvalBroker,
               processTaskCapacity: this.#processTaskCapacity,
@@ -222,6 +225,7 @@ export class DesktopRunManager {
               executionCoordinator: this.#executionCoordinator,
               runtimeOwner: "desktop",
               providerId: persisted.provider.id,
+              trustProfile: persisted.trustProfile,
               extensions: persisted.extensions,
               extensionApprovalHandler: approvalBroker,
               processTaskCapacity: this.#processTaskCapacity,
@@ -343,6 +347,7 @@ export class DesktopRunManager {
       runtimeOwner: "desktop",
       recoveryOf,
       providerId: normalizeProviderSelection(request.provider).id,
+      trustProfile: normalizeTrustProfile(request.trustProfile),
     };
     const placeholder: ActiveRun = {
       abortController,
@@ -372,6 +377,7 @@ export class DesktopRunManager {
             recoveryOf,
             runtimeOwner: "desktop",
             providerId: providerSelection.id,
+            trustProfile: normalizeTrustProfile(request.trustProfile),
             extensions: request.extensions,
             extensionApprovalHandler: approvalBroker,
             processTaskCapacity: this.#processTaskCapacity,
@@ -387,6 +393,7 @@ export class DesktopRunManager {
             recoveryOf,
             runtimeOwner: "desktop",
             providerId: providerSelection.id,
+            trustProfile: normalizeTrustProfile(request.trustProfile),
             extensions: request.extensions,
             extensionApprovalHandler: approvalBroker,
             processTaskCapacity: this.#processTaskCapacity,
@@ -414,6 +421,7 @@ export class DesktopRunManager {
           recoveryOf,
           runtimeOwner: "desktop",
           providerId: normalizeProviderSelection(request.provider).id,
+          trustProfile: normalizeTrustProfile(request.trustProfile),
         },
       });
       await eventStore.append({
@@ -473,6 +481,102 @@ export class DesktopRunManager {
         approvalSource: "desktop",
       });
     });
+  }
+
+  async loadIntegrationDiff(request: DesktopRunActionRequest) {
+    validateRunId(request.runId);
+    const workspace = await realpath(request.workspace);
+    const runRoot = resolve(workspace, ".localbuddy", "runs", request.runId);
+    return readVerifiedIntegrationPatch({
+      proposalPath: resolve(runRoot, "integration-proposal.json"),
+      expectedRepoRoot: workspace,
+      expectedRunId: request.runId,
+    });
+  }
+
+  async buildDiagnostics(
+    request: DesktopRunActionRequest,
+    appVersion: string,
+  ): Promise<Record<string, unknown>> {
+    validateRunId(request.runId);
+    const workspace = await realpath(request.workspace);
+    const runRoot = resolve(workspace, ".localbuddy", "runs", request.runId);
+    const [persisted, events] = await Promise.all([
+      this.#requestStore.load(runRoot, workspace, request.runId),
+      new JsonlEventStore(resolve(runRoot, "events.jsonl")).list(request.runId),
+    ]);
+    const view = projectRun(request.runId, workspace, events);
+    const eventCounts: Record<string, number> = {};
+    for (const event of events) {
+      eventCounts[event.type] = (eventCounts[event.type] ?? 0) + 1;
+    }
+    return {
+      version: 1,
+      generatedAt: new Date().toISOString(),
+      appVersion,
+      redaction: {
+        goals: "omitted",
+        modelContent: "omitted",
+        toolArguments: "omitted",
+        credentials: "never_loaded",
+        absolutePaths: "fingerprinted_or_omitted",
+      },
+      workspace: {
+        name: basename(workspace),
+        sha256: createHash("sha256").update(workspace).digest("hex"),
+      },
+      run: {
+        runId: request.runId,
+        mode: persisted.mode,
+        status: view.status,
+        runtimeOwner: persisted.runtimeOwner,
+        providerId: persisted.provider.id,
+        trustProfile: persisted.trustProfile,
+        concurrency: persisted.concurrency,
+        createdAt: persisted.createdAt,
+        startedAt: view.startedAt,
+        completedAt: view.completedAt,
+        recoveryOf: persisted.recoveryOf,
+        goalCharacters: persisted.goal.length,
+      },
+      extensions: {
+        skillCount: persisted.extensions.skillIds?.length ?? 0,
+        mcpServerCount: persisted.extensions.mcpServerIds?.length ?? 0,
+        browserOriginCount: persisted.extensions.browser?.allowedOrigins.length ?? 0,
+        browserActionsAllowed: persisted.extensions.browser?.allowActions === true,
+        mcpWritesAllowed: persisted.extensions.allowMcpWrites === true,
+      },
+      tasks: view.tasks.map((task) => ({
+        id: task.id,
+        status: task.status,
+        agentId: task.agentId,
+      })),
+      artifacts: view.artifacts.map((artifact) => ({
+        fileName: artifact.fileName,
+        bytes: artifact.bytes,
+        sha256: artifact.sha256,
+      })),
+      integration: view.integration === undefined ? undefined : {
+        status: view.integration.status,
+        changedPathCount: view.integration.changedPaths.length,
+        checkCommands: view.integration.checkCommands,
+        combinedPatchSha256: view.integration.combinedPatchSha256,
+        commitSha: view.integration.commitSha,
+        revertCommitSha: view.integration.revertCommitSha,
+        rolledBack: view.integration.rolledBack,
+      },
+      checkpoint: view.checkpoint === undefined ? undefined : {
+        status: view.checkpoint.status,
+        completedTasks: view.checkpoint.completedTasks,
+        resumableTasks: view.checkpoint.resumableTasks,
+      },
+      worktrees: {
+        total: view.worktrees.length,
+        retained: view.worktrees.filter((item) => item.status === "retained").length,
+      },
+      eventCounts,
+      eventCount: events.length,
+    };
   }
 
   async list(workspace: string): Promise<readonly DesktopRunView[]> {
@@ -758,6 +862,7 @@ function validateStartRequest(request: StartDesktopRunRequest): void {
     throw new Error("Mode must be research or code");
   }
   normalizeProviderSelection(request.provider);
+  normalizeTrustProfile(request.trustProfile);
   normalizeRunExtensions(request.extensions);
 }
 

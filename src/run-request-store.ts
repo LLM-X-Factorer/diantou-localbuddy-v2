@@ -5,9 +5,10 @@ import { dirname, resolve } from "node:path";
 import type { DesktopRunMode, StartDesktopRunRequest } from "./desktop-contract.js";
 import { normalizeRunExtensions, type RunExtensionSelection } from "./extension-config.js";
 import { normalizeProviderSelection, type ProviderSelection } from "./provider-config.js";
+import { normalizeTrustProfile, type TrustProfile } from "./tool-runtime.js";
 
 export interface PersistedRunRequest {
-  version: 2;
+  version: 3;
   runId: string;
   workspace: string;
   goal: string;
@@ -17,6 +18,7 @@ export interface PersistedRunRequest {
   runtimeOwner: "desktop" | "cli";
   recoveryOf?: string;
   provider: ProviderSelection;
+  trustProfile: TrustProfile;
   extensions: RunExtensionSelection;
 }
 
@@ -42,7 +44,7 @@ export class RunRequestStore {
     }
     const workspace = await realpath(input.workspace);
     const request: PersistedRunRequest = {
-      version: 2,
+      version: 3,
       runId: input.runId,
       workspace,
       goal: input.goal,
@@ -52,6 +54,7 @@ export class RunRequestStore {
       runtimeOwner: input.runtimeOwner ?? "desktop",
       recoveryOf: input.recoveryOf,
       provider: normalizeProviderSelection(input.provider),
+      trustProfile: normalizeTrustProfile(input.trustProfile),
       extensions: normalizeRunExtensions(input.extensions),
     };
     const requestPath = resolve(runRoot, "run-request.json");
@@ -78,7 +81,7 @@ export class RunRequestStore {
     }
     const request = raw as Record<string, unknown>;
     if (
-      (request.version !== 1 && request.version !== 2)
+      (request.version !== 1 && request.version !== 2 && request.version !== 3)
       || request.runId !== expectedRunId
       || typeof request.workspace !== "string"
       || typeof request.goal !== "string"
@@ -88,7 +91,9 @@ export class RunRequestStore {
       || Number.isNaN(Date.parse(request.createdAt))
       || (request.runtimeOwner !== "desktop" && request.runtimeOwner !== "cli")
       || (request.recoveryOf !== undefined && typeof request.recoveryOf !== "string")
-      || (request.version === 2 && (request.provider === undefined || request.extensions === undefined))
+      || ((request.version === 2 || request.version === 3)
+        && (request.provider === undefined || request.extensions === undefined))
+      || (request.version === 3 && request.trustProfile === undefined)
     ) {
       throw new Error("persisted Run Request has an invalid contract");
     }
@@ -98,6 +103,9 @@ export class RunRequestStore {
     const extensions = normalizeRunExtensions(
       request.version === 1 ? undefined : request.extensions as RunExtensionSelection | undefined,
     );
+    const trustProfile = normalizeTrustProfile(
+      request.version === 3 ? request.trustProfile : undefined,
+    );
     validateRequest({
       workspace: request.workspace,
       goal: request.goal,
@@ -105,6 +113,7 @@ export class RunRequestStore {
       mode: request.mode,
       provider,
       extensions,
+      trustProfile,
     });
     if (request.recoveryOf !== undefined) {
       validateRunId(request.recoveryOf);
@@ -117,7 +126,7 @@ export class RunRequestStore {
       throw new Error("persisted Run Request workspace does not match the selected workspace");
     }
     return {
-      version: 2,
+      version: 3,
       runId: request.runId,
       workspace,
       goal: request.goal,
@@ -127,6 +136,7 @@ export class RunRequestStore {
       runtimeOwner: request.runtimeOwner,
       recoveryOf: request.recoveryOf,
       provider,
+      trustProfile,
       extensions,
     } as PersistedRunRequest;
   }
@@ -152,5 +162,6 @@ function validateRequest(request: StartDesktopRunRequest): void {
     throw new Error("Mode must be research or code");
   }
   normalizeProviderSelection(request.provider);
+  normalizeTrustProfile(request.trustProfile);
   normalizeRunExtensions(request.extensions);
 }

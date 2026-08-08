@@ -12,6 +12,7 @@ import { InMemoryEventStore } from "../src/event-store.js";
 import { GitWorktreeManager } from "../src/git-worktree-manager.js";
 import {
   IntegrationManager,
+  readVerifiedIntegrationPatch,
   type IntegrationPatchInput,
 } from "../src/integration-manager.js";
 
@@ -35,6 +36,14 @@ test("preflights combined patches, applies only after approval, and safely rever
   });
 
   assert.equal(proposal.status, "awaiting_approval", proposal.error ?? "preflight failed");
+  const inlineDiff = await readVerifiedIntegrationPatch({
+    proposalPath: proposal.proposalPath,
+    expectedRepoRoot: fixture.root,
+    expectedRunId: "integration-apply-revert",
+  });
+  assert.equal(inlineDiff.sha256, proposal.combinedPatch?.sha256);
+  assert.match(inlineDiff.text, /src\/a\.js/);
+  assert.equal(inlineDiff.truncated, false);
   assert.deepEqual(proposal.changedPaths, ["src/a.js", "src/b.js"]);
   assert.deepEqual(proposal.checks.map((check) => check.command), ["git_diff_check", "node_test"]);
   assert.equal(await readFile(join(fixture.root, "src/a.js"), "utf8"), fixture.originalA);
@@ -108,6 +117,38 @@ test("creates an explicit commit after approval", async (context) => {
   assert.ok((await eventStore.list("integration-commit")).some(
     (event) => event.type === "integration.revert_committed",
   ));
+});
+
+test("rejects a tampered combined patch before inline display", async (context) => {
+  const fixture = await createFixture(context);
+  const patch = await createPatch(
+    fixture,
+    "inline-tamper",
+    "src/a.js",
+    'export const a = "inline";\n',
+  );
+  const proposal = await new IntegrationManager({
+    eventStore: new InMemoryEventStore(),
+  }).prepare({
+    runId: "integration-inline-tamper",
+    repoRoot: fixture.root,
+    artifactRoot: fixture.artifactRoot,
+    patches: [patch],
+    verificationCommands: ["git_diff_check"],
+    artifactRegistry: fixture.artifactRegistry,
+  });
+  assert.ok(proposal.combinedPatch);
+  const tampered = Buffer.from(await readFile(proposal.combinedPatch.absolutePath));
+  tampered[0] = tampered[0] === 65 ? 66 : 65;
+  await writeFile(proposal.combinedPatch.absolutePath, tampered);
+  await assert.rejects(
+    readVerifiedIntegrationPatch({
+      proposalPath: proposal.proposalPath,
+      expectedRepoRoot: fixture.root,
+      expectedRunId: proposal.runId,
+    }),
+    /combined patch hash mismatch/,
+  );
 });
 
 test("applies and reverts a newly created file", async (context) => {

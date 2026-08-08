@@ -1,6 +1,7 @@
 export const DESKTOP_CHANNELS = {
   bootstrap: "localbuddy:bootstrap",
   selectWorkspace: "localbuddy:select-workspace",
+  storeProviderCredential: "localbuddy:store-provider-credential",
   listRuns: "localbuddy:list-runs",
   startRun: "localbuddy:start-run",
   cancelRun: "localbuddy:cancel-run",
@@ -9,6 +10,8 @@ export const DESKTOP_CHANNELS = {
   cleanupWorktrees: "localbuddy:cleanup-worktrees",
   approveIntegration: "localbuddy:approve-integration",
   revertIntegration: "localbuddy:revert-integration",
+  loadIntegrationDiff: "localbuddy:load-integration-diff",
+  exportDiagnostics: "localbuddy:export-diagnostics",
   resolveToolApproval: "localbuddy:resolve-tool-approval",
   openArtifact: "localbuddy:open-artifact",
   runUpdated: "localbuddy:run-updated",
@@ -25,6 +28,7 @@ export type DesktopRunStatus =
   | "interrupted";
 
 export type DesktopRunMode = "research" | "code";
+export type DesktopTrustProfile = "strict" | "balanced" | "automation";
 
 export type DesktopIntegrationStatus =
   | "preflighting"
@@ -121,6 +125,7 @@ export interface DesktopRunView {
   restartedAs?: string;
   error?: string;
   providerId?: string;
+  trustProfile?: DesktopTrustProfile;
   extensions?: {
     skillIds: readonly string[];
     mcpServerIds: readonly string[];
@@ -142,7 +147,18 @@ export interface StartDesktopRunRequest {
   concurrency: number;
   mode?: DesktopRunMode;
   provider?: ProviderSelection;
+  trustProfile?: DesktopTrustProfile;
   extensions?: RunExtensionSelection;
+}
+
+export interface StoreDesktopProviderCredentialRequest {
+  providerId: "deepseek" | "openai";
+  apiKey: string;
+}
+
+export interface StoreDesktopProviderCredentialResult {
+  providerId: "deepseek" | "openai";
+  stored: true;
 }
 
 export interface ApproveDesktopIntegrationRequest {
@@ -161,6 +177,13 @@ export interface DesktopRunActionRequest {
   runId: string;
 }
 
+export interface DesktopIntegrationDiffView {
+  sha256: string;
+  bytes: number;
+  text: string;
+  truncated: boolean;
+}
+
 export interface ResolveDesktopToolApprovalRequest extends DesktopRunActionRequest {
   approvalId: string;
   decision: "approve" | "deny";
@@ -169,6 +192,9 @@ export interface ResolveDesktopToolApprovalRequest extends DesktopRunActionReque
 export interface DesktopApi {
   bootstrap(): Promise<DesktopBootstrap>;
   selectWorkspace(): Promise<string | null>;
+  storeProviderCredential(
+    request: StoreDesktopProviderCredentialRequest,
+  ): Promise<StoreDesktopProviderCredentialResult>;
   listRuns(workspace: string): Promise<readonly DesktopRunView[]>;
   startRun(request: StartDesktopRunRequest): Promise<DesktopRunView>;
   cancelRun(runId: string): Promise<void>;
@@ -177,6 +203,8 @@ export interface DesktopApi {
   cleanupWorktrees(request: DesktopRunActionRequest): Promise<DesktopRunView | null>;
   approveIntegration(request: ApproveDesktopIntegrationRequest): Promise<DesktopRunView | null>;
   revertIntegration(request: RevertDesktopIntegrationRequest): Promise<DesktopRunView | null>;
+  loadIntegrationDiff(request: DesktopRunActionRequest): Promise<DesktopIntegrationDiffView>;
+  exportDiagnostics(request: DesktopRunActionRequest): Promise<string | null>;
   resolveToolApproval(request: ResolveDesktopToolApprovalRequest): Promise<DesktopRunView>;
   openArtifact(workspace: string, absolutePath: string): Promise<void>;
   onRunUpdate(listener: (run: DesktopRunView) => void): () => void;

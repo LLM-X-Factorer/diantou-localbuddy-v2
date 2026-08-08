@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, realpath, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, realpath, rename, stat, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 
@@ -17,6 +17,7 @@ import { GitWorktreeManager } from "./git-worktree-manager.js";
 
 const execFileAsync = promisify(execFile);
 const MAX_GIT_OUTPUT = 10 * 1024 * 1024;
+const MAX_INLINE_DIFF_CHARACTERS = 400_000;
 
 export type IntegrationStatus =
   | "preflight_failed"
@@ -842,6 +843,26 @@ export async function loadIntegrationProposal(
   return loadProposal(proposalPath, await realpath(expectedRepoRoot));
 }
 
+export async function readVerifiedIntegrationPatch(input: {
+  proposalPath: string;
+  expectedRepoRoot: string;
+  expectedRunId: string;
+}): Promise<{ sha256: string; bytes: number; text: string; truncated: boolean }> {
+  const proposal = await loadProposal(input.proposalPath, await realpath(input.expectedRepoRoot));
+  if (proposal.runId !== input.expectedRunId) {
+    throw new Error("integration proposal Run identity does not match the requested Run");
+  }
+  const path = await validateCombinedPatch(proposal);
+  const content = await readFile(path);
+  const text = content.toString("utf8");
+  return {
+    sha256: proposal.combinedPatch!.sha256,
+    bytes: content.byteLength,
+    text: text.slice(0, MAX_INLINE_DIFF_CHARACTERS),
+    truncated: text.length > MAX_INLINE_DIFF_CHARACTERS,
+  };
+}
+
 export async function loadPreparedIntegrationProposal(input: {
   proposalPath: string;
   expectedRepoRoot: string;
@@ -921,6 +942,13 @@ async function validateCombinedPatch(proposal: IntegrationProposal): Promise<str
   const artifactRoot = resolve(runRoot, "artifacts");
   const path = await realpath(proposal.combinedPatch.absolutePath);
   assertInside(artifactRoot, path);
+  const metadata = await stat(path);
+  if (metadata.size !== proposal.combinedPatch.bytes) {
+    throw new Error("combined patch byte count mismatch");
+  }
+  if (metadata.size > MAX_GIT_OUTPUT) {
+    throw new Error(`combined patch exceeds ${MAX_GIT_OUTPUT} byte limit`);
+  }
   const content = await readFile(path);
   if (sha256(content) !== proposal.combinedPatch.sha256) {
     throw new Error("combined patch hash mismatch");

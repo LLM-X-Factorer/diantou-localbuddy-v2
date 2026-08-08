@@ -34,7 +34,9 @@ test("projects task, artifact, and recent event state", () => {
 
 test("projects the persisted provider and M4 extension selection", () => {
   const events: RuntimeEvent[] = [
-    event(1, "run.started", { data: { mode: "research", providerId: "openai" } }),
+    event(1, "run.started", {
+      data: { mode: "research", providerId: "openai", trustProfile: "automation" },
+    }),
     event(2, "extensions.loaded", {
       data: {
         skillIds: ["research-evidence"],
@@ -48,6 +50,7 @@ test("projects the persisted provider and M4 extension selection", () => {
 
   const view = projectRun("run-m4", "/tmp/localbuddy-m4-projection", events);
   assert.equal(view.providerId, "openai");
+  assert.equal(view.trustProfile, "automation");
   assert.deepEqual(view.extensions, {
     skillIds: ["research-evidence"],
     mcpServerIds: ["filesystem"],

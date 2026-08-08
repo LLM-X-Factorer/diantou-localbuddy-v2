@@ -84,4 +84,34 @@ test("requires explicit Run authorization for effectful MCP and browser tools", 
   } finally {
     await allowedRuntime.close();
   }
+
+  for (const trustProfile of ["strict", "automation"] as const) {
+    const restrictedRuntime = await prepareRunExtensions({
+      workspace,
+      checkpointRoot,
+      trustProfile,
+      selection: { mcpServerIds: ["fixture"], allowMcpWrites: true },
+    });
+    try {
+      const executeTool = restrictedRuntime.tools.find(
+        (tool) => tool.name.startsWith("mcp_") && tool.risk === "execute",
+      );
+      const policy = restrictedRuntime.approvalPolicy(new RoleBasedApprovalPolicy({
+        profile: trustProfile,
+      }));
+      assert.equal((await policy.authorize(executeTool!, {
+        runId: `run-${trustProfile}`,
+        taskId: "task-policy",
+        agent: {
+          id: "worker-1",
+          role: "worker",
+          instructions: "test",
+          capabilities: ["worker"],
+          maxParallelTasks: 1,
+        },
+      })).allowed, false);
+    } finally {
+      await restrictedRuntime.close();
+    }
+  }
 });

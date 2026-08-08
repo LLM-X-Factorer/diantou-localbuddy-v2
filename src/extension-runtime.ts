@@ -23,6 +23,7 @@ import type {
   ApprovalPolicy,
   ToolContext,
   ToolDefinition,
+  TrustProfile,
 } from "./tool-runtime.js";
 import type { ProviderToolCall } from "./provider.js";
 import type { ToolApprovalHandler } from "./tool-approval.js";
@@ -55,6 +56,7 @@ export async function prepareRunExtensions(input: {
   environment?: NodeJS.ProcessEnv;
   approvalHandler?: ToolApprovalHandler;
   oauthRedirectHandler?: OAuthRedirectHandler;
+  trustProfile?: TrustProfile;
 }): Promise<PreparedRunExtensions> {
   const selection = normalizeRunExtensions(input.selection);
   const skills = await (await SkillStore.create(input.workspace)).loadSelected(selection.skillIds ?? []);
@@ -128,7 +130,12 @@ export async function prepareRunExtensions(input: {
           : instructions;
       },
       approvalPolicy(base) {
-        return new ExtensionApprovalPolicy(base, allowedExecuteNames, input.approvalHandler);
+        return new ExtensionApprovalPolicy(
+          base,
+          allowedExecuteNames,
+          input.trustProfile ?? "balanced",
+          input.approvalHandler,
+        );
       },
       async close() {
         const failures: unknown[] = [];
@@ -174,15 +181,18 @@ export function extensionPlannerContext(extensions: PreparedRunExtensions | unde
 class ExtensionApprovalPolicy implements ApprovalPolicy {
   readonly #base: ApprovalPolicy;
   readonly #allowedExecuteNames: ReadonlySet<string>;
+  readonly #trustProfile: TrustProfile;
   readonly #approvalHandler?: ToolApprovalHandler;
 
   constructor(
     base: ApprovalPolicy,
     allowedExecuteNames: ReadonlySet<string>,
+    trustProfile: TrustProfile,
     approvalHandler?: ToolApprovalHandler,
   ) {
     this.#base = base;
     this.#allowedExecuteNames = allowedExecuteNames;
+    this.#trustProfile = trustProfile;
     this.#approvalHandler = approvalHandler;
   }
 
@@ -191,6 +201,19 @@ class ExtensionApprovalPolicy implements ApprovalPolicy {
     context: ToolContext,
     toolCall?: ProviderToolCall,
   ): Promise<ApprovalDecision> {
+    if (tool.permission === "external.effect" && this.#trustProfile === "automation") {
+      return { allowed: false, reason: "automation trust policy denies external.effect" };
+    }
+    if (
+      tool.permission === "external.effect"
+      && this.#trustProfile === "strict"
+      && this.#approvalHandler === undefined
+    ) {
+      return {
+        allowed: false,
+        reason: "strict trust policy requires an exact interactive approval for external.effect",
+      };
+    }
     if (tool.risk === "execute" && this.#allowedExecuteNames.has(tool.name)) {
       if (this.#approvalHandler !== undefined) {
         if (toolCall === undefined) {

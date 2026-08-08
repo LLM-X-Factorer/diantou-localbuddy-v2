@@ -77,9 +77,12 @@ export class UnsafeToolRecoveryError extends Error {
 export class RoleBasedApprovalPolicy implements ApprovalPolicy {
   readonly #policy: UnifiedApprovalPolicy;
 
-  constructor(options: { approvalHandler?: UnifiedApprovalHandler } = {}) {
+  constructor(options: {
+    profile?: TrustProfile;
+    approvalHandler?: UnifiedApprovalHandler;
+  } = {}) {
     this.#policy = new UnifiedApprovalPolicy({
-      profile: "balanced",
+      profile: options.profile ?? "balanced",
       approvalHandler: options.approvalHandler,
     });
   }
@@ -128,15 +131,15 @@ export class UnifiedApprovalPolicy implements ApprovalPolicy {
     }
     const roleDecision = enforceRoleBoundary(permission, tool, context);
     if (!roleDecision.allowed) return roleDecision;
+    const disposition = trustDisposition(this.#profile, permission);
+    if (disposition === "deny") {
+      return { allowed: false, reason: `${this.#profile} trust policy denies ${permission}` };
+    }
     if (this.#preauthorized.has(permission)) {
       return { allowed: true, reason: `Run request preauthorized ${permission}` };
     }
-    const disposition = trustDisposition(this.#profile, permission);
     if (disposition === "auto") {
       return { allowed: true, reason: `${this.#profile} trust policy allows ${permission}` };
-    }
-    if (disposition === "deny") {
-      return { allowed: false, reason: `${this.#profile} trust policy denies ${permission}` };
     }
     const grantKey = `${context.runId}:${permission}:${tool.name}`;
     if (disposition === "prompt-once" && this.#sessionGrants.has(grantKey)) {
@@ -152,6 +155,12 @@ export class UnifiedApprovalPolicy implements ApprovalPolicy {
     if (decision.allowed && disposition === "prompt-once") this.#sessionGrants.add(grantKey);
     return decision;
   }
+}
+
+export function normalizeTrustProfile(value: unknown): TrustProfile {
+  if (value === undefined) return "balanced";
+  if (value === "strict" || value === "balanced" || value === "automation") return value;
+  throw new Error("Trust profile must be strict, balanced, or automation");
 }
 
 export function trustDisposition(

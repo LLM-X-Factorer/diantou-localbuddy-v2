@@ -4,6 +4,25 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 
 这不是 Craft Agents 的分支，也不包含腾讯 WorkBuddy 的私有实现。仓库只参考公开产品行为、通用 Agent 架构模式，以及我们自行定义的验收契约。
 
+> **产品判断（2026-08-08）**：`0.9.0` 是可供 macOS 内部连续使用的 Engineering Alpha。M0-M7 已完成本机工程验收，M8-M9 已完成本地协议/产物验收；它不是公开分发版，也还不是与 WorkBuddy 功能对等的商业产品。
+
+## 一页状态
+
+| 维度 | 当前事实 |
+|---|---|
+| 工作形态 | Desktop + CLI；以目标驱动的 Run 为主，不是持续聊天窗口 |
+| Agent | Orchestrator、Research/Code Worker、Integrator、Merge Agent |
+| 并发 | 每个计划 1-3 个 Worker；Desktop 默认最多 2 个活动 Run；全局 Task 容量默认 3 |
+| Provider | DeepSeek、OpenAI；API Key 使用环境变量或操作系统凭证库 |
+| 本地安全 | macOS Seatbelt；Linux 固定容器镜像；Windows 本地进程型工具 fail closed |
+| 代码写回 | 独立 worktree、组合预检、人工 Gate、apply/commit/revert commit |
+| 恢复 | Research/Coding 同 Run checkpoint resume，并保留 replay 兜底 |
+| 扩展 | 本地/签名 Skill、MCP stdio/HTTP/OAuth、受限 Playwright Browser |
+| 分发 | macOS ad-hoc DMG/ZIP 已验收；Linux/Windows 配置已落盘但未在目标 Runner 验收 |
+| 当前主动暂缓 | Developer ID、生产 Hardened Runtime、notarization、公开 Gatekeeper |
+
+M10 已补齐 Desktop Provider/信任设置、哈希校验的可视化 diff 和脱敏诊断导出。当前产品化缺口收敛为真实目标平台 CI、生产 MCP OAuth、远程 Skill 市场与公开分发签名；不会把“代码已写”冒充“外部环境已验收”。
+
 ## 当前状态
 
 **M0 并发运行时内核**已经完成：
@@ -126,6 +145,16 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 - 签名 Skill 支持发布者信任、版本锁、权限声明、内容哈希和撤销；工作区本地自编 Skill 仍以显式选择的 `workspace-local` 层保留。
 - 规格与验收见 [`docs/M9-SPEC.md`](docs/M9-SPEC.md) 和 [`docs/M9-VALIDATION.md`](docs/M9-VALIDATION.md)。
 
+**M10 Dogfooding + Productization** 已完成本地范围：
+
+- Desktop 增加 Provider 模型/Base URL 配置和系统凭证写入；
+- 把 strict/balanced/automation 信任档从内核能力变成 Run 可选合同；
+- Integration Gate 增加受限 inline diff 阅读，而不只展示路径和哈希；
+- 增加脱敏诊断包导出，供内部 dogfooding 复盘；
+- Run Request 升级为 v3；旧 v1/v2 Request 读取时默认迁移为 `balanced`，但不会改写历史文件；resume/replay 固定复用原信任档。
+- 私有 GitHub、Linux/Windows 原生 CI 和真实第三方 MCP OAuth 分别以账号归属、目标 Runner、服务账户为外部验收门。
+- 规格和当前 macOS 验收见 [`docs/M10-SPEC.md`](docs/M10-SPEC.md) 与 [`docs/M10-VALIDATION.md`](docs/M10-VALIDATION.md)。
+
 当前唯一主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。Windows/Linux 安装包需要各目标 CI Runner 的首次真实产物验收；第三方生产 MCP OAuth 仍需要服务方账户验收，不能用本地夹具冒充。
 
 ## 核心模型
@@ -188,6 +217,7 @@ pnpm credentials:set -- --provider openai
 pnpm cli -- \
   --workspace ./fixtures/m1-weekly-report \
   --goal "读取本地材料并生成一份中文周报" \
+  --trust-profile balanced \
   --concurrency 3
 ```
 
@@ -252,6 +282,8 @@ pnpm cli -- \
   --commit-message "Apply approved LocalBuddy integration"
 ```
 
+`--trust-profile` 可选 `strict`、`balanced`、`automation`。`strict` 会要求更多逐调用人工审批；无交互审批处理器的 CLI 会 fail closed。`automation` 允许本地受限操作自动执行，但始终拒绝外部副作用。
+
 运行请求、事件和产物保存在工作区 `.localbuddy/runs/<run-id>/`，该目录默认不进入 Git。`run-request.json` 包含用户目标，属于本地私有运行状态，不应提交或同步到公开仓库。
 
 启动桌面工作台：
@@ -259,5 +291,7 @@ pnpm cli -- \
 ```bash
 pnpm desktop
 ```
+
+Desktop 的“扩展配置”可填写 Provider model/base URL，并把新 API Key 直接写入操作系统安全存储；Renderer 不读取既有 secret。代码集成审批区可在写回前校验并查看组合 Diff，顶部可导出脱敏诊断包。
 
 架构边界见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)，当前工程路线与暂缓项见 [`docs/ROADMAP.md`](docs/ROADMAP.md)。M0-M9 的规格和验证记录均在 [`docs/`](docs/) 下。

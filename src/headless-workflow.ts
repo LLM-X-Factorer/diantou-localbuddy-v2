@@ -27,7 +27,12 @@ import {
   type SchedulerResumeState,
   type SchedulerResumeTask,
 } from "./scheduler.js";
-import { RoleBasedApprovalPolicy, ToolRegistry, ToolRuntime } from "./tool-runtime.js";
+import {
+  RoleBasedApprovalPolicy,
+  ToolRegistry,
+  ToolRuntime,
+  type TrustProfile,
+} from "./tool-runtime.js";
 import { createWorkspaceTools } from "./workspace-tools.js";
 import { buildWorkspaceSnapshot } from "./workspace-manifest.js";
 import type { ToolApprovalHandler } from "./tool-approval.js";
@@ -51,6 +56,7 @@ export interface HeadlessWorkflowOptions {
   extensionApprovalHandler?: ToolApprovalHandler;
   processTaskCapacity?: ProcessSharedCapacity;
   oauthRedirectHandler?: OAuthRedirectHandler;
+  trustProfile?: TrustProfile;
 }
 
 export interface HeadlessWorkflowResult {
@@ -111,6 +117,7 @@ export class HeadlessWorkflow {
             recoveryOf: this.#options.recoveryOf,
             runtimeOwner: this.#options.runtimeOwner ?? "core",
             providerId: this.#options.providerId ?? "unknown",
+            trustProfile: this.#options.trustProfile ?? "balanced",
           },
         });
         lifecycleStarted = true;
@@ -121,6 +128,7 @@ export class HeadlessWorkflow {
         selection: this.#options.extensions,
         approvalHandler: this.#options.extensionApprovalHandler,
         oauthRedirectHandler: this.#options.oauthRedirectHandler,
+        trustProfile: this.#options.trustProfile,
       });
       if (!resume && hasEnabledExtensions(extensions)) {
         await eventStore.append({ type: "extensions.loaded", runId, data: { ...extensions.metadata } });
@@ -188,7 +196,13 @@ export class HeadlessWorkflow {
       ];
       const toolRuntime = new ToolRuntime(
         new ToolRegistry(allTools),
-        extensions?.approvalPolicy(new RoleBasedApprovalPolicy()) ?? new RoleBasedApprovalPolicy(),
+        extensions?.approvalPolicy(new RoleBasedApprovalPolicy({
+          profile: this.#options.trustProfile,
+          approvalHandler: this.#options.extensionApprovalHandler,
+        })) ?? new RoleBasedApprovalPolicy({
+          profile: this.#options.trustProfile,
+          approvalHandler: this.#options.extensionApprovalHandler,
+        }),
         eventStore,
         checkpointStore.toolJournal(),
       );

@@ -14,6 +14,7 @@ import { createConfiguredProvider } from "./provider-factory.js";
 import { ProcessSharedCapacity } from "./process-shared-provider.js";
 import { RunRequestStore } from "./run-request-store.js";
 import { WorkspaceProcessLockManager } from "./workspace-process-lock.js";
+import { normalizeTrustProfile, type TrustProfile } from "./tool-runtime.js";
 
 interface CliOptions {
   goal?: string;
@@ -27,6 +28,7 @@ interface CliOptions {
   commitMessage?: string;
   provider: ProviderSelection;
   extensions: RunExtensionSelection;
+  trustProfile: TrustProfile;
 }
 
 async function main(): Promise<void> {
@@ -56,6 +58,7 @@ async function execute(options: CliOptions): Promise<void> {
         runtimeOwner: "cli",
         provider: options.provider,
         extensions: options.extensions,
+        trustProfile: options.trustProfile,
       });
   if (options.resume) {
     if (persisted.runtimeOwner !== "cli") {
@@ -91,6 +94,7 @@ async function execute(options: CliOptions): Promise<void> {
         runtimeOwner: "cli",
         providerId: persisted.provider.id,
         extensions: persisted.extensions,
+        trustProfile: persisted.trustProfile,
         processTaskCapacity,
       })[options.resume ? "resume" : "run"](options.runId, persisted.goal).then((result) => ({
         result,
@@ -111,6 +115,7 @@ async function execute(options: CliOptions): Promise<void> {
         runtimeOwner: "cli",
         providerId: persisted.provider.id,
         extensions: persisted.extensions,
+        trustProfile: persisted.trustProfile,
         processTaskCapacity,
       })[options.resume ? "resume" : "run"](options.runId, persisted.goal).then((result) => ({
         result,
@@ -161,6 +166,7 @@ async function execute(options: CliOptions): Promise<void> {
     eventLog: resolve(runRoot, "events.jsonl"),
     provider: persisted.provider.id,
     extensions: persisted.extensions,
+    trustProfile: persisted.trustProfile,
     resumed: options.resume,
   }, null, 2)}\n`);
 
@@ -234,6 +240,7 @@ function parseArguments(args: readonly string[]): CliOptions {
       "provider",
       "model",
       "base-url",
+      "trust-profile",
       "skill",
       "mcp-server",
       "browser-origin",
@@ -257,6 +264,7 @@ function parseArguments(args: readonly string[]): CliOptions {
   if (providerId !== "deepseek" && providerId !== "openai") {
     throw new Error("--provider must be deepseek or openai");
   }
+  const trustProfile = normalizeTrustProfile(values.get("trust-profile"));
   const browserOrigins = splitCsv(values.get("browser-origin"));
   if (allowBrowserActions && browserOrigins.length === 0) {
     throw new Error("--allow-browser-actions requires --browser-origin");
@@ -282,6 +290,7 @@ function parseArguments(args: readonly string[]): CliOptions {
       model: values.get("model"),
       baseUrl: values.get("base-url"),
     },
+    trustProfile,
     extensions: {
       skillIds: splitCsv(values.get("skill")),
       mcpServerIds: splitCsv(values.get("mcp-server")),

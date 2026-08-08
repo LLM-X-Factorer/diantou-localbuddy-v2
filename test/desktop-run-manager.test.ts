@@ -64,6 +64,13 @@ test("runs a workflow, publishes projections, and recovers it from history", asy
   const recovered = await manager.list(workspace);
   assert.equal(recovered[0]?.runId, initial.runId);
   assert.equal(recovered[0]?.status, "succeeded");
+  assert.equal(recovered[0]?.trustProfile, "balanced");
+  const diagnostics = await manager.buildDiagnostics({ workspace, runId: initial.runId }, "0.9.0-test");
+  const diagnosticJson = JSON.stringify(diagnostics);
+  assert.equal(diagnostics.appVersion, "0.9.0-test");
+  assert.doesNotMatch(diagnosticJson, /Create a short grounded note/);
+  assert.equal(diagnosticJson.includes(workspace), false);
+  assert.match(diagnosticJson, /"goals":"omitted"/);
 });
 
 test("cancels an active desktop run through the shared abort signal", async (context) => {

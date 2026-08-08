@@ -3,7 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import type {
   DesktopRunMode,
   DesktopRunStatus,
+  DesktopTrustProfile,
   DesktopRunView,
+  DesktopIntegrationDiffView,
 } from "../../../src/desktop-contract";
 
 const ACTIVE_STATUSES = new Set<DesktopRunStatus>([
@@ -21,6 +23,12 @@ export function App() {
   const [concurrency, setConcurrency] = useState(3);
   const [mode, setMode] = useState<DesktopRunMode>("research");
   const [providerId, setProviderId] = useState<"deepseek" | "openai">("deepseek");
+  const [providerModel, setProviderModel] = useState("");
+  const [providerBaseUrl, setProviderBaseUrl] = useState("");
+  const [providerApiKey, setProviderApiKey] = useState("");
+  const [credentialStatus, setCredentialStatus] = useState<string>();
+  const [savingCredential, setSavingCredential] = useState(false);
+  const [trustProfile, setTrustProfile] = useState<DesktopTrustProfile>("balanced");
   const [extensionsOpen, setExtensionsOpen] = useState(false);
   const [skillIds, setSkillIds] = useState("");
   const [mcpServerIds, setMcpServerIds] = useState("");
@@ -32,6 +40,10 @@ export function App() {
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [resolvingApprovalId, setResolvingApprovalId] = useState<string>();
+  const [integrationDiff, setIntegrationDiff] = useState<DesktopIntegrationDiffView>();
+  const [loadingIntegrationDiff, setLoadingIntegrationDiff] = useState(false);
+  const [exportingDiagnostics, setExportingDiagnostics] = useState(false);
+  const [diagnosticsStatus, setDiagnosticsStatus] = useState<string>();
 
   useEffect(() => {
     const unsubscribe = window.localbuddy.onRunUpdate((updated) => {
@@ -48,6 +60,11 @@ export function App() {
       .finally(() => setLoading(false));
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    setIntegrationDiff(undefined);
+    setDiagnosticsStatus(undefined);
+  }, [selectedRunId]);
 
   const selectedRun = useMemo(
     () => runs.find((run) => run.runId === selectedRunId) ?? runs[0],
@@ -83,7 +100,12 @@ export function App() {
         goal,
         concurrency,
         mode,
-        provider: { id: providerId },
+        provider: {
+          id: providerId,
+          model: providerModel.trim() || undefined,
+          baseUrl: providerBaseUrl.trim() || undefined,
+        },
+        trustProfile,
         extensions: {
           skillIds: csvValues(skillIds),
           mcpServerIds: csvValues(mcpServerIds),
@@ -98,6 +120,25 @@ export function App() {
       setGoal("");
     } catch (cause) {
       setError(toMessage(cause));
+    }
+  }
+
+  async function saveProviderCredential() {
+    if (providerApiKey.trim().length === 0) return;
+    setError(undefined);
+    setCredentialStatus(undefined);
+    setSavingCredential(true);
+    try {
+      await window.localbuddy.storeProviderCredential({
+        providerId,
+        apiKey: providerApiKey,
+      });
+      setProviderApiKey("");
+      setCredentialStatus(`${providerId === "deepseek" ? "DeepSeek" : "OpenAI"} 凭据已写入系统安全存储`);
+    } catch (cause) {
+      setError(toMessage(cause));
+    } finally {
+      setSavingCredential(false);
     }
   }
 
@@ -187,6 +228,41 @@ export function App() {
     }
   }
 
+  async function loadIntegrationDiff() {
+    if (selectedRun?.integration?.combinedPatchSha256 === undefined) return;
+    setError(undefined);
+    setLoadingIntegrationDiff(true);
+    try {
+      const diff = await window.localbuddy.loadIntegrationDiff({
+        workspace,
+        runId: selectedRun.runId,
+      });
+      setIntegrationDiff(diff);
+    } catch (cause) {
+      setError(toMessage(cause));
+    } finally {
+      setLoadingIntegrationDiff(false);
+    }
+  }
+
+  async function exportDiagnostics() {
+    if (selectedRun === undefined) return;
+    setError(undefined);
+    setDiagnosticsStatus(undefined);
+    setExportingDiagnostics(true);
+    try {
+      const path = await window.localbuddy.exportDiagnostics({
+        workspace,
+        runId: selectedRun.runId,
+      });
+      if (path !== null) setDiagnosticsStatus(`脱敏诊断包已导出：${path}`);
+    } catch (cause) {
+      setError(toMessage(cause));
+    } finally {
+      setExportingDiagnostics(false);
+    }
+  }
+
   async function resolveToolApproval(approvalId: string, decision: "approve" | "deny") {
     if (selectedRun === undefined) return;
     setError(undefined);
@@ -262,10 +338,18 @@ export function App() {
             <div className="eyebrow">LOCAL CONTROL PLANE</div>
             <h1>{selectedRun ? friendlyRunName(selectedRun) : "创建第一个运行"}</h1>
           </div>
-          {selectedRun && <StatusPill status={selectedRun.status} />}
+          {selectedRun && (
+            <div className="header-actions">
+              <button onClick={exportDiagnostics} disabled={exportingDiagnostics}>
+                {exportingDiagnostics ? "导出中…" : "导出脱敏诊断"}
+              </button>
+              <StatusPill status={selectedRun.status} />
+            </div>
+          )}
         </header>
 
         {error && <div className="error-banner">{error}</div>}
+        {diagnosticsStatus && <div className="success-banner">{diagnosticsStatus}</div>}
 
         {selectedRun ? (
           <div className="run-content">
@@ -458,8 +542,22 @@ export function App() {
                     <div>
                       <span>组合补丁</span>
                       <strong>{selectedRun.integration.combinedPatchSha256?.slice(0, 16) ?? "—"}</strong>
+                      {selectedRun.integration.combinedPatchSha256 && (
+                        <button className="diff-load-button" onClick={loadIntegrationDiff} disabled={loadingIntegrationDiff}>
+                          {loadingIntegrationDiff ? "校验中…" : integrationDiff ? "重新校验 Diff" : "校验并查看 Diff"}
+                        </button>
+                      )}
                     </div>
                   </div>
+                  {integrationDiff && (
+                    <div className="inline-diff">
+                      <div>
+                        <strong>已校验 SHA-256 · {integrationDiff.sha256}</strong>
+                        <span>{formatBytes(integrationDiff.bytes)}{integrationDiff.truncated ? " · 预览已截断" : " · 完整预览"}</span>
+                      </div>
+                      <pre>{integrationDiff.text}</pre>
+                    </div>
+                  )}
                   {selectedRun.integration.status === "awaiting_approval" && (
                     <div className="approval-box">
                       <p>预览 worktree 已通过组合检查。Agent 无权写回，必须由你批准。</p>
@@ -541,6 +639,32 @@ export function App() {
           </button>
           {extensionsOpen && (
             <div className="extensions-config">
+              <div className="provider-config-block">
+                <label>
+                  Provider Model（可选）
+                  <input value={providerModel} onChange={(event) => setProviderModel(event.target.value)} placeholder="使用 Provider 默认模型" />
+                </label>
+                <label>
+                  Base URL（可选）
+                  <input value={providerBaseUrl} onChange={(event) => setProviderBaseUrl(event.target.value)} placeholder="使用官方端点" />
+                </label>
+                <label>
+                  API Key（仅写入系统安全存储）
+                  <span className="credential-input-row">
+                    <input
+                      type="password"
+                      autoComplete="off"
+                      value={providerApiKey}
+                      onChange={(event) => setProviderApiKey(event.target.value)}
+                      placeholder="不会写入 Run 或事件日志"
+                    />
+                    <button type="button" onClick={saveProviderCredential} disabled={savingCredential || providerApiKey.trim().length === 0}>
+                      {savingCredential ? "写入中" : "安全保存"}
+                    </button>
+                  </span>
+                </label>
+                {credentialStatus && <small className="credential-status">{credentialStatus}</small>}
+              </div>
               <label>
                 Skills
                 <input value={skillIds} onChange={(event) => setSkillIds(event.target.value)} placeholder="skill-one, skill-two" />
@@ -567,9 +691,20 @@ export function App() {
             <div className="composer-options">
               <label>
                 Provider
-                <select value={providerId} onChange={(event) => setProviderId(event.target.value as "deepseek" | "openai") }>
+                <select value={providerId} onChange={(event) => {
+                  setProviderId(event.target.value as "deepseek" | "openai");
+                  setCredentialStatus(undefined);
+                }}>
                   <option value="deepseek">DeepSeek</option>
                   <option value="openai">OpenAI</option>
+                </select>
+              </label>
+              <label>
+                信任档位
+                <select value={trustProfile} onChange={(event) => setTrustProfile(event.target.value as DesktopTrustProfile)}>
+                  <option value="strict">严格审批</option>
+                  <option value="balanced">平衡（推荐）</option>
+                  <option value="automation">自动化（禁外部副作用）</option>
                 </select>
               </label>
               <label>

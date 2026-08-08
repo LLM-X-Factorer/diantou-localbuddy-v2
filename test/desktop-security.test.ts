@@ -5,6 +5,7 @@ import test from "node:test";
 test("desktop runtime uses the privileged local protocol and Electron isolation controls", async () => {
   const main = await readFile("desktop/main.ts", "utf8");
   const html = await readFile("desktop/renderer/index.html", "utf8");
+  const renderer = await readFile("desktop/renderer/src/App.tsx", "utf8");
 
   assert.match(main, /protocol\.registerSchemesAsPrivileged/);
   assert.match(main, /app\.enableSandbox\(\)/);
@@ -19,6 +20,9 @@ test("desktop runtime uses the privileged local protocol and Electron isolation 
   assert.doesNotMatch(html, /unsafe-inline/);
   assert.match(html, /connect-src 'none'/);
   assert.match(html, /object-src 'none'/);
+  assert.match(main, /storeProviderApiKey\(parsed\.providerId, parsed\.apiKey\)/);
+  assert.match(renderer, /type="password"/);
+  assert.doesNotMatch(renderer, /localStorage|sessionStorage/);
 });
 
 test("Forge package is ASAR-only and declares every Electron 43 fuse", async () => {

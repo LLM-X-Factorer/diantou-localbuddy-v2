@@ -10,6 +10,7 @@ import {
 const CHANNELS = {
   bootstrap: "localbuddy:bootstrap",
   selectWorkspace: "localbuddy:select-workspace",
+  storeProviderCredential: "localbuddy:store-provider-credential",
   listRuns: "localbuddy:list-runs",
   startRun: "localbuddy:start-run",
   cancelRun: "localbuddy:cancel-run",
@@ -18,6 +19,8 @@ const CHANNELS = {
   cleanupWorktrees: "localbuddy:cleanup-worktrees",
   approveIntegration: "localbuddy:approve-integration",
   revertIntegration: "localbuddy:revert-integration",
+  loadIntegrationDiff: "localbuddy:load-integration-diff",
+  exportDiagnostics: "localbuddy:export-diagnostics",
   resolveToolApproval: "localbuddy:resolve-tool-approval",
   openArtifact: "localbuddy:open-artifact",
   runUpdated: "localbuddy:run-updated",
@@ -26,6 +29,7 @@ const CHANNELS = {
 const api: DesktopApi = {
   bootstrap: () => ipcRenderer.invoke(CHANNELS.bootstrap),
   selectWorkspace: () => ipcRenderer.invoke(CHANNELS.selectWorkspace),
+  storeProviderCredential: (request) => ipcRenderer.invoke(CHANNELS.storeProviderCredential, request),
   listRuns: (workspace) => ipcRenderer.invoke(CHANNELS.listRuns, workspace),
   startRun: (request) => ipcRenderer.invoke(CHANNELS.startRun, request),
   cancelRun: (runId) => ipcRenderer.invoke(CHANNELS.cancelRun, runId),
@@ -34,6 +38,8 @@ const api: DesktopApi = {
   cleanupWorktrees: (request) => ipcRenderer.invoke(CHANNELS.cleanupWorktrees, request),
   approveIntegration: (request) => ipcRenderer.invoke(CHANNELS.approveIntegration, request),
   revertIntegration: (request) => ipcRenderer.invoke(CHANNELS.revertIntegration, request),
+  loadIntegrationDiff: (request) => ipcRenderer.invoke(CHANNELS.loadIntegrationDiff, request),
+  exportDiagnostics: (request) => ipcRenderer.invoke(CHANNELS.exportDiagnostics, request),
   resolveToolApproval: (request) => ipcRenderer.invoke(CHANNELS.resolveToolApproval, request),
   openArtifact: (workspace, absolutePath) =>
     ipcRenderer.invoke(CHANNELS.openArtifact, workspace, absolutePath),

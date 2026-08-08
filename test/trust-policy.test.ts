@@ -75,6 +75,21 @@ test("denies unclassified tools and cannot use approval to bypass role ownership
   )).allowed, false);
 });
 
+test("automation denies external effects even when a Run tries to preauthorize them", async () => {
+  const policy = new UnifiedApprovalPolicy({
+    profile: "automation",
+    preauthorized: new Set(["external.effect"]),
+  });
+  const externalEffect = tool("mcp__write", "execute", "external.effect");
+  const decision = await policy.authorize(externalEffect, {
+    runId: "automation-run",
+    taskId: "automation-task",
+    agent: codeWorker,
+  }, { id: "effect-call", name: externalEffect.name, arguments: "{}" });
+  assert.equal(decision.allowed, false);
+  assert.match(decision.reason, /automation trust policy denies/);
+});
+
 function tool(
   name: string,
   risk: "read" | "compute" | "write" | "execute",

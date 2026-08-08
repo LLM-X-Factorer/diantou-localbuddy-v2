@@ -1,4 +1,4 @@
-import { writeFile, mkdir, readFile, realpath } from "node:fs/promises";
+import { chmod, writeFile, mkdir, readFile, realpath } from "node:fs/promises";
 import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -27,6 +27,11 @@ import {
   type StartDesktopRunRequest,
 } from "../src/desktop-contract.js";
 import { DesktopRunManager } from "../src/desktop-run-manager.js";
+import {
+  storeProviderApiKey,
+  type CredentialProviderId,
+} from "../src/credential-store.js";
+import { normalizeTrustProfile } from "../src/tool-runtime.js";
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url));
 const rendererRoot = resolve(currentDirectory, "..", "renderer");
@@ -185,6 +190,13 @@ function registerIpcHandlers(): void {
     return result.canceled ? null : result.filePaths[0] ?? null;
   });
 
+  ipcMain.handle(DESKTOP_CHANNELS.storeProviderCredential, async (event, request: unknown) => {
+    assertTrustedSender(event);
+    const parsed = parseProviderCredentialRequest(request);
+    await storeProviderApiKey(parsed.providerId, parsed.apiKey);
+    return { providerId: parsed.providerId, stored: true as const };
+  });
+
   ipcMain.handle(DESKTOP_CHANNELS.listRuns, async (event, workspace: unknown) => {
     assertTrustedSender(event);
     return runManager.list(expectString(workspace, "workspace"));
@@ -266,6 +278,33 @@ function registerIpcHandlers(): void {
     return runManager.revertIntegration(parsed);
   });
 
+  ipcMain.handle(DESKTOP_CHANNELS.loadIntegrationDiff, async (event, request: unknown) => {
+    assertTrustedSender(event);
+    return runManager.loadIntegrationDiff(parseRunActionRequest(request));
+  });
+
+  ipcMain.handle(DESKTOP_CHANNELS.exportDiagnostics, async (event, request: unknown) => {
+    assertTrustedSender(event);
+    const parsed = parseRunActionRequest(request);
+    const dossier = await runManager.buildDiagnostics(parsed, app.getVersion());
+    const options: Electron.SaveDialogOptions = {
+      title: "导出脱敏诊断包",
+      defaultPath: resolve(app.getPath("documents"), `localbuddy-${parsed.runId}-diagnostics.json`),
+      filters: [{ name: "JSON", extensions: ["json"] }],
+      properties: ["createDirectory", "showOverwriteConfirmation"],
+    };
+    const result = mainWindow === null
+      ? await dialog.showSaveDialog(options)
+      : await dialog.showSaveDialog(mainWindow, options);
+    if (result.canceled || result.filePath === undefined) return null;
+    await writeFile(result.filePath, `${JSON.stringify(dossier, null, 2)}\n`, {
+      encoding: "utf8",
+      mode: 0o600,
+    });
+    if (process.platform !== "win32") await chmod(result.filePath, 0o600);
+    return result.filePath;
+  });
+
   ipcMain.handle(DESKTOP_CHANNELS.resolveToolApproval, async (event, request: unknown) => {
     assertTrustedSender(event);
     return runManager.resolveToolApproval(parseResolveToolApprovalRequest(request));
@@ -313,7 +352,23 @@ function parseStartRequest(value: unknown): StartDesktopRunRequest {
     concurrency: expectNumber(record.concurrency, "concurrency"),
     mode: expectMode(record.mode),
     provider: parseProviderSelection(record.provider),
+    trustProfile: normalizeTrustProfile(record.trustProfile),
     extensions: parseRunExtensions(record.extensions),
+  };
+}
+
+function parseProviderCredentialRequest(value: unknown): {
+  providerId: CredentialProviderId;
+  apiKey: string;
+} {
+  const record = expectRecord(value, "provider credential request");
+  const providerId = expectString(record.providerId, "providerId");
+  if (providerId !== "deepseek" && providerId !== "openai") {
+    throw new Error("providerId must be deepseek or openai");
+  }
+  return {
+    providerId,
+    apiKey: expectString(record.apiKey, "apiKey"),
   };
 }
 

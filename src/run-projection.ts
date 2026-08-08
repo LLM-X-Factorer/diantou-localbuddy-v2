@@ -33,6 +33,7 @@ export function projectRun(
   let restartedAs: string | undefined;
   let checkpoint: DesktopCheckpointView | undefined;
   let providerId: string | undefined;
+  let trustProfile: DesktopRunView["trustProfile"];
   let extensions: DesktopRunView["extensions"];
 
   for (const event of events) {
@@ -43,6 +44,7 @@ export function projectRun(
       startedAt = event.timestamp;
       recoveryOf = getString(event.data?.recoveryOf);
       providerId = getString(event.data?.providerId);
+      trustProfile = getTrustProfile(event.data?.trustProfile);
     } else if (event.type === "run.resumed") {
       status = "running";
       completedAt = undefined;
@@ -198,9 +200,16 @@ export function projectRun(
     restartedAs,
     error,
     providerId,
+    trustProfile,
     extensions,
     pendingApprovals: [],
   };
+}
+
+function getTrustProfile(value: unknown): DesktopRunView["trustProfile"] {
+  return value === "strict" || value === "balanced" || value === "automation"
+    ? value
+    : undefined;
 }
 
 function projectIntegrationEvent(

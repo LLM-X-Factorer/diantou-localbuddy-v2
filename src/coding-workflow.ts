@@ -50,7 +50,7 @@ import {
   type SchedulerResumeState,
   type SchedulerResumeTask,
 } from "./scheduler.js";
-import { ToolRegistry, ToolRuntime } from "./tool-runtime.js";
+import { ToolRegistry, ToolRuntime, type TrustProfile } from "./tool-runtime.js";
 import { buildWorkspaceManifest } from "./workspace-manifest.js";
 import { createWorkspaceTools } from "./workspace-tools.js";
 import type { ToolApprovalHandler } from "./tool-approval.js";
@@ -75,6 +75,7 @@ export interface CodingWorkflowOptions {
   executionHost?: ExecutionHost;
   processTaskCapacity?: ProcessSharedCapacity;
   oauthRedirectHandler?: OAuthRedirectHandler;
+  trustProfile?: TrustProfile;
 }
 
 export interface CodingWorkflowResult {
@@ -120,6 +121,7 @@ export class CodingWorkflow {
             recoveryOf: this.#options.recoveryOf,
             runtimeOwner: this.#options.runtimeOwner ?? "core",
             providerId: this.#options.providerId ?? "unknown",
+            trustProfile: this.#options.trustProfile ?? "balanced",
           },
         });
         lifecycleStarted = true;
@@ -149,6 +151,7 @@ export class CodingWorkflow {
         selection: this.#options.extensions,
         approvalHandler: this.#options.extensionApprovalHandler,
         oauthRedirectHandler: this.#options.oauthRedirectHandler,
+        trustProfile: this.#options.trustProfile,
       });
       if (!resume && hasEnabledExtensions(extensions)) {
         await eventStore.append({ type: "extensions.loaded", runId, data: { ...extensions.metadata } });
@@ -232,8 +235,13 @@ export class CodingWorkflow {
           modelClient,
           toolRuntime: new ToolRuntime(
             new ToolRegistry(tools),
-            extensions?.approvalPolicy(new CodingSandboxApprovalPolicy())
-              ?? new CodingSandboxApprovalPolicy(),
+            extensions?.approvalPolicy(new CodingSandboxApprovalPolicy({
+              profile: this.#options.trustProfile,
+              approvalHandler: this.#options.extensionApprovalHandler,
+            })) ?? new CodingSandboxApprovalPolicy({
+              profile: this.#options.trustProfile,
+              approvalHandler: this.#options.extensionApprovalHandler,
+            }),
             eventStore,
             checkpointStore.toolJournal(),
           ),
@@ -254,8 +262,13 @@ export class CodingWorkflow {
         modelClient,
         toolRuntime: new ToolRuntime(
           new ToolRegistry([...integrationTools, ...(extensions?.tools ?? [])]),
-          extensions?.approvalPolicy(new CodingSandboxApprovalPolicy())
-            ?? new CodingSandboxApprovalPolicy(),
+          extensions?.approvalPolicy(new CodingSandboxApprovalPolicy({
+            profile: this.#options.trustProfile,
+            approvalHandler: this.#options.extensionApprovalHandler,
+          })) ?? new CodingSandboxApprovalPolicy({
+            profile: this.#options.trustProfile,
+            approvalHandler: this.#options.extensionApprovalHandler,
+          }),
           eventStore,
           checkpointStore.toolJournal(),
         ),
@@ -386,6 +399,8 @@ export class CodingWorkflow {
               artifactRoot,
               artifactRegistry,
               calculationRegistry,
+              trustProfile: this.#options.trustProfile,
+              approvalHandler: this.#options.extensionApprovalHandler,
             }),
           });
         }
@@ -448,6 +463,8 @@ function createMergeConflictResolver(input: {
   artifactRoot: string;
   artifactRegistry: ArtifactRegistry;
   calculationRegistry: JsonCalculationRegistry;
+  trustProfile?: TrustProfile;
+  approvalHandler?: ToolApprovalHandler;
 }): IntegrationConflictResolver {
   return {
     async resolve(conflict) {
@@ -506,7 +523,10 @@ function createMergeConflictResolver(input: {
           modelClient: input.modelClient,
           toolRuntime: new ToolRuntime(
             new ToolRegistry([...workspaceTools, ...codingTools]),
-            new CodingSandboxApprovalPolicy(),
+            new CodingSandboxApprovalPolicy({
+              profile: input.trustProfile,
+              approvalHandler: input.approvalHandler,
+            }),
             input.eventStore,
           ),
           maxTurns: 12,

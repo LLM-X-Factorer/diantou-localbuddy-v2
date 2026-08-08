@@ -9,6 +9,8 @@ import type {
   ApprovalPolicy,
   ToolContext,
   ToolDefinition,
+  TrustProfile,
+  UnifiedApprovalHandler,
 } from "./tool-runtime.js";
 
 const MAX_EDIT_BYTES = 500_000;
@@ -49,7 +51,17 @@ export async function createCodingTools(
 }
 
 export class CodingSandboxApprovalPolicy implements ApprovalPolicy {
-  readonly #policy = new UnifiedApprovalPolicy({ profile: "balanced" });
+  readonly #policy: UnifiedApprovalPolicy;
+
+  constructor(options: {
+    profile?: TrustProfile;
+    approvalHandler?: UnifiedApprovalHandler;
+  } = {}) {
+    this.#policy = new UnifiedApprovalPolicy({
+      profile: options.profile ?? "balanced",
+      approvalHandler: options.approvalHandler,
+    });
+  }
 
   authorize(
     tool: ToolDefinition,

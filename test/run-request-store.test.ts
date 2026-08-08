@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -20,6 +20,7 @@ test("persists and validates a replayable Run Request", async (context) => {
     mode: "code",
     recoveryOf: "run-source",
     provider: { id: "openai", model: "gpt-5-mini" },
+    trustProfile: "strict",
     extensions: {
       skillIds: ["browser-evidence"],
       mcpServerIds: ["local-tools"],
@@ -31,10 +32,35 @@ test("persists and validates a replayable Run Request", async (context) => {
   assert.deepEqual(loaded, saved);
   assert.equal(loaded.createdAt, "2026-08-08T10:00:00.000Z");
   assert.equal(loaded.recoveryOf, "run-source");
-  assert.equal(loaded.version, 2);
+  assert.equal(loaded.version, 3);
+  assert.equal(loaded.trustProfile, "strict");
   assert.equal(loaded.provider.id, "openai");
   assert.deepEqual(loaded.extensions.skillIds, ["browser-evidence"]);
   assert.match(await readFile(join(runRoot, "run-request.json"), "utf8"), /Verify persisted recovery input/);
+});
+
+test("migrates a v2 Run Request to balanced trust without rewriting history", async (context) => {
+  const workspace = await mkdtemp(join(tmpdir(), "localbuddy-run-request-v2-"));
+  context.after(async () => rm(workspace, { recursive: true, force: true }));
+  const runRoot = join(workspace, ".localbuddy", "runs", "run-v2");
+  await mkdir(runRoot, { recursive: true });
+  await writeFile(join(runRoot, "run-request.json"), `${JSON.stringify({
+    version: 2,
+    runId: "run-v2",
+    workspace,
+    goal: "Legacy replay input",
+    concurrency: 2,
+    mode: "research",
+    createdAt: "2026-08-08T10:00:00.000Z",
+    runtimeOwner: "desktop",
+    provider: { id: "deepseek" },
+    extensions: {},
+  }, null, 2)}\n`, "utf8");
+
+  const loaded = await new RunRequestStore().load(runRoot, workspace, "run-v2");
+  assert.equal(loaded.version, 3);
+  assert.equal(loaded.trustProfile, "balanced");
+  assert.match(await readFile(join(runRoot, "run-request.json"), "utf8"), /"version": 2/);
 });
 
 test("rejects a persisted request selected through a different workspace", async (context) => {
