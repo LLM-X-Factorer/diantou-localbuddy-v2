@@ -34,7 +34,7 @@
 - client registration、refresh、revoke、resource/audience 校验；
 - 每服务器/账户凭证隔离，token 不进入配置、事件或 checkpoint。
 
-### M9 · Distribution Protocol + Platforms + Skill Supply Chain — completed locally; target-runner acceptance pending
+### M9 · Distribution Protocol + Platforms + Skill Supply Chain — completed locally and on native runners
 
 - 带 Ed25519 签名、哈希、版本约束和回滚保护的更新清单；
 - 在没有正式 Apple 分发身份前，只做下载、校验和 staging，不自动替换 macOS 应用；
@@ -42,15 +42,16 @@
 - Skill manifest、版本锁、权限声明、签名、撤销与本地受信目录；
 - 在执行隔离不可用的平台上，对本地进程型扩展 fail closed。
 
-### M10 · Dogfooding + Productization — completed locally; external gates pending
+### M10 · Dogfooding + Productization — completed locally and on native runners; production OAuth pending
 
 - Desktop Provider model/base URL 与系统安全凭据写入；Renderer 不持久化、回显或读取 secret；
 - `strict` / `balanced` / `automation` 成为持久化 Run 合同，并由 resume/replay 复用；
 - Integration Gate 只通过受限 IPC 读取登记且 SHA-256 校验通过的组合补丁；
 - 可导出省略目标正文、模型内容、工具参数、凭据和绝对路径的诊断 JSON；
 - macOS ad-hoc 包已重新构建并完成真实 Renderer、Fuse、ASAR、内置浏览器、ZIP 与 DMG 验收；
-- 私有远端需要确认 GitHub owner，Linux/Windows 需要原生 Runner，生产 MCP OAuth 需要指定真实服务和账户。
-- Windows Release 采用 Tag 驱动的原生 Runner：构建成功后发布 `Setup.exe`、便携 ZIP 与 SHA-256 清单。
+- 私有远端已建立在 `LLM-X-Factorer/diantou-localbuddy-v2`；Linux DEB、Windows Squirrel/ZIP 和平台合同已由 GitHub 原生 Runner 验收。
+- Windows Release 采用 Tag 驱动的原生 Runner；`v0.9.0` 已发布 `Setup.exe`、便携 ZIP 与跨平台 SHA-256 清单。
+- 生产 MCP OAuth 仍需要指定真实服务和账户。
 
 ## 完成口径
 

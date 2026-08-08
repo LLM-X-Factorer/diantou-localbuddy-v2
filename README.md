@@ -18,10 +18,10 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 | 代码写回 | 独立 worktree、组合预检、人工 Gate、apply/commit/revert commit |
 | 恢复 | Research/Coding 同 Run checkpoint resume，并保留 replay 兜底 |
 | 扩展 | 本地/签名 Skill、MCP stdio/HTTP/OAuth、受限 Playwright Browser |
-| 分发 | macOS ad-hoc DMG/ZIP 已验收；Linux/Windows 配置已落盘但未在目标 Runner 验收 |
+| 分发 | macOS ad-hoc DMG/ZIP、Linux DEB、Windows Setup/ZIP 均经原生环境验收；Windows `v0.9.0` 已发布到私有 GitHub Release |
 | 当前主动暂缓 | Developer ID、生产 Hardened Runtime、notarization、公开 Gatekeeper |
 
-M10 已补齐 Desktop Provider/信任设置、哈希校验的可视化 diff 和脱敏诊断导出。当前产品化缺口收敛为真实目标平台 CI、生产 MCP OAuth、远程 Skill 市场与公开分发签名；不会把“代码已写”冒充“外部环境已验收”。
+M10 已补齐 Desktop Provider/信任设置、哈希校验的可视化 diff 和脱敏诊断导出，并完成 macOS、Linux、Windows 原生 CI。当前产品化缺口收敛为生产 MCP OAuth、远程 Skill 市场与公开分发签名；不会把“代码已写”冒充“外部环境已验收”。
 
 ## 当前状态
 
@@ -138,24 +138,25 @@ M10 已补齐 Desktop Provider/信任设置、哈希校验的可视化 diff 和�
 - OAuth 只完成身份认证，不会绕过 MCP 外部副作用的逐次授权。
 - 规格与真实 loopback 协议夹具见 [`docs/M8-SPEC.md`](docs/M8-SPEC.md)。
 
-**M9 Distribution Protocol + Platforms + Skill Supply Chain** 已完成本地可验证范围：
+**M9 Distribution Protocol + Platforms + Skill Supply Chain** 已完成本地及原生 Runner 可验证范围：
 
 - 更新清单使用 Ed25519 签名，artifact 校验 SHA-256、字节数、平台和版本回滚；当前只 staging，绝不自动替换 macOS 应用。
 - macOS/Windows/Linux 有各自凭证库和状态目录适配；Linux/Windows 原生打包命令与 CI matrix 已定义。
 - 签名 Skill 支持发布者信任、版本锁、权限声明、内容哈希和撤销；工作区本地自编 Skill 仍以显式选择的 `workspace-local` 层保留。
 - 规格与验收见 [`docs/M9-SPEC.md`](docs/M9-SPEC.md) 和 [`docs/M9-VALIDATION.md`](docs/M9-VALIDATION.md)。
 
-**M10 Dogfooding + Productization** 已完成本地范围：
+**M10 Dogfooding + Productization** 已完成本地与原生 Runner 范围：
 
 - Desktop 增加 Provider 模型/Base URL 配置和系统凭证写入；
 - 把 strict/balanced/automation 信任档从内核能力变成 Run 可选合同；
 - Integration Gate 增加受限 inline diff 阅读，而不只展示路径和哈希；
 - 增加脱敏诊断包导出，供内部 dogfooding 复盘；
 - Run Request 升级为 v3；旧 v1/v2 Request 读取时默认迁移为 `balanced`，但不会改写历史文件；resume/replay 固定复用原信任档。
-- 私有 GitHub、Linux/Windows 原生 CI 和真实第三方 MCP OAuth 分别以账号归属、目标 Runner、服务账户为外部验收门。
+- 私有仓库已建立在 `LLM-X-Factorer/diantou-localbuddy-v2`；Linux DEB、Windows Squirrel Setup/ZIP 和跨平台合同已由 GitHub 原生 Runner 验收。
+- 真实第三方 MCP OAuth 仍以指定生产服务和账户为外部验收门。
 - 规格和当前 macOS 验收见 [`docs/M10-SPEC.md`](docs/M10-SPEC.md) 与 [`docs/M10-VALIDATION.md`](docs/M10-VALIDATION.md)。
 
-当前唯一主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。Windows/Linux 安装包需要各目标 CI Runner 的首次真实产物验收；第三方生产 MCP OAuth 仍需要服务方账户验收，不能用本地夹具冒充。
+当前唯一主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。Windows/Linux 首次原生产物验收已经完成；第三方生产 MCP OAuth 仍需要服务方账户验收，不能用本地夹具冒充。
 
 ## 核心模型
 
@@ -196,7 +197,7 @@ pnpm make:win
 
 它们应分别在 Linux/Windows Runner 上执行；仓库不会把交叉编译配置冒充成目标平台运行验收。
 
-推送 `v*` Tag 会在 GitHub 的 Windows Runner 上运行平台合同测试与 `pnpm make:win`，随后把 Squirrel `Setup.exe`、便携 ZIP 和 `SHA256SUMS-windows.txt` 发布到对应 GitHub Release。Release 只有在原生构建成功后才会创建或更新。
+推送 `v*` Tag 会在 GitHub 的 Windows Runner 上运行平台合同测试与 `pnpm make:win`，随后把 Squirrel `Setup.exe`、便携 ZIP 和跨平台 LF 格式的 `SHA256SUMS-windows.txt` 发布到对应 GitHub Release。Release 只有在原生构建成功后才会创建或更新。首个原生版本见 [`v0.9.0`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.9.0)；它是私有、未做 Windows 代码签名的 Engineering Alpha。
 
 ## Headless 真实运行
 

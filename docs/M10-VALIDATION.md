@@ -1,6 +1,6 @@
 # M10 Validation Record
 
-Date: 2026-08-08, macOS arm64 host.
+Date: 2026-08-08, macOS arm64 host plus GitHub-hosted macOS, Ubuntu and Windows runners.
 
 ## Deterministic baseline
 
@@ -44,9 +44,22 @@ Package inspection proved:
 - Renderer loaded `localbuddy://app/index.html`, exposed the sandbox bridge, and rendered one root tree;
 - screenshot 2880 x 1718, SHA-256 `c10ec99c09338e7ec3f5e2944f37a8c55f4b4ea9f5975f9cf5d864b860b36a97`.
 
+## Native GitHub and Windows Release acceptance
+
+- Private repository: [`LLM-X-Factorer/diantou-localbuddy-v2`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2).
+- [`ci` run 31252543852](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31252543852) passed all five jobs: macOS 99-test baseline, Ubuntu/Windows platform contracts, Ubuntu `make:linux`, and Windows `make:win` with uploaded native artifacts.
+- Annotated tag `v0.9.0` resolves to commit `38cefd8cd6045e64754dd60920bdfa3d50c2a9b7`.
+- [`release` run 31252721126](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31252721126) rebuilt on `windows-2025`, reran the Windows contracts, collected the outputs, and published a non-draft, non-prerelease [`LocalBuddy v0.9.0`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.9.0).
+
+| Release asset | Bytes | SHA-256 | Verification |
+|---|---:|---|---|
+| `LocalBuddy-Setup.exe` | 265,197,568 | `d20cb224ba9e342d679abeea8087b7ce6df60b5dcb7847e27603bfcbf64398ae` | Squirrel maker passed; downloaded bytes match Release digest and checksum file |
+| `LocalBuddy-win32-x64-0.9.0.zip` | 273,478,801 | `5dbd412f83aea18d9d92841e8badbcdb9adaeb9559903d7935d40089ffce83ef` | ZIP maker passed; downloaded bytes match Release digest and checksum file |
+| `SHA256SUMS-windows.txt` | 184 | `65706ca92d2465b206c6c2eaeaca8041df3c323dadfe51c2d6b749b95b1c0d84` | UTF-8 without BOM, LF line endings; Release digest matches downloaded bytes |
+
+The published assets were downloaded back to the macOS host and `shasum -a 256 -c SHA256SUMS-windows.txt` passed. The first checksum asset used Windows CRLF; the post-publication download exposed that portability defect, so the asset was replaced with the same two checksums in LF form and the workflow on `main` was corrected to emit UTF-8 without BOM plus LF for future tags. The Windows binaries are an unsigned Engineering Alpha; native build success is not a Windows code-signing claim.
+
 ## External gates
 
-- No remote was created because the authenticated account can create under personal owner `LLM-X-Factorer` or organization `NodEducation`, while the intended owner has not been selected.
-- Linux/Windows CI is defined but cannot be called accepted until the repository exists remotely and native runners produce artifacts.
 - Production MCP OAuth still requires a named real service and account; local loopback protocol fixtures are not production acceptance.
 - Developer ID, production Hardened Runtime, notarization and public Gatekeeper acceptance remain intentionally deferred.

@@ -50,10 +50,17 @@ jobs:
           foreach ($asset in $assets) {
             Copy-Item $asset.FullName -Destination release-assets/$($asset.Name)
           }
-          Get-ChildItem release-assets -File | Sort-Object Name | ForEach-Object {
+          $checksumLines = Get-ChildItem release-assets -File | Sort-Object Name | ForEach-Object {
             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
             "$hash  $($_.Name)"
-          } | Set-Content release-assets/SHA256SUMS-windows.txt
+          }
+          $checksumPath = Join-Path (Resolve-Path release-assets) "SHA256SUMS-windows.txt"
+          $utf8WithoutBom = [System.Text.UTF8Encoding]::new($false)
+          [System.IO.File]::WriteAllText(
+            $checksumPath,
+            (($checksumLines -join "`n") + "`n"),
+            $utf8WithoutBom
+          )
       - uses: actions/upload-artifact@v4
         with:
           name: localbuddy-windows-${{ github.ref_name }}
