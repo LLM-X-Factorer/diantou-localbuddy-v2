@@ -78,4 +78,4 @@ git push origin vX.Y.Z
 - 集成代码回滚使用普通 revert commit，不 amend 已推送提交；
 - Release 事实变化后同步 Changelog、Known Limitations 和 Validation。
 
-`v0.9.0` 的首次 Windows Release、CRLF 清单修复和回下载证据见 [`M10-VALIDATION.md`](M10-VALIDATION.md)。
+`v0.11.0` 的原生 Windows Release 和回下载证据见 [`M10.2-VALIDATION.md`](M10.2-VALIDATION.md)；`v0.9.0` 的首次 Windows Release、CRLF 清单修复和回下载证据见 [`M10-VALIDATION.md`](M10-VALIDATION.md)。

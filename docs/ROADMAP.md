@@ -12,10 +12,11 @@
 - 教程/研究/Coding 模板只预填，绝不自动读取、调用模型或启动任务；
 - 真实 Run 上下文提示由审计状态驱动，不生成假 Run 或污染历史指标；
 - 首次安装不再默认选择整个 Documents；切换工作区清空旧目标；
-- 自动门禁为 113/113 tests；macOS `0.11.0` DMG 已完成挂载后包验证并安装到 `/Applications/LocalBuddy.app`；
+- 自动门禁为 113/113 tests；macOS `0.11.0` DMG 已完成挂载后包验证并安装到 `/Applications/LocalBuddy.app`；`main` CI 的 macOS、Linux、Windows 五项作业全部通过；
+- annotated `v0.11.0` Tag 已固定在发布提交 `e09dd5c`，Windows Setup/ZIP 已由原生 workflow 发布到私有 Release，并完成回下载 SHA-256、字节数和 LF 清单核验；
 - 连续 7-14 天真实使用、Windows 真机、Linux 图形桌面和生产 MCP OAuth 仍是开放门禁。
 
-`v0.11.0` 的 Windows 资产只有 Tag workflow 原生构建、发布并回下载核验后才算通过发布门禁；不会静默替换 `v0.9.0` 资产。M11 尚未立项。
+`v0.11.0` 的 Windows 原生构建与私有发布门禁已通过；Windows 真机端到端门禁仍开放。该版本没有静默替换 `v0.9.0` 资产。M11 尚未立项。
 
 ### 0.10.0 · M10.1 Internal Dogfood — completed locally; superseded by M10.2
 

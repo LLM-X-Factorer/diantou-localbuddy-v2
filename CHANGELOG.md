@@ -8,7 +8,7 @@
 
 ## 0.11.0 — 2026-08-13
 
-M10.2 First Trusted Run 私有 Engineering Alpha。macOS 内部包完成本机验收；Windows 资产只在 `v0.11.0` Tag 的原生 workflow 成功后发布。本版本不属于公开分发。
+M10.2 First Trusted Run 私有 Engineering Alpha。macOS 内部包已完成本机验收；Windows 资产已由 `v0.11.0` Tag 的原生 workflow 构建、发布并回下载核验。本版本不属于公开分发。
 
 ### Added
 
@@ -30,7 +30,9 @@ M10.2 First Trusted Run 私有 Engineering Alpha。macOS 内部包完成本机�
 - 规格：[`docs/M10.2-SPEC.md`](docs/M10.2-SPEC.md)；
 - 验收：[`docs/M10.2-VALIDATION.md`](docs/M10.2-VALIDATION.md)；
 - `pnpm check`：113/113 tests passed；
-- macOS DMG：224,031,108 bytes，SHA-256 `379e8e49522c4f97cc22a436f0507675128ac395a4d994649c1b3d4924afb145`，挂载后包验证通过。
+- macOS DMG：224,031,108 bytes，SHA-256 `379e8e49522c4f97cc22a436f0507675128ac395a4d994649c1b3d4924afb145`，挂载后包验证通过；
+- [`main` CI](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31622109045)：macOS 检查、Linux/Windows 合同与原生打包五项作业全部通过；
+- [`v0.11.0` Release](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.11.0)：Windows Setup/ZIP 和 LF SHA-256 清单已发布并回下载核验。
 
 ## 0.10.0 — 2026-08-13
 
