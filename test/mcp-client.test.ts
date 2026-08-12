@@ -46,6 +46,32 @@ test("discovers and calls allowlisted MCP stdio tools with conservative risk", a
   }
 });
 
+test("reports bounded sanitized MCP child stderr when the handshake fails", async () => {
+  const fixture = resolve(dirname(fileURLToPath(import.meta.url)), "fixtures", "mcp-stdio-failure.js");
+  await assert.rejects(
+    connectMcpServers([{
+      id: "broken-fixture",
+      command: process.execPath,
+      args: [fixture],
+      cwd: dirname(fixture),
+      env: {},
+      workspaceAccess: "read",
+      networkAccess: false,
+      readOnlyTools: [],
+    }]),
+    (error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      assert.match(message, /MCP server broken-fixture failed to connect/);
+      assert.match(message, /Child stderr:/);
+      assert.match(message, /stderr sha256:[a-f0-9]{12}/);
+      assert.match(message, /\[redacted\]/);
+      assert.doesNotMatch(message, /super-secret-token|Bearer-hidden|\/Users\/private/);
+      assert.ok(message.length < 2_000);
+      return true;
+    },
+  );
+});
+
 test("discovers and calls authenticated Streamable HTTP MCP tools", async (context) => {
   const expectedAuthorization = "Bearer fixture-http-token";
   let authorizedRequests = 0;

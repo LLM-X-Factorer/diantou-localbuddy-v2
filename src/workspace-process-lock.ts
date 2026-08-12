@@ -32,6 +32,7 @@ interface HeldWorkspaceLock {
 
 const heldLocks = new Map<string, HeldWorkspaceLock>();
 const pendingLocks = new Map<string, Promise<HeldWorkspaceLock>>();
+const pendingReleases = new Map<string, Promise<void>>();
 
 export class WorkspaceLockedError extends Error {
   readonly owner?: WorkspaceLockOwner;
@@ -55,6 +56,7 @@ export class WorkspaceProcessLockManager {
   async acquire(workspaceInput: string, label: string): Promise<WorkspaceProcessLease> {
     const workspace = await realpath(workspaceInput);
     const normalizedLabel = normalizeLabel(label);
+    await pendingReleases.get(workspace);
     let held = heldLocks.get(workspace);
     if (held === undefined) {
       let pending = pendingLocks.get(workspace);
@@ -154,13 +156,22 @@ async function releaseWorkspaceLock(held: HeldWorkspaceLock): Promise<void> {
   if (held.references > 0) return;
   const current = heldLocks.get(held.workspace);
   if (current !== held) return;
-  const inspected = await inspectExistingLock(held.lockDirectory);
-  if (inspected.owner?.ownerId !== held.owner.ownerId) {
-    heldLocks.delete(held.workspace);
-    throw new Error("Workspace lock ownership changed before release");
-  }
-  await rm(held.lockDirectory, { recursive: true });
   heldLocks.delete(held.workspace);
+  const pendingRelease = (async () => {
+    const inspected = await inspectExistingLock(held.lockDirectory);
+    if (inspected.owner?.ownerId !== held.owner.ownerId) {
+      throw new Error("Workspace lock ownership changed before release");
+    }
+    await rm(held.lockDirectory, { recursive: true });
+  })();
+  pendingReleases.set(held.workspace, pendingRelease);
+  try {
+    await pendingRelease;
+  } finally {
+    if (pendingReleases.get(held.workspace) === pendingRelease) {
+      pendingReleases.delete(held.workspace);
+    }
+  }
 }
 
 async function inspectExistingLock(lockDirectory: string): Promise<{

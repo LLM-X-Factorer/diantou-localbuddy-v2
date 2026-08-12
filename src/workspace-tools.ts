@@ -209,12 +209,21 @@ async function validateCalculationLedger(
   const unknown = [...supplied].filter((id) => !expectedIds.has(id));
   if (missing.length > 0 || unknown.length > 0) {
     throw new Error(
-      `calculation ledger mismatch; missing=[${missing.join(",")}], unknown=[${unknown.join(",")}]`,
+      [
+        "Artifact Gate rejected the write because calculationIds do not match the local ledger.",
+        `Missing IDs: ${missing.join(", ") || "none"}.`,
+        `Unknown IDs: ${unknown.join(", ") || "none"}.`,
+        `Registered IDs: ${[...expectedIds].join(", ") || "none"}.`,
+        "Retry write_artifact with every registered ID, and cite each as [calculationId] on its evidence line.",
+      ].join(" "),
     );
   }
   for (const id of expectedIds) {
     if (!content.includes(`[${id}]`)) {
-      throw new Error(`artifact must cite calculation record [${id}]`);
+      throw new Error(
+        `Artifact Gate rejected the write: the artifact must cite [${id}]. `
+        + "Add the citation to the exact evidence line, then retry write_artifact.",
+      );
     }
     const calculation = calculations.find((candidate) => candidate.id === id);
     if (calculation === undefined) {
@@ -229,7 +238,8 @@ async function validateCalculationLedger(
       .some((line) => line.includes(`[${id}]`) && exactValues.every((value) => line.includes(value)));
     if (!hasExactDetailLine) {
       throw new Error(
-        `artifact citation [${id}] must include exact values ${exactValues.join(" and ")} on the same line`,
+        `Artifact Gate rejected the write: citation [${id}] must include exact values `
+        + `${exactValues.join(" and ")} on the same line. Correct that line, then retry write_artifact.`,
       );
     }
   }
@@ -239,7 +249,11 @@ async function validateCalculationLedger(
   );
   for (const line of suspiciousLines) {
     if (![...expectedIds].some((id) => line.includes(`[${id}]`))) {
-      throw new Error(`numeric claim lacks a registered calculation id: ${line.slice(0, 120)}`);
+      throw new Error(
+        "Artifact Gate rejected the write: a numeric claim lacks a registered calculation ID. "
+        + `Claim: ${line.slice(0, 120)}. Run a deterministic calculation tool, preserve its calculationId, `
+        + "cite [calculationId] on this line, then retry write_artifact.",
+      );
     }
   }
 }

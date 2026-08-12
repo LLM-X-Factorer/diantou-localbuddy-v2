@@ -30,6 +30,14 @@ const MAX_MCP_TOTAL_SCHEMA_BYTES = 500_000;
 const MAX_MCP_ARGUMENT_BYTES = 100_000;
 const MAX_MCP_TEXT = 80_000;
 const MAX_MCP_STRUCTURED_CONTENT_BYTES = 200_000;
+const MAX_MCP_STDERR_BYTES = 4_096;
+const MAX_MCP_DIAGNOSTIC_CHARACTERS = 1_200;
+
+interface PreparedTransport {
+  transport: Transport;
+  oauth?: LocalMcpOAuthProvider;
+  childDiagnostics?: () => string | undefined;
+}
 
 interface ConnectedServer {
   config: McpServerConfig;
@@ -74,7 +82,7 @@ export async function connectMcpServers(
           || config.transport !== "streamable-http") {
           await transport.close().catch(() => undefined);
           await prepared.oauth?.close().catch(() => undefined);
-          throw error;
+          throw mcpConnectionFailure(config.id, error, prepared.childDiagnostics?.());
         }
         try {
           const code = await prepared.oauth.waitForAuthorizationCode(options.signal);
@@ -86,7 +94,7 @@ export async function connectMcpServers(
         } catch (authError) {
           await transport.close().catch(() => undefined);
           await prepared.oauth.close().catch(() => undefined);
-          throw authError;
+          throw mcpConnectionFailure(config.id, authError, prepared.childDiagnostics?.());
         }
       }
       connected.push({ config, client, transport, oauth: prepared.oauth });
@@ -141,7 +149,7 @@ async function createTransport(
   config: McpServerConfig,
   environment: NodeJS.ProcessEnv,
   options: McpConnectOptions,
-): Promise<{ transport: Transport; oauth?: LocalMcpOAuthProvider }> {
+): Promise<PreparedTransport> {
   if (config.transport === "streamable-http") {
     const oauth = config.oauth === undefined
       ? undefined
@@ -189,8 +197,48 @@ async function createTransport(
     stderr: "pipe",
     maxBufferSize: 2 * 1024 * 1024,
   });
-  transport.stderr?.on("data", () => undefined);
-  return { transport };
+  let childStderr = Buffer.alloc(0);
+  transport.stderr?.on("data", (chunk: Buffer | string) => {
+    const next = Buffer.concat([
+      childStderr,
+      typeof chunk === "string" ? Buffer.from(chunk) : chunk,
+    ]);
+    childStderr = next.subarray(Math.max(0, next.length - MAX_MCP_STDERR_BYTES));
+  });
+  return {
+    transport,
+    childDiagnostics: () => sanitizeChildDiagnostics(childStderr),
+  };
+}
+
+function mcpConnectionFailure(serverId: string, error: unknown, childDiagnostics?: string): Error {
+  const reason = sanitizeDiagnosticText(error instanceof Error ? error.message : String(error));
+  const detail = childDiagnostics === undefined ? "" : ` Child stderr: ${childDiagnostics}`;
+  return new Error(`MCP server ${serverId} failed to connect: ${reason}.${detail}`, { cause: error });
+}
+
+function sanitizeChildDiagnostics(stderr: Buffer): string | undefined {
+  if (stderr.length === 0) return undefined;
+  const digest = createHash("sha256").update(stderr).digest("hex").slice(0, 12);
+  const text = sanitizeDiagnosticText(stderr.toString("utf8"));
+  return `${text || "child process exited without readable text"} [stderr sha256:${digest}]`;
+}
+
+function sanitizeDiagnosticText(value: string): string {
+  return value
+    .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "")
+    .replace(/\bBearer\s+[^\s,;]+/gi, "Bearer [redacted]")
+    .replace(/\b((?:api[_-]?key|token|secret|password|authorization))\s*[:=]\s*[^\s,;]+/gi, "$1=[redacted]")
+    .replace(/\bsk-[a-zA-Z0-9_-]{8,}\b/g, "[redacted-key]")
+    .replace(/\b[a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^\s/@]+:[^\s/@]+@/g, (match) => {
+      const scheme = match.slice(0, match.indexOf(":"));
+      return `${scheme}://[redacted]@`;
+    })
+    .replace(/(?:[A-Za-z]:\\|\/)(?:[^\s:'"<>|]+[\\/])+[^\s:'"<>|]*/g, "[path]")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim()
+    .slice(0, MAX_MCP_DIAGNOSTIC_CHARACTERS);
 }
 
 function requireContainerImage(environment: NodeJS.ProcessEnv, serverId: string): string {
@@ -228,7 +276,7 @@ function createHttpTransport(
 
 function createClient(): Client {
   return new Client(
-    { name: "localbuddy-v2", version: "0.9.0" },
+    { name: "localbuddy-v2", version: "0.11.0" },
     { capabilities: {} },
   );
 }

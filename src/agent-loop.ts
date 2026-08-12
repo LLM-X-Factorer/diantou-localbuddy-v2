@@ -23,6 +23,8 @@ export interface AgentLoopOptions {
   onCheckpoint?: (checkpoint: AgentTaskCheckpoint) => void | Promise<void>;
 }
 
+const MAX_ARTIFACT_GATE_FAILURES = 3;
+
 export class AgentLoopExecutor implements TaskExecutor {
   readonly #modelClient: AuditedModelClient;
   readonly #toolRuntime: ToolRuntime;
@@ -83,6 +85,10 @@ export class AgentLoopExecutor implements TaskExecutor {
     let turn = saved?.turn ?? 0;
     let pendingToolCalls = saved?.pendingToolCalls;
     let nextToolIndex = saved?.nextToolIndex;
+    let artifactGateFailures = countArtifactGateFailures(messages);
+    if (artifactGateFailures >= MAX_ARTIFACT_GATE_FAILURES) {
+      throw artifactGateBudgetError(artifactGateFailures, lastArtifactGateFeedback(messages));
+    }
     if (saved === undefined) {
       await this.#saveCheckpoint({
         runId: context.runId,
@@ -132,6 +138,12 @@ export class AgentLoopExecutor implements TaskExecutor {
             pendingToolCalls,
             nextToolIndex,
           });
+          if (toolCall.name === "write_artifact" && result.isError) {
+            artifactGateFailures += 1;
+            if (artifactGateFailures >= MAX_ARTIFACT_GATE_FAILURES) {
+              throw artifactGateBudgetError(artifactGateFailures, result.content);
+            }
+          }
         }
         turn += 1;
         phase = "ready_for_model";
@@ -260,6 +272,43 @@ export class AgentLoopExecutor implements TaskExecutor {
     }
     return checkpoint;
   }
+}
+
+function countArtifactGateFailures(messages: readonly ChatMessage[]): number {
+  const artifactCallIds = new Set<string>();
+  for (const message of messages) {
+    if (message.role !== "assistant") continue;
+    for (const call of message.toolCalls ?? []) {
+      if (call.name === "write_artifact") artifactCallIds.add(call.id);
+    }
+  }
+  return messages.filter((message) =>
+    message.role === "tool"
+    && artifactCallIds.has(message.toolCallId)
+    && message.content.startsWith("Tool error:"),
+  ).length;
+}
+
+function lastArtifactGateFeedback(messages: readonly ChatMessage[]): string {
+  const artifactCallIds = new Set<string>();
+  for (const message of messages) {
+    if (message.role !== "assistant") continue;
+    for (const call of message.toolCalls ?? []) {
+      if (call.name === "write_artifact") artifactCallIds.add(call.id);
+    }
+  }
+  return messages.toReversed().find((message) =>
+    message.role === "tool"
+    && artifactCallIds.has(message.toolCallId)
+    && message.content.startsWith("Tool error:"),
+  )?.content ?? "Artifact Gate rejected the write";
+}
+
+function artifactGateBudgetError(attempts: number, feedback: string): Error {
+  return new Error(
+    `Artifact Gate rejected ${attempts} write attempts; stopping to prevent an unbounded model loop. `
+    + `Last feedback: ${feedback.replace(/^Tool error:\s*/u, "").slice(0, 500)}`,
+  );
 }
 
 function cloneMessage(message: ChatMessage): ChatMessage {

@@ -1,6 +1,6 @@
 # LocalBuddy V2 Release Runbook
 
-> 当前发布级别：私有 Engineering Alpha。Git push、Tag 和 Release 都是外部状态变更，必须获得用户明确授权。
+> 当前私有发布线：`v0.11.0 / M10.2 First Trusted Run Engineering Alpha`。Git push、Tag 和 Release 都是外部状态变更，必须获得用户明确授权。
 
 ## 1. 发布真源
 

@@ -2,6 +2,38 @@
 
 Date: 2026-08-08, macOS arm64 host plus GitHub-hosted macOS, Ubuntu and Windows runners.
 
+## 2026-08-12 macOS package erratum and local dogfood build
+
+The historical DMG in the table below (`8b5ef81c...`) must not be installed. A real install exposed that `scripts/make-dmg.mjs` followed framework symlinks while copying the Forge app, turning relative links into absolute links to the build machine. `hdiutil verify` validated the disk image container but did not detect that the mounted app failed strict deep code-signature verification.
+
+The copy now preserves symlinks verbatim. `pnpm verify:mac-package` now mounts the DMG, runs strict deep verification against the mounted app, and rejects absolute or escaping symlinks. The post-M10 local dogfood build is not a replacement GitHub Release:
+
+| Artifact | Bytes | SHA-256 | Verification |
+|---|---:|---|---|
+| `LocalBuddy-0.9.0-arm64.dmg` | 224,276,232 | `3c5f074baa6e4d99f9cd694eac9c6c256353d245cec06685a01653b51b598f25` | branded image valid; mounted app strict-deep valid; 14 relative symlinks; fuses, packaged Chromium and Renderer verified |
+
+That build was installed at `/Applications/LocalBuddy.app` and its installed bytes passed `codesign --verify --deep --strict`. The same working tree passed `pnpm check` with 104/104 tests after adding regressions for workspace-lock reacquisition, cross-Agent calculation idempotency, and brand-asset packaging. Full live results and remaining boundaries are recorded in [`DOGFOOD-2026-08-12.md`](DOGFOOD-2026-08-12.md).
+
+## 2026-08-13 M10.1 local productization follow-up
+
+The local dogfood issues were closed without changing the published `v0.9.0` release:
+
+- native diagnostic save returns to Renderer and clears busy state;
+- MCP stdio startup includes bounded, sanitized child diagnostics;
+- Run projection exposes duration, calls, provider-reported tokens, failure counts, Artifact Gate retries and failure stage;
+- Artifact Gate feedback is actionable and its failed-write budget is three;
+- failed Runs may retry the unfinished Task chain from a validated same-Run checkpoint;
+- recent workspaces, verified inline Artifact preview and explicit continuation composer flow are available;
+- live UI commit and reverse-commit were proved in a disposable repository and left its primary checkout clean.
+
+Final `pnpm check`: 109/109 tests. The source/package version was closed as `0.10.0 / M10.1 Internal Dogfood` without changing the published `v0.9.0` release. Final package evidence:
+
+| Artifact | Bytes | SHA-256 | Verification |
+|---|---:|---|---|
+| `LocalBuddy-0.10.0-arm64.dmg` | 224,034,339 | `20f7b80ece11ce125b8e4332f9351e8c8fe45c6613923048bb7e37c79aa7195b` | DMG integrity; mounted app strict-deep ad-hoc signature; 14 relative symlinks; fuses; packaged browser; Renderer smoke |
+
+The matching `0.10.0` app is installed at `/Applications/LocalBuddy.app`; installed `app.asar` SHA-256 is `7cc93066a4a942c3fedc185723d03633f1dcec76a59ff9b0abf6efa6d49848c3`, matching the verified Forge bundle. This is still an internal ad-hoc package, not a replacement public release or notarized distribution.
+
 ## Deterministic baseline
 
 - `pnpm check`: Core/Main/Preload/Renderer TypeScript passed; 99/99 tests passed.
@@ -34,7 +66,7 @@ Regression coverage proves:
 | Artifact | Bytes | SHA-256 | Verification |
 |---|---:|---|---|
 | `LocalBuddy-darwin-arm64-0.9.0.zip` | 219,095,502 | `2a3d5e3e633ab251a6e6e8586897aedd0fb31191292f86c95d970e15494083d4` | `unzip -t` passed |
-| `LocalBuddy-0.9.0-arm64.dmg` | 220,671,860 | `8b5ef81ccf0fad2f9fe7e09d62b250f58a429cb68b535114b65196ce3d6a07cd` | `hdiutil verify` valid |
+| `LocalBuddy-0.9.0-arm64.dmg` | 220,671,860 | `8b5ef81ccf0fad2f9fe7e09d62b250f58a429cb68b535114b65196ce3d6a07cd` | historical `hdiutil verify` passed; **withdrawn for the symlink defect documented above** |
 
 Package inspection proved:
 
@@ -61,7 +93,7 @@ The published assets were downloaded back to the macOS host and `shasum -a 256 -
 
 ## External gates
 
-- Continuous 7-14 day dogfooding on real work has not started; package smoke and deterministic fixtures are not a substitute. The plan and exit criteria live in [`DOGFOOD.md`](DOGFOOD.md).
+- Continuous 7-14 day dogfooding is active but not complete. The first real macOS installation and functional matrix ran on 2026-08-12; one session is not a substitute for the continuous-use exit gate. The plan and evidence live in [`DOGFOOD.md`](DOGFOOD.md) and [`DOGFOOD-2026-08-12.md`](DOGFOOD-2026-08-12.md).
 - Windows native CI proves contracts and artifact generation, not installation, launch, credential storage, a real Provider Run, recovery, or uninstall on a Windows device. That matrix is waiting for hardware.
 - Linux native CI proves contracts and DEB generation, not a graphical desktop install/launch session.
 - Production MCP OAuth still requires a named real service and account; local loopback protocol fixtures are not production acceptance.

@@ -202,6 +202,67 @@ test("continues an Agent Loop after a completed tool-result checkpoint without r
   assert.equal((await checkpointStore.loadTask("read-note"))?.phase, "succeeded");
 });
 
+test("stops an Agent Loop after three Artifact Gate rejections", async () => {
+  let modelCalls = 0;
+  const provider: ModelProvider = {
+    async complete() {
+      modelCalls += 1;
+      return {
+        model: "artifact-gate-test",
+        content: null,
+        toolCalls: [{
+          id: `artifact-write-${modelCalls}`,
+          name: "write_artifact",
+          arguments: JSON.stringify({ fileName: "report.md", content: "invalid", calculationIds: [] }),
+        }],
+        finishReason: "tool_calls",
+      };
+    },
+  };
+  const eventStore = new InMemoryEventStore();
+  const rejectingTool: ToolDefinition<Record<string, unknown>> = {
+    name: "write_artifact",
+    description: "Reject invalid artifact writes.",
+    parameters: { type: "object" },
+    risk: "write",
+    permission: "artifact.write",
+    parse(value) { return value as Record<string, unknown>; },
+    async execute() { throw new Error("Artifact Gate feedback: cite the calculation ID"); },
+  };
+  const executor = new AgentLoopExecutor({
+    modelClient: new (await import("../src/model-runtime.js")).AuditedModelClient(provider, eventStore),
+    toolRuntime: new ToolRuntime(
+      new ToolRegistry([rejectingTool]),
+      new RoleBasedApprovalPolicy(),
+      eventStore,
+    ),
+    maxTurns: 8,
+  });
+  const agent: AgentDefinition = {
+    id: "integrator",
+    role: "integrator",
+    instructions: "Integrate evidence.",
+    capabilities: ["integrate"],
+    maxParallelTasks: 1,
+  };
+  const task: TaskDefinition = {
+    id: "integrate",
+    title: "Integrate",
+    input: { instructions: "Write the artifact.", availableTools: ["write_artifact"] },
+    requiredCapabilities: ["integrate"],
+  };
+
+  await assert.rejects(
+    executor.execute({ runId: "run-gate-budget", task, agent, dependencyOutputs: new Map() }),
+    /Artifact Gate rejected 3 write attempts/,
+  );
+  assert.equal(modelCalls, 3);
+  assert.equal(
+    (await eventStore.list("run-gate-budget")).filter((event) => event.type === "tool.failed").length,
+    3,
+  );
+});
+
 class ResumeProvider implements ModelProvider {
   async complete(request: ModelRequest): Promise<ModelResponse> {
     const hasToolResult = request.messages.some(

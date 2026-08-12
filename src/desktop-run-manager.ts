@@ -1,15 +1,18 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readdir, realpath } from "node:fs/promises";
-import { basename, resolve } from "node:path";
+import { mkdir, readFile, readdir, realpath, stat } from "node:fs/promises";
+import { basename, extname, isAbsolute, resolve, sep } from "node:path";
 
 import type {
   ApproveDesktopIntegrationRequest,
+  DesktopArtifactActionRequest,
+  DesktopArtifactPreviewView,
   DesktopRunActionRequest,
   DesktopRunView,
   RevertDesktopIntegrationRequest,
   ResolveDesktopToolApprovalRequest,
   StartDesktopRunRequest,
 } from "./desktop-contract.js";
+import { JsonArtifactRegistry, type ArtifactRecord } from "./artifacts.js";
 import { CodingWorkflow } from "./coding-workflow.js";
 import { CodingCheckpointStore } from "./coding-checkpoint-store.js";
 import { ResearchCheckpointStore } from "./checkpoint-store.js";
@@ -64,6 +67,9 @@ interface DesktopResumeInspection {
   resumableTasks: number;
   reason?: string;
 }
+
+const MAX_ARTIFACT_PREVIEW_BYTES = 200_000;
+const PREVIEWABLE_ARTIFACT_EXTENSIONS = new Set([".md", ".json", ".txt", ".patch", ".diff"]);
 
 export class DesktopRunManager {
   readonly #createProvider: (selection: ProviderSelection) => Promise<ModelProvider>;
@@ -153,8 +159,8 @@ export class DesktopRunManager {
       const persistentStore = new JsonlEventStore(resolve(runRoot, "events.jsonl"));
       const events = [...await persistentStore.list(request.runId)];
       const source = projectRun(request.runId, workspace, events);
-      if (source.status !== "interrupted") {
-        throw new Error(`only interrupted Runs can resume from checkpoint: ${source.status}`);
+      if (source.status !== "interrupted" && source.status !== "failed") {
+        throw new Error(`only interrupted or failed Runs can resume from checkpoint: ${source.status}`);
       }
       if (source.restartedAs !== undefined) {
         throw new Error(`Run was already replayed as ${source.restartedAs}`);
@@ -494,6 +500,27 @@ export class DesktopRunManager {
     });
   }
 
+  async loadArtifactPreview(
+    request: DesktopArtifactActionRequest,
+  ): Promise<DesktopArtifactPreviewView> {
+    const { record, content } = await this.#readVerifiedArtifact(request);
+    if (!PREVIEWABLE_ARTIFACT_EXTENSIONS.has(extname(record.relativePath).toLowerCase())) {
+      throw new Error("This artifact type cannot be previewed as text");
+    }
+    const truncated = content.length > MAX_ARTIFACT_PREVIEW_BYTES;
+    return {
+      fileName: record.relativePath,
+      sha256: record.sha256,
+      bytes: content.length,
+      text: content.subarray(0, MAX_ARTIFACT_PREVIEW_BYTES).toString("utf8"),
+      truncated,
+    };
+  }
+
+  async resolveArtifactPath(request: DesktopArtifactActionRequest): Promise<string> {
+    return (await this.#readVerifiedArtifact(request)).record.absolutePath;
+  }
+
   async buildDiagnostics(
     request: DesktopRunActionRequest,
     appVersion: string,
@@ -538,6 +565,7 @@ export class DesktopRunManager {
         completedAt: view.completedAt,
         recoveryOf: persisted.recoveryOf,
         goalCharacters: persisted.goal.length,
+        metrics: view.metrics,
       },
       extensions: {
         skillCount: persisted.extensions.skillIds?.length ?? 0,
@@ -577,6 +605,46 @@ export class DesktopRunManager {
       eventCounts,
       eventCount: events.length,
     };
+  }
+
+  async #readVerifiedArtifact(
+    request: DesktopArtifactActionRequest,
+  ): Promise<{ record: ArtifactRecord; content: Buffer }> {
+    validateRunId(request.runId);
+    if (
+      request.fileName.length === 0
+      || request.fileName.includes("\0")
+      || isAbsolute(request.fileName)
+    ) {
+      throw new Error("artifact fileName must be a relative path");
+    }
+    const workspace = await realpath(request.workspace);
+    const runRoot = resolve(workspace, ".localbuddy", "runs", request.runId);
+    const artifactRoot = await realpath(resolve(runRoot, "artifacts"));
+    const expectedPath = resolve(artifactRoot, request.fileName);
+    if (expectedPath !== artifactRoot && !expectedPath.startsWith(`${artifactRoot}${sep}`)) {
+      throw new Error("artifact path escapes the registered artifact root");
+    }
+    const records = await new JsonArtifactRegistry(
+      resolve(runRoot, "checkpoint", "artifacts.json"),
+    ).list(request.runId);
+    const record = records.find((candidate) => candidate.relativePath === request.fileName);
+    if (record === undefined) throw new Error("artifact is not present in the Run registry");
+    const [actualPath, registeredPath] = await Promise.all([
+      realpath(expectedPath),
+      realpath(record.absolutePath),
+    ]);
+    if (actualPath !== registeredPath || !actualPath.startsWith(`${artifactRoot}${sep}`)) {
+      throw new Error("artifact registry path no longer matches the Run artifact root");
+    }
+    const metadata = await stat(actualPath);
+    if (!metadata.isFile()) throw new Error("registered artifact is not a regular file");
+    const content = await readFile(actualPath);
+    const sha256 = createHash("sha256").update(content).digest("hex");
+    if (content.length !== record.bytes || sha256 !== record.sha256) {
+      throw new Error("artifact content no longer matches its registered size and SHA-256");
+    }
+    return { record: { ...record, absolutePath: actualPath }, content };
   }
 
   async list(workspace: string): Promise<readonly DesktopRunView[]> {

@@ -92,7 +92,7 @@ export class LocalMcpOAuthProvider implements OAuthClientProvider {
       response_types: ["code"],
       client_name: "LocalBuddy V2",
       software_id: "com.diantou.localbuddy-v2",
-      software_version: "0.9.0",
+      software_version: "0.11.0",
       ...(this.#config.scopes.length === 0 ? {} : { scope: this.#config.scopes.join(" ") }),
     };
   }

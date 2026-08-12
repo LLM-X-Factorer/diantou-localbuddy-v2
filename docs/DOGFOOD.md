@@ -1,6 +1,6 @@
 # LocalBuddy V2 Dogfood Plan
 
-> 状态：`planned`。macOS arm64 可开始；Windows 阶段等待可用真机。本文记录真实使用计划和结果，不把单元测试或 CI 产物重复计作 dogfooding。
+> 状态：`active`。当前源码版本为 `0.11.0 / M10.2 First Trusted Run`。macOS arm64 首轮实机功能矩阵、M10.1 产品化闭环和 M10.2 本地指引/教程预填 UI 验收均已完成，详见 [`DOGFOOD-2026-08-12.md`](DOGFOOD-2026-08-12.md) 与 [`M10.2-VALIDATION.md`](M10.2-VALIDATION.md)；教程的真实 Provider Run、连续 7-14 天使用和 Windows 真机阶段仍是开放门禁。本文记录真实使用计划和结果，不把单元测试、静态 Guide 或 CI 产物重复计作 dogfooding。
 
 ## 目标
 

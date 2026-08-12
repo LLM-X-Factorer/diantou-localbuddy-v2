@@ -6,6 +6,7 @@ import type {
   DesktopCheckpointView,
   DesktopEventView,
   DesktopIntegrationView,
+  DesktopRunMetricsView,
   DesktopRunStatus,
   DesktopRunView,
   DesktopTaskView,
@@ -109,6 +110,7 @@ export function projectRun(
       } else if (event.type === "task.started") {
         current.status = "running";
         current.agentId = event.agentId;
+        current.error = undefined;
       } else if (event.type === "task.succeeded") {
         current.status = "succeeded";
         current.agentId = event.agentId ?? current.agentId;
@@ -132,6 +134,7 @@ export function projectRun(
       };
       current.status = event.data?.status === "succeeded" ? "succeeded" : "queued";
       current.agentId = event.agentId ?? current.agentId;
+      current.error = undefined;
       tasks.set(event.taskId, current);
     }
 
@@ -181,6 +184,8 @@ export function projectRun(
     }
   }
 
+  const metrics = projectMetrics(events, status, startedAt, completedAt, tasks, integration, error);
+
   return {
     runId,
     mode,
@@ -203,6 +208,73 @@ export function projectRun(
     trustProfile,
     extensions,
     pendingApprovals: [],
+    metrics,
+  };
+}
+
+function projectMetrics(
+  events: readonly RuntimeEvent[],
+  status: DesktopRunStatus,
+  startedAt: string | undefined,
+  completedAt: string | undefined,
+  tasks: ReadonlyMap<string, DesktopTaskView>,
+  integration: DesktopIntegrationView | undefined,
+  error: string | undefined,
+): DesktopRunMetricsView {
+  let modelCalls = 0;
+  let totalTokens = 0;
+  let modelFailures = 0;
+  let toolFailures = 0;
+  let artifactGateRetries = 0;
+  for (const event of events) {
+    if (event.type === "model.completed") {
+      modelCalls += 1;
+      totalTokens += getNumber(event.data?.totalTokens) ?? 0;
+    } else if (event.type === "model.failed") {
+      modelFailures += 1;
+    } else if (event.type === "tool.failed") {
+      toolFailures += 1;
+      if (event.data?.toolName === "write_artifact") artifactGateRetries += 1;
+    }
+  }
+  const startMs = startedAt === undefined ? undefined : Date.parse(startedAt);
+  const endTimestamp = completedAt ?? events.at(-1)?.timestamp;
+  const endMs = endTimestamp === undefined ? undefined : Date.parse(endTimestamp);
+  const durationMs = startMs !== undefined
+    && endMs !== undefined
+    && Number.isFinite(startMs)
+    && Number.isFinite(endMs)
+    && endMs >= startMs
+    ? endMs - startMs
+    : undefined;
+  let failureStage: DesktopRunMetricsView["failureStage"];
+  if (status === "failed") {
+    if (
+      integration?.status === "preflight_failed"
+      || integration?.status === "failed"
+      || integration?.status === "recovery_required"
+    ) {
+      failureStage = "integration";
+    } else if (artifactGateRetries > 0) {
+      failureStage = "artifact_gate";
+    } else if ([...tasks.values()].some((task) => task.status === "failed" || task.status === "blocked")) {
+      failureStage = "task";
+    } else if (!events.some((event) => event.type === "plan.created")) {
+      failureStage = /\b(?:MCP|extension|skill|browser)\b/i.test(error ?? "")
+        ? "extensions"
+        : "planning";
+    } else {
+      failureStage = "runtime";
+    }
+  }
+  return {
+    durationMs,
+    modelCalls,
+    totalTokens,
+    modelFailures,
+    toolFailures,
+    artifactGateRetries,
+    failureStage,
   };
 }
 
@@ -318,13 +390,17 @@ export async function loadWorkspaceRunHistory(
 }
 
 function toEventView(event: RuntimeEvent): DesktopEventView {
+  const toolName = getString(event.data?.toolName);
+  const toolFailure = event.type === "tool.failed" && toolName === "write_artifact"
+    ? getString(event.data?.error)?.slice(0, 240)
+    : undefined;
   return {
     sequence: event.sequence,
     timestamp: event.timestamp,
     type: event.type,
     taskId: event.taskId,
     agentId: event.agentId,
-    detail: getString(event.data?.toolName)
+    detail: (toolFailure === undefined ? toolName : `${toolName} · ${toolFailure}`)
       ?? (event.type === "extensions.loaded" ? getStringArray(event.data?.skillIds).join(", ") || "extensions" : undefined)
       ?? getString(event.data?.fileName)
       ?? getString(event.data?.commitSha)

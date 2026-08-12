@@ -1,12 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 
+import localBuddyIcon from "../../../assets/brand/localbuddy-icon.png";
+
 import type {
+  DesktopOnboardingState,
+  DesktopProviderAvailability,
   DesktopRunMode,
   DesktopRunStatus,
   DesktopTrustProfile,
   DesktopRunView,
   DesktopIntegrationDiffView,
+  DesktopArtifactPreviewView,
+  DesktopWorkspaceReadiness,
 } from "../../../src/desktop-contract";
+import {
+  GUIDE_TEMPLATES,
+  type GuideTemplateId,
+} from "../../../src/onboarding-content";
 
 const ACTIVE_STATUSES = new Set<DesktopRunStatus>([
   "starting",
@@ -15,8 +25,24 @@ const ACTIVE_STATUSES = new Set<DesktopRunStatus>([
   "cancelling",
 ]);
 
+const EMPTY_PROVIDER_AVAILABILITY: DesktopProviderAvailability = {
+  deepseek: false,
+  openai: false,
+};
+const EMPTY_WORKSPACE_READINESS: DesktopWorkspaceReadiness = {
+  selected: false,
+  isGitRepository: false,
+  isTutorialWorkspace: false,
+};
+const DEFAULT_ONBOARDING: DesktopOnboardingState = {
+  version: 1,
+  guideSeen: false,
+  contextHelpEnabled: true,
+};
+
 export function App() {
   const [workspace, setWorkspace] = useState("");
+  const [recentWorkspaces, setRecentWorkspaces] = useState<readonly string[]>([]);
   const [runs, setRuns] = useState<readonly DesktopRunView[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string>();
   const [goal, setGoal] = useState("");
@@ -44,6 +70,14 @@ export function App() {
   const [loadingIntegrationDiff, setLoadingIntegrationDiff] = useState(false);
   const [exportingDiagnostics, setExportingDiagnostics] = useState(false);
   const [diagnosticsStatus, setDiagnosticsStatus] = useState<string>();
+  const [artifactPreview, setArtifactPreview] = useState<DesktopArtifactPreviewView>();
+  const [loadingArtifactName, setLoadingArtifactName] = useState<string>();
+  const [guideVisible, setGuideVisible] = useState(true);
+  const [onboarding, setOnboarding] = useState<DesktopOnboardingState>(DEFAULT_ONBOARDING);
+  const [providerAvailability, setProviderAvailability] = useState<DesktopProviderAvailability>(EMPTY_PROVIDER_AVAILABILITY);
+  const [workspaceReadiness, setWorkspaceReadiness] = useState<DesktopWorkspaceReadiness>(EMPTY_WORKSPACE_READINESS);
+  const [creatingTutorial, setCreatingTutorial] = useState(false);
+  const [guideStatus, setGuideStatus] = useState<string>();
 
   useEffect(() => {
     const unsubscribe = window.localbuddy.onRunUpdate((updated) => {
@@ -53,8 +87,13 @@ export function App() {
     window.localbuddy.bootstrap()
       .then((bootstrap) => {
         setWorkspace(bootstrap.workspace);
+        setRecentWorkspaces(bootstrap.recentWorkspaces);
         setRuns(bootstrap.runs);
         setSelectedRunId(bootstrap.runs[0]?.runId);
+        setProviderAvailability(bootstrap.providerAvailability);
+        setWorkspaceReadiness(bootstrap.workspaceReadiness);
+        setOnboarding(bootstrap.onboarding);
+        setGuideVisible(!bootstrap.onboarding.guideSeen);
       })
       .catch((cause: unknown) => setError(toMessage(cause)))
       .finally(() => setLoading(false));
@@ -64,6 +103,7 @@ export function App() {
   useEffect(() => {
     setIntegrationDiff(undefined);
     setDiagnosticsStatus(undefined);
+    setArtifactPreview(undefined);
   }, [selectedRunId]);
 
   const selectedRun = useMemo(
@@ -82,13 +122,107 @@ export function App() {
     try {
       const selected = await window.localbuddy.selectWorkspace();
       if (selected === null) return;
-      setWorkspace(selected);
-      const history = await window.localbuddy.listRuns(selected);
-      setRuns(history);
-      setSelectedRunId(history[0]?.runId);
+      await activateWorkspace(selected);
     } catch (cause) {
       setError(toMessage(cause));
     }
+  }
+
+  async function openRecentWorkspace(selected: string) {
+    if (selected === workspace) return;
+    setError(undefined);
+    try {
+      await activateWorkspace(selected);
+    } catch (cause) {
+      setError(toMessage(cause));
+    }
+  }
+
+  async function activateWorkspace(selected: string) {
+    const [history, readiness] = await Promise.all([
+      window.localbuddy.listRuns(selected),
+      window.localbuddy.inspectWorkspace(selected),
+    ]);
+    setWorkspace(selected);
+    setRuns(history);
+    setSelectedRunId(history[0]?.runId);
+    setRecentWorkspaces((current) => promoteRecentWorkspace(current, selected));
+    setWorkspaceReadiness(readiness);
+    setGoal("");
+    setGuideStatus(guideVisible ? "工作区已更换。为避免把旧上下文带入新目录，编辑器已经清空；请选择合适的模板。" : undefined);
+  }
+
+  async function openGuide() {
+    setError(undefined);
+    setGuideVisible(true);
+    if (!onboarding.guideSeen) {
+      try {
+        setOnboarding(await window.localbuddy.updateOnboarding({ guideSeen: true }));
+      } catch (cause) {
+        setError(toMessage(cause));
+      }
+    }
+  }
+
+  async function closeGuide() {
+    setError(undefined);
+    try {
+      setOnboarding(await window.localbuddy.updateOnboarding({ guideSeen: true }));
+      setGuideVisible(false);
+    } catch (cause) {
+      setError(toMessage(cause));
+    }
+  }
+
+  async function setContextHelp(enabled: boolean) {
+    setError(undefined);
+    try {
+      setOnboarding(await window.localbuddy.updateOnboarding({ contextHelpEnabled: enabled }));
+    } catch (cause) {
+      setError(toMessage(cause));
+    }
+  }
+
+  async function createTutorialAndPrepare() {
+    setError(undefined);
+    setGuideStatus(undefined);
+    setCreatingTutorial(true);
+    try {
+      const result = await window.localbuddy.createTutorialWorkspace();
+      setWorkspace(result.workspace);
+      setRuns(result.runs);
+      setSelectedRunId(result.runs[0]?.runId);
+      setRecentWorkspaces(result.recentWorkspaces);
+      setWorkspaceReadiness(result.readiness);
+      setOnboarding(result.onboarding);
+      applyGuideTemplate("tutorial-research");
+      setGuideStatus(result.created
+        ? "教程工作区已在本机创建，研究模板已填入下方编辑器；任务尚未启动。"
+        : "已复用原教程工作区，研究模板已填入下方编辑器；没有覆盖任何文件。"
+      );
+    } catch (cause) {
+      setError(toMessage(cause));
+    } finally {
+      setCreatingTutorial(false);
+    }
+  }
+
+  function applyGuideTemplate(templateId: GuideTemplateId) {
+    const template = GUIDE_TEMPLATES[templateId];
+    setMode(template.mode);
+    setTrustProfile(template.trustProfile);
+    setGoal(template.goal);
+    setGuideStatus("模板已填入下方编辑器。请先检查内容；只有点击“开始任务”后才会调用 Provider。");
+    setTimeout(() => document.querySelector<HTMLTextAreaElement>(".composer textarea")?.focus(), 0);
+  }
+
+  function revealProviderSetup() {
+    setExtensionsOpen(true);
+    setTimeout(() => {
+      const input = document.querySelector<HTMLInputElement>('.provider-config-block input[type="password"]');
+      input?.scrollIntoView({ behavior: "smooth", block: "center" });
+      input?.focus();
+    }, 0);
   }
 
   async function startRun() {
@@ -118,6 +252,8 @@ export function App() {
       setRuns((current) => upsertRun(current, run));
       setSelectedRunId(run.runId);
       setGoal("");
+      setGuideVisible(false);
+      setGuideStatus(undefined);
     } catch (cause) {
       setError(toMessage(cause));
     }
@@ -135,6 +271,7 @@ export function App() {
       });
       setProviderApiKey("");
       setCredentialStatus(`${providerId === "deepseek" ? "DeepSeek" : "OpenAI"} 凭据已写入系统安全存储`);
+      setProviderAvailability((current) => ({ ...current, [providerId]: true }));
     } catch (cause) {
       setError(toMessage(cause));
     } finally {
@@ -165,7 +302,11 @@ export function App() {
   }
 
   async function resumeRun() {
-    if (selectedRun?.status !== "interrupted" || selectedRun.checkpoint?.status !== "available") return;
+    if (
+      selectedRun === undefined
+      || (selectedRun.status !== "interrupted" && selectedRun.status !== "failed")
+      || (selectedRun.status === "interrupted" && selectedRun.checkpoint?.status !== "available")
+    ) return;
     setError(undefined);
     try {
       const resumed = await window.localbuddy.resumeRun({ workspace, runId: selectedRun.runId });
@@ -174,6 +315,49 @@ export function App() {
     } catch (cause) {
       setError(toMessage(cause));
     }
+  }
+
+  async function loadArtifactPreview(fileName: string) {
+    if (selectedRun === undefined) return;
+    setError(undefined);
+    setLoadingArtifactName(fileName);
+    try {
+      setArtifactPreview(await window.localbuddy.loadArtifactPreview({
+        workspace,
+        runId: selectedRun.runId,
+        fileName,
+      }));
+    } catch (cause) {
+      setError(toMessage(cause));
+    } finally {
+      setLoadingArtifactName(undefined);
+    }
+  }
+
+  async function openArtifactExternally(fileName: string) {
+    if (selectedRun === undefined) return;
+    setError(undefined);
+    try {
+      await window.localbuddy.openArtifact({ workspace, runId: selectedRun.runId, fileName });
+    } catch (cause) {
+      setError(toMessage(cause));
+    }
+  }
+
+  function continueFromArtifact() {
+    if (selectedRun === undefined || artifactPreview === undefined) return;
+    const excerpt = artifactPreview.text.slice(0, 20_000);
+    setMode(selectedRun.mode);
+    setGoal([
+      `基于上一 Run 的已验证产物 ${artifactPreview.fileName} 继续。`,
+      "以下内容只会在我点击“开始任务”后发送给所选 Provider：",
+      "",
+      excerpt,
+      artifactPreview.text.length > excerpt.length ? "\n[续写上下文已截断]" : "",
+      "",
+      "请继续：",
+    ].join("\n"));
+    setTimeout(() => document.querySelector<HTMLTextAreaElement>(".composer textarea")?.scrollIntoView({ behavior: "smooth" }), 0);
   }
 
   async function cleanupWorktrees() {
@@ -287,7 +471,9 @@ export function App() {
       <aside className="sidebar">
         <div className="window-drag" />
         <div className="brand">
-          <span className="brand-mark">LB</span>
+          <span className="brand-mark">
+            <img src={localBuddyIcon} alt="" />
+          </span>
           <div>
             <strong>LocalBuddy</strong>
             <span>multi-agent local runtime</span>
@@ -298,10 +484,29 @@ export function App() {
           <span className="workspace-icon">⌘</span>
           <span>
             <small>工作区</small>
-            <strong title={workspace}>{shortPath(workspace)}</strong>
+            <strong title={workspace || "尚未选择工作区"}>{workspace.length === 0 ? "选择一个安全工作区" : shortPath(workspace)}</strong>
           </span>
           <span className="chevron">⌄</span>
         </button>
+
+        <button className={guideVisible ? "guide-entry active" : "guide-entry"} onClick={openGuide}>
+          <span className="guide-entry-icon">?</span>
+          <span>
+            <strong>指引与示例</strong>
+            <small>完成第一次可信运行</small>
+          </span>
+        </button>
+
+        {recentWorkspaces.filter((item) => item !== workspace).length > 0 && (
+          <div className="recent-workspaces">
+            <span>最近工作区</span>
+            {recentWorkspaces.filter((item) => item !== workspace).slice(0, 3).map((item) => (
+              <button key={item} onClick={() => openRecentWorkspace(item)} title={item}>
+                {shortPath(item)}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="sidebar-label">
           <span>运行记录</span>
@@ -310,9 +515,12 @@ export function App() {
         <nav className="run-list">
           {runs.map((run) => (
             <button
-              className={run.runId === selectedRun?.runId ? "run-item selected" : "run-item"}
+              className={!guideVisible && run.runId === selectedRun?.runId ? "run-item selected" : "run-item"}
               key={run.runId}
-              onClick={() => setSelectedRunId(run.runId)}
+              onClick={() => {
+                setGuideVisible(false);
+                setSelectedRunId(run.runId);
+              }}
             >
               <span className={`status-dot ${run.status}`} />
               <span>
@@ -336,9 +544,16 @@ export function App() {
         <header className="main-header">
           <div>
             <div className="eyebrow">LOCAL CONTROL PLANE</div>
-            <h1>{selectedRun ? friendlyRunName(selectedRun) : "创建第一个运行"}</h1>
+            <h1>{guideVisible ? "第一次可信运行" : selectedRun ? friendlyRunName(selectedRun) : "创建第一个运行"}</h1>
           </div>
-          {selectedRun && (
+          {guideVisible ? (
+            <div className="header-actions guide-header-actions">
+              <button onClick={() => setContextHelp(!onboarding.contextHelpEnabled)}>
+                运行中提示：{onboarding.contextHelpEnabled ? "开" : "关"}
+              </button>
+              <button onClick={closeGuide}>进入工作台</button>
+            </div>
+          ) : selectedRun && (
             <div className="header-actions">
               <button onClick={exportDiagnostics} disabled={exportingDiagnostics}>
                 {exportingDiagnostics ? "导出中…" : "导出脱敏诊断"}
@@ -351,8 +566,26 @@ export function App() {
         {error && <div className="error-banner">{error}</div>}
         {diagnosticsStatus && <div className="success-banner">{diagnosticsStatus}</div>}
 
-        {selectedRun ? (
+        {guideVisible ? (
+          <FirstRunGuide
+            workspace={workspace}
+            readiness={workspaceReadiness}
+            providerId={providerId}
+            providerAvailability={providerAvailability}
+            contextHelpEnabled={onboarding.contextHelpEnabled}
+            creatingTutorial={creatingTutorial}
+            status={guideStatus}
+            onChooseWorkspace={chooseWorkspace}
+            onCreateTutorial={createTutorialAndPrepare}
+            onConfigureProvider={revealProviderSetup}
+            onApplyTemplate={applyGuideTemplate}
+            onToggleContextHelp={setContextHelp}
+          />
+        ) : selectedRun ? (
           <div className="run-content">
+            {onboarding.contextHelpEnabled && (
+              <RunGuideHint run={selectedRun} onDisable={() => setContextHelp(false)} />
+            )}
             <section className="summary-strip">
               <SummaryMetric label="任务" value={String(selectedRun.tasks.length)} detail="task graph" />
               <SummaryMetric
@@ -360,9 +593,27 @@ export function App() {
                 value={String(selectedRun.tasks.filter((task) => task.status === "succeeded").length)}
                 detail="verified tasks"
               />
-              <SummaryMetric label="事件" value={String(selectedRun.eventCount)} detail="append-only" />
-              <SummaryMetric label="产物" value={String(selectedRun.artifacts.length)} detail="registered" />
+              <SummaryMetric label="耗时" value={formatDuration(selectedRun.metrics.durationMs)} detail="audited timeline" />
+              <SummaryMetric label="模型调用" value={String(selectedRun.metrics.modelCalls)} detail="completed calls" />
+              <SummaryMetric label="Tokens" value={formatCount(selectedRun.metrics.totalTokens)} detail="provider reported" />
+              <SummaryMetric
+                label="失败 / 闸门"
+                value={`${selectedRun.metrics.modelFailures + selectedRun.metrics.toolFailures} / ${selectedRun.metrics.artifactGateRetries}`}
+                detail={selectedRun.metrics.failureStage === undefined ? "calls / artifact" : failureStageLabel(selectedRun.metrics.failureStage)}
+              />
             </section>
+
+            {selectedRun.status === "failed" && (
+              <section className="panel failed-recovery-panel">
+                <div>
+                  <span className="recovery-kicker">CHECKPOINT RETRY</span>
+                  <h2>失败阶段：{failureStageLabel(selectedRun.metrics.failureStage)}</h2>
+                  <p>重试会复用安全 checkpoint 中已成功的 Task，只重新执行未完成 Task 及其依赖链；若工作区或工具收据已漂移，运行时会拒绝恢复。</p>
+                  {selectedRun.error && <small>{selectedRun.error}</small>}
+                </div>
+                <button onClick={resumeRun}>重试未完成 Task 链</button>
+              </section>
+            )}
 
             {selectedRun.status === "interrupted" && (
               <section className="panel recovery-panel">
@@ -453,6 +704,7 @@ export function App() {
                     </div>
                     <h3>{task.title}</h3>
                     <p>{task.agentId ?? "等待 Agent 分配"}</p>
+                    {task.error && <p className="task-error" title={task.error}>{task.error}</p>}
                     <div className="task-progress"><span /></div>
                   </article>
                 ))}
@@ -502,20 +754,36 @@ export function App() {
                   <button
                     className="artifact-card"
                     key={artifact.absolutePath}
-                    onClick={() => window.localbuddy.openArtifact(workspace, artifact.absolutePath)}
+                    onClick={() => loadArtifactPreview(artifact.fileName)}
                   >
                       <span className="file-badge">{artifactBadge(artifact.fileName)}</span>
                     <span>
                       <strong>{artifact.fileName}</strong>
                       <small>{formatBytes(artifact.bytes)} · {artifact.sha256?.slice(0, 12) ?? "hash pending"}</small>
                     </span>
-                    <span className="open-arrow">↗</span>
+                    <span className="open-arrow">{loadingArtifactName === artifact.fileName ? "…" : "›"}</span>
                   </button>
                 ))}
                 {selectedRun.artifacts.length === 0 && (
                   <div className="empty-panel compact">通过验证的产物会出现在这里</div>
                 )}
               </div>
+              {artifactPreview && (
+                <div className="artifact-preview">
+                  <div className="artifact-preview-header">
+                    <div>
+                      <strong>{artifactPreview.fileName}</strong>
+                      <span>SHA-256 {artifactPreview.sha256.slice(0, 16)} · {formatBytes(artifactPreview.bytes)}{artifactPreview.truncated ? " · 预览已截断" : ""}</span>
+                    </div>
+                    <div>
+                      <button onClick={() => openArtifactExternally(artifactPreview.fileName)}>系统打开</button>
+                      <button className="continue-artifact-button" onClick={continueFromArtifact}>基于此产物继续</button>
+                    </div>
+                  </div>
+                  <pre>{artifactPreview.text}</pre>
+                  <small>预览在本机完成；只有你点击“开始任务”后，填入编辑器的续写上下文才会发送给 Provider。</small>
+                </div>
+              )}
             </section>
 
             {selectedRun.integration && (
@@ -618,8 +886,9 @@ export function App() {
         ) : (
           <div className="welcome-state">
             <span className="welcome-mark">◫</span>
-            <h2>本地文件，远程智能，可审计执行</h2>
-            <p>Orchestrator 拆解任务，Worker 并行执行，Integrator 通过闸门后交付产物。</p>
+            <h2>准备开始一个真实任务</h2>
+            <p>{workspace.length === 0 ? "先选择一个明确的工作区，或重新打开“指引与示例”创建安全教程工作区。" : "描述目标并检查下方配置。模板只会预填；LocalBuddy 不会自行启动任务。"}</p>
+            <button className="reopen-guide-button" onClick={openGuide}>打开指引与示例</button>
           </div>
         )}
 
@@ -754,10 +1023,12 @@ export function App() {
             <span className="live-dot" />
             运行轨迹
           </div>
-          <span>{selectedRun?.eventCount ?? 0}</span>
+          <span>{guideVisible ? "GUIDE" : selectedRun?.eventCount ?? 0}</span>
         </div>
         <div className="event-list">
-          {selectedRun?.recentEvents.toReversed().map((event) => (
+          {guideVisible ? (
+            <GuideEventRail />
+          ) : selectedRun?.recentEvents.toReversed().map((event) => (
             <div className="event-item" key={event.sequence}>
               <span className={`event-icon ${event.type.split(".")[0]}`}>{eventGlyph(event.type)}</span>
               <div>
@@ -767,16 +1038,18 @@ export function App() {
               </div>
             </div>
           ))}
-          {selectedRun?.recentEvents.length === 0 && (
+          {!guideVisible && selectedRun?.recentEvents.length === 0 && (
             <div className="empty-events">事件将在这里实时出现</div>
           )}
         </div>
         <div className="runtime-card">
           <span>RUNTIME</span>
-          <strong>{providerLabel(selectedRun?.providerId ?? providerId)} · SSE</strong>
+          <strong>{guideVisible ? "Local guide · offline" : `${providerLabel(selectedRun?.providerId ?? providerId)} · SSE`}</strong>
           <p>
-            跨 Run 全局并发 3<br />
-            {selectedRun?.extensions === undefined
+            {guideVisible ? "不会读取工作区、调用模型或启动任务" : "跨 Run 全局并发 3"}<br />
+            {guideVisible
+              ? "模板只预填，执行必须由你点击开始"
+              : selectedRun?.extensions === undefined
               ? "扩展按 Run 显式启用"
               : `${selectedRun.extensions.skillIds.length} Skills · ${selectedRun.extensions.mcpServerIds.length} MCP · ${selectedRun.extensions.browserOrigins.length > 0 ? "Browser" : "No Browser"}`}
           </p>
@@ -784,6 +1057,171 @@ export function App() {
       </aside>
     </div>
   );
+}
+
+function FirstRunGuide({
+  workspace,
+  readiness,
+  providerId,
+  providerAvailability,
+  contextHelpEnabled,
+  creatingTutorial,
+  status,
+  onChooseWorkspace,
+  onCreateTutorial,
+  onConfigureProvider,
+  onApplyTemplate,
+  onToggleContextHelp,
+}: {
+  workspace: string;
+  readiness: DesktopWorkspaceReadiness;
+  providerId: "deepseek" | "openai";
+  providerAvailability: DesktopProviderAvailability;
+  contextHelpEnabled: boolean;
+  creatingTutorial: boolean;
+  status?: string;
+  onChooseWorkspace(): void;
+  onCreateTutorial(): void;
+  onConfigureProvider(): void;
+  onApplyTemplate(id: GuideTemplateId): void;
+  onToggleContextHelp(enabled: boolean): void;
+}) {
+  const providerReady = providerAvailability[providerId];
+  return (
+    <div className="guide-state">
+      <section className="guide-dialogue">
+        <span className="guide-avatar"><img src={localBuddyIcon} alt="" /></span>
+        <div className="guide-message">
+          <span>LOCALBUDDY GUIDE · 本地指引</span>
+          <h2>先完成一个真实结果，再认识所有功能。</h2>
+          <p>我不会在这里调用模型、读取文件或启动任务。下面的选择只会准备工作区和预填模板，最终执行必须由你确认。</p>
+        </div>
+      </section>
+
+      {status && <div className="guide-status">{status}</div>}
+
+      <section className="guide-readiness">
+        <div className="guide-section-heading">
+          <span>01</span>
+          <div><h3>运行前准备</h3><p>只检查状态，不读取工作区内容或返回密钥。</p></div>
+        </div>
+        <div className="readiness-grid">
+          <article className={readiness.selected ? "ready" : "needs-action"}>
+            <span>{readiness.selected ? "✓" : "1"}</span>
+            <div>
+              <strong>明确工作区</strong>
+              <small>{readiness.selected
+                ? `${readiness.isTutorialWorkspace ? "教程工作区" : readiness.isGitRepository ? "Git 仓库" : "资料目录"} · ${shortPath(workspace)}`
+                : "不会默认访问整个 Documents"}</small>
+            </div>
+            <button onClick={onChooseWorkspace}>{readiness.selected ? "更换" : "选择"}</button>
+          </article>
+          <article className={providerReady ? "ready" : "needs-action"}>
+            <span>{providerReady ? "✓" : "2"}</span>
+            <div>
+              <strong>{providerLabel(providerId)} 凭据</strong>
+              <small>{providerReady ? "系统安全存储中可用" : "这里只返回可用/不可用，不读取密钥"}</small>
+            </div>
+            <button onClick={onConfigureProvider}>{providerReady ? "查看配置" : "去配置"}</button>
+          </article>
+          <article className="ready">
+            <span>✓</span>
+            <div>
+              <strong>人工控制</strong>
+              <small>模板不自动启动；外部副作用和代码写回另行审批</small>
+            </div>
+            <button onClick={() => onToggleContextHelp(!contextHelpEnabled)}>{contextHelpEnabled ? "提示已开" : "打开提示"}</button>
+          </article>
+        </div>
+      </section>
+
+      <section className="guide-capabilities">
+        <div className="guide-section-heading">
+          <span>02</span>
+          <div><h3>你想先完成什么？</h3><p>按结果选择，不需要先理解 Agent、MCP 或 Worktree。</p></div>
+        </div>
+        <div className="capability-grid">
+          <article className="capability-card recommended">
+            <div className="capability-top"><span>90 秒入门</span><i>推荐</i></div>
+            <h3>用合成材料完成第一份简报</h3>
+            <p>显式创建一个独立教程目录，用真实 Provider 跑完整 Research 流程。</p>
+            <ul><li>输入：3 份虚构材料</li><li>输出：有来源的 Markdown 简报</li><li>控制：不会覆盖现有文件</li></ul>
+            <button onClick={onCreateTutorial} disabled={creatingTutorial}>{creatingTutorial ? "创建中…" : "创建教程工作区并预填"}</button>
+          </article>
+          <article className={!readiness.selected ? "capability-card unavailable" : "capability-card"}>
+            <div className="capability-top"><span>资料研究</span><i>{readiness.selected ? "可准备" : "先选工作区"}</i></div>
+            <h3>把自己的本地资料整理成简报</h3>
+            <p>Worker 并行阅读，Integrator 区分事实、未知与建议，再交付验证产物。</p>
+            <ul><li>输入：你选择的资料目录</li><li>输出：带来源文件名的报告</li><li>控制：点击开始后才发送必要上下文</li></ul>
+            <button onClick={() => onApplyTemplate("workspace-research")} disabled={!readiness.selected}>预填研究模板</button>
+          </article>
+          <article className={!readiness.isGitRepository ? "capability-card unavailable" : "capability-card"}>
+            <div className="capability-top"><span>代码修改</span><i>{readiness.isGitRepository ? "Git 已就绪" : "需要 Git 仓库"}</i></div>
+            <h3>在隔离工作树中修改代码</h3>
+            <p>Agent 只能先生成可审阅 Diff；没有你的明确批准，主工作区不会被写回。</p>
+            <ul><li>输入：干净的 Git 仓库</li><li>输出：组合检查与可校验 Diff</li><li>控制：人工批准 apply / commit</li></ul>
+            <button onClick={() => onApplyTemplate("safe-code")} disabled={!readiness.isGitRepository}>预填安全 Coding 模板</button>
+          </article>
+        </div>
+      </section>
+
+      <section className="guide-mechanics">
+        <div className="guide-section-heading">
+          <span>03</span>
+          <div><h3>一次真实 Run 会展示什么？</h3><p>提示由审计状态驱动，不是预制假运行。</p></div>
+        </div>
+        <div className="mechanics-grid">
+          <div><span>PLAN</span><strong>任务图</strong><p>看到 Orchestrator 如何拆解任务，以及 Worker 的依赖和并发。</p></div>
+          <div><span>TRACE</span><strong>运行轨迹</strong><p>每次模型、工具、审批和产物动作都留下可审计事件。</p></div>
+          <div><span>GATE</span><strong>人工控制</strong><p>外部副作用逐次批准，代码写回前必须查看并批准 Diff。</p></div>
+          <div><span>RECOVER</span><strong>失败恢复</strong><p>安全 checkpoint 可复用已完成 Task，只继续未完成任务链。</p></div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function RunGuideHint({ run, onDisable }: { run: DesktopRunView; onDisable(): void }) {
+  const hint = runGuideHint(run);
+  return (
+    <section className="run-guide-hint">
+      <span className="run-guide-icon">?</span>
+      <div><strong>{hint.title}</strong><p>{hint.detail}</p></div>
+      <button onClick={onDisable}>关闭运行中提示</button>
+    </section>
+  );
+}
+
+function GuideEventRail() {
+  return (
+    <div className="guide-event-rail">
+      <div className="event-item"><span className="event-icon">1</span><div><strong>选择明确工作区</strong><p>不默认读取私人目录</p><small>本地准备</small></div></div>
+      <div className="event-item"><span className="event-icon model">2</span><div><strong>检查并启动模板</strong><p>点击开始后才调用 Provider</p><small>用户决定</small></div></div>
+      <div className="event-item"><span className="event-icon artifact">3</span><div><strong>核验真实产物</strong><p>查看来源、哈希与审计轨迹</p><small>可信结果</small></div></div>
+    </div>
+  );
+}
+
+function runGuideHint(run: DesktopRunView): { title: string; detail: string } {
+  if (run.pendingApprovals.length > 0) {
+    return { title: "Agent 正在等待你决定", detail: "批准只对当前一次、当前参数哈希的调用生效；不确定时可以拒绝。" };
+  }
+  if (run.integration?.status === "awaiting_approval") {
+    return { title: "主工作区还没有被修改", detail: "先校验并查看完整 Diff，再决定只写回、写回并提交，或者拒绝。" };
+  }
+  if (run.status === "starting" || run.status === "planning") {
+    return { title: "Orchestrator 正在拆解目标", detail: "稍后任务图会显示每个 Task、依赖关系和负责的 Agent；规划本身不会绕过工具权限。" };
+  }
+  if (run.status === "running") {
+    return { title: "真实执行正在产生审计事件", detail: "右侧轨迹区会记录模型、工具、审批和产物动作；读任务可并行，写入仍受工作区锁约束。" };
+  }
+  if (run.status === "succeeded") {
+    return { title: "Run 已完成，先验证结果", detail: "从“验证产物”查看文件名、大小和 SHA-256；文本预览会在本机复核后展示。" };
+  }
+  if (run.status === "failed" || run.status === "interrupted") {
+    return { title: "失败不会被伪装成成功", detail: "检查失败阶段与 checkpoint。只有安全边界可验证时，LocalBuddy 才会允许继续未完成 Task 链。" };
+  }
+  return { title: "这个 Run 保留完整边界", detail: "目标、状态、审批和产物都属于当前工作区；历史不会因重放或恢复被改写。" };
 }
 
 function csvValues(value: string): string[] {
@@ -809,6 +1247,10 @@ function StatusPill({ status }: { status: DesktopRunStatus }) {
 function upsertRun(runs: readonly DesktopRunView[], updated: DesktopRunView) {
   const next = [updated, ...runs.filter((run) => run.runId !== updated.runId)];
   return next.toSorted((left, right) => (right.startedAt ?? "").localeCompare(left.startedAt ?? ""));
+}
+
+function promoteRecentWorkspace(current: readonly string[], workspace: string): string[] {
+  return [workspace, ...current.filter((candidate) => candidate !== workspace)].slice(0, 5);
 }
 
 function friendlyRunName(run: DesktopRunView) {
@@ -879,6 +1321,30 @@ function formatClock(value: string) {
 function formatBytes(value?: number) {
   if (value === undefined) return "size unknown";
   return value < 1024 ? `${value} B` : `${(value / 1024).toFixed(1)} KB`;
+}
+
+function formatDuration(value?: number) {
+  if (value === undefined) return "—";
+  if (value < 1_000) return `${value}ms`;
+  if (value < 60_000) return `${Math.round(value / 1_000)}s`;
+  const minutes = Math.floor(value / 60_000);
+  const seconds = Math.round((value % 60_000) / 1_000);
+  return `${minutes}m${seconds}s`;
+}
+
+function formatCount(value: number) {
+  return value >= 1_000 ? new Intl.NumberFormat("zh-CN", { notation: "compact" }).format(value) : String(value);
+}
+
+function failureStageLabel(stage?: string) {
+  return ({
+    extensions: "扩展初始化",
+    planning: "任务规划",
+    task: "Task 执行",
+    artifact_gate: "Artifact Gate",
+    integration: "受控集成",
+    runtime: "运行时",
+  } as Record<string, string>)[stage ?? ""] ?? "待定位";
 }
 
 function toMessage(value: unknown) {

@@ -1,6 +1,6 @@
 # LocalBuddy V2 Architecture
 
-> **状态基线**：2026-08-09，`v0.9.0 / M10`。本文件描述当前架构事实；各 `M*-SPEC.md` 保留对应阶段当时的范围，不因后续实现而回写历史。
+> **状态基线**：2026-08-13，`0.11.0 / M10.2`。本文件描述当前架构事实；各 `M*-SPEC.md` 保留对应阶段当时的范围，不因后续实现而回写历史。
 
 ## 1. 产品判断
 
@@ -221,5 +221,7 @@ Desktop 使用 Electron single-instance lock，避免两个桌面进程同时拥
 13. **M8 MCP OAuth 2.1（已完成本地协议验收）**：RFC 9728/8414 discovery、DCR、Authorization Code + PKCE、loopback/state、refresh/revoke、resource binding 和 OS 凭证隔离。
 14. **M9 Distribution Protocol + Platforms + Skills（已完成本地可证明范围）**：Ed25519 更新 staging、回滚保护、Linux/Windows native build contracts、签名/锁定/撤销 Skill。正式 Developer ID、Hardened Runtime 与 notarization 按用户决策暂缓。
 15. **M10 Dogfooding + Productization（已完成代码、本机与原生 Runner 范围）**：Desktop Provider/凭证设置、持久信任档、哈希校验 inline diff、脱敏诊断导出、macOS 包复验、Linux/Windows 原生构建和 Windows GitHub Release。Windows 真机端到端与生产 MCP OAuth 仍是外部门禁。
+16. **M10.1 Local Dogfood Closure（已完成本机闭环）**：Run 指标投影、Artifact Gate 反馈/预算、失败 Run 安全 checkpoint 恢复、最近工作区、校验后的文本 Artifact 预览与显式继续、MCP stdio 脱敏失败诊断，以及真实 Coding commit/reverse-commit 验证。连续 7-14 天使用仍是开放门禁。
+17. **M10.2 First Trusted Run（已完成本机实现与 UI 验收）**：本地确定性 Guide、私有版本化偏好、Provider 布尔 readiness、显式合成教程工作区、只预填模板和真实 Run 状态提示。Guide 不属于 Run，不调用模型，也不进入审计指标；真实执行仍复用既有 Run 合同。
 
-M11 尚未立项。持续会话、Project/Workspace 首页、资料摄取、内嵌产物预览和更可控的多 Agent 交互属于候选方向，必须在真实 dogfooding 后再确定范围，不能写成已承诺能力。
+M11 尚未立项。持久化多轮工作线程、Project/Workspace 首页、资料摄取、非纯文本产物预览和更可控的多 Agent 交互属于候选方向，必须在连续 dogfooding 后再确定范围，不能写成已承诺能力。

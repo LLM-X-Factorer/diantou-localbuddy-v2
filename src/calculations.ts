@@ -24,7 +24,13 @@ export class InMemoryCalculationRegistry implements CalculationRegistry {
   readonly #records = new Map<string, CalculationRecord>();
 
   async add(record: CalculationRecord): Promise<void> {
-    this.#records.set(`${record.runId}:${record.id}`, record);
+    const key = `${record.runId}:${record.id}`;
+    const existing = this.#records.get(key);
+    if (existing !== undefined) {
+      assertSameCalculationEvidence(existing, record);
+      return;
+    }
+    this.#records.set(key, record);
   }
 
   async list(runId?: RunId): Promise<readonly CalculationRecord[]> {
@@ -49,9 +55,7 @@ export class JsonCalculationRegistry implements CalculationRegistry {
         candidate.runId === record.runId && candidate.id === record.id,
       );
       if (existing !== undefined) {
-        if (JSON.stringify(existing) !== JSON.stringify(record)) {
-          throw new Error(`calculation registry conflict for ${record.id}`);
-        }
+        assertSameCalculationEvidence(existing, record);
         return;
       }
       records.push(record);
@@ -86,6 +90,31 @@ export class JsonCalculationRegistry implements CalculationRegistry {
       throw new Error("calculation registry must be an array");
     }
     return raw.map(parseCalculationRecord);
+  }
+}
+
+function assertSameCalculationEvidence(
+  existing: CalculationRecord,
+  candidate: CalculationRecord,
+): void {
+  const existingEvidence = {
+    runId: existing.runId,
+    id: existing.id,
+    toolName: existing.toolName,
+    operation: existing.operation,
+    inputs: existing.inputs,
+    outputs: existing.outputs,
+  };
+  const candidateEvidence = {
+    runId: candidate.runId,
+    id: candidate.id,
+    toolName: candidate.toolName,
+    operation: candidate.operation,
+    inputs: candidate.inputs,
+    outputs: candidate.outputs,
+  };
+  if (JSON.stringify(existingEvidence) !== JSON.stringify(candidateEvidence)) {
+    throw new Error(`calculation registry conflict for ${candidate.id}`);
   }
 }
 

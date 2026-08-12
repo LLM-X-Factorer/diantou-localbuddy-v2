@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { execFile, spawn } from "node:child_process";
-import { mkdir, readFile, readdir, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, readlink, rm, stat } from "node:fs/promises";
 import { createServer } from "node:http";
-import { resolve, join } from "node:path";
+import { tmpdir } from "node:os";
+import { isAbsolute, resolve, join } from "node:path";
 import { promisify } from "node:util";
 
 import { chromium } from "playwright";
@@ -10,6 +11,9 @@ import { chromium } from "playwright";
 const execFileAsync = promisify(execFile);
 const appPath = resolve(
   process.argv[2] ?? ".localbuddy/forge-out/LocalBuddy-darwin-arm64/LocalBuddy.app",
+);
+const dmgPath = resolve(
+  process.argv[3] ?? ".localbuddy/forge-out/make/LocalBuddy-0.11.0-arm64.dmg",
 );
 const executable = join(appPath, "Contents", "MacOS", "LocalBuddy");
 const resources = join(appPath, "Contents", "Resources");
@@ -80,9 +84,44 @@ assert.equal(diagnostics.rootChildren, 1);
 assert.ok(diagnostics.bodyCharacters > 100);
 assert.ok((await stat(screenshot)).size > 10_000);
 
+await execFileAsync("hdiutil", ["verify", dmgPath]);
+const mountRoot = await mkdtemp(join(tmpdir(), "localbuddy-dmg-verify-"));
+let mounted = false;
+let mountedSymlinkCount = 0;
+try {
+  await execFileAsync("hdiutil", [
+    "attach",
+    "-readonly",
+    "-nobrowse",
+    "-mountpoint",
+    mountRoot,
+    dmgPath,
+  ]);
+  mounted = true;
+  const mountedAppPath = join(mountRoot, "LocalBuddy.app");
+  await execFileAsync("codesign", [
+    "--verify",
+    "--deep",
+    "--strict",
+    "--verbose=2",
+    mountedAppPath,
+  ]);
+  mountedSymlinkCount = await verifyRelativeSymlinks(mountedAppPath);
+  assert.ok(mountedSymlinkCount > 0, "mounted app should contain framework symlinks");
+} finally {
+  if (mounted) {
+    await execFileAsync("hdiutil", ["detach", mountRoot]);
+  }
+  await rm(mountRoot, { recursive: true, force: true });
+}
+
 process.stdout.write(`${JSON.stringify({
   appPath,
+  dmgPath,
   codeSignature: "valid-ad-hoc",
+  dmgIntegrity: "verified",
+  mountedAppCodeSignature: "valid-ad-hoc",
+  mountedSymlinkCount,
   fuses: "verified",
   packagedBrowser: "verified",
   renderer: diagnostics,
@@ -107,4 +146,23 @@ async function runApp(command, env) {
       else reject(new Error(`packaged app exited with ${code ?? signal}: ${stderr}`));
     });
   });
+}
+
+async function verifyRelativeSymlinks(root) {
+  let count = 0;
+  for (const entry of await readdir(root, { withFileTypes: true })) {
+    const entryPath = join(root, entry.name);
+    if (entry.isSymbolicLink()) {
+      const target = await readlink(entryPath);
+      assert.equal(
+        isAbsolute(target),
+        false,
+        `packaged symlink must remain relative: ${entryPath} -> ${target}`,
+      );
+      count += 1;
+    } else if (entry.isDirectory()) {
+      count += await verifyRelativeSymlinks(entryPath);
+    }
+  }
+  return count;
 }

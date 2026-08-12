@@ -1,6 +1,9 @@
 export const DESKTOP_CHANNELS = {
   bootstrap: "localbuddy:bootstrap",
   selectWorkspace: "localbuddy:select-workspace",
+  inspectWorkspace: "localbuddy:inspect-workspace",
+  createTutorialWorkspace: "localbuddy:create-tutorial-workspace",
+  updateOnboarding: "localbuddy:update-onboarding",
   storeProviderCredential: "localbuddy:store-provider-credential",
   listRuns: "localbuddy:list-runs",
   startRun: "localbuddy:start-run",
@@ -11,6 +14,7 @@ export const DESKTOP_CHANNELS = {
   approveIntegration: "localbuddy:approve-integration",
   revertIntegration: "localbuddy:revert-integration",
   loadIntegrationDiff: "localbuddy:load-integration-diff",
+  loadArtifactPreview: "localbuddy:load-artifact-preview",
   exportDiagnostics: "localbuddy:export-diagnostics",
   resolveToolApproval: "localbuddy:resolve-tool-approval",
   openArtifact: "localbuddy:open-artifact",
@@ -134,11 +138,66 @@ export interface DesktopRunView {
     mcpWritesAllowed: boolean;
   };
   pendingApprovals: readonly DesktopToolApprovalView[];
+  metrics: DesktopRunMetricsView;
+}
+
+export type DesktopFailureStage =
+  | "extensions"
+  | "planning"
+  | "task"
+  | "artifact_gate"
+  | "integration"
+  | "runtime";
+
+export interface DesktopRunMetricsView {
+  durationMs?: number;
+  modelCalls: number;
+  totalTokens: number;
+  modelFailures: number;
+  toolFailures: number;
+  artifactGateRetries: number;
+  failureStage?: DesktopFailureStage;
 }
 
 export interface DesktopBootstrap {
   workspace: string;
   runs: readonly DesktopRunView[];
+  recentWorkspaces: readonly string[];
+  providerAvailability: DesktopProviderAvailability;
+  workspaceReadiness: DesktopWorkspaceReadiness;
+  onboarding: DesktopOnboardingState;
+}
+
+export interface DesktopProviderAvailability {
+  deepseek: boolean;
+  openai: boolean;
+}
+
+export interface DesktopWorkspaceReadiness {
+  selected: boolean;
+  isGitRepository: boolean;
+  isTutorialWorkspace: boolean;
+}
+
+export interface DesktopOnboardingState {
+  version: 1;
+  guideSeen: boolean;
+  contextHelpEnabled: boolean;
+  tutorialWorkspace?: string;
+}
+
+export interface UpdateDesktopOnboardingRequest {
+  guideSeen?: boolean;
+  contextHelpEnabled?: boolean;
+}
+
+export interface DesktopTutorialWorkspaceResult {
+  workspace: string;
+  runs: readonly DesktopRunView[];
+  recentWorkspaces: readonly string[];
+  readiness: DesktopWorkspaceReadiness;
+  onboarding: DesktopOnboardingState;
+  created: boolean;
 }
 
 export interface StartDesktopRunRequest {
@@ -184,6 +243,18 @@ export interface DesktopIntegrationDiffView {
   truncated: boolean;
 }
 
+export interface DesktopArtifactActionRequest extends DesktopRunActionRequest {
+  fileName: string;
+}
+
+export interface DesktopArtifactPreviewView {
+  fileName: string;
+  sha256: string;
+  bytes: number;
+  text: string;
+  truncated: boolean;
+}
+
 export interface ResolveDesktopToolApprovalRequest extends DesktopRunActionRequest {
   approvalId: string;
   decision: "approve" | "deny";
@@ -192,6 +263,9 @@ export interface ResolveDesktopToolApprovalRequest extends DesktopRunActionReque
 export interface DesktopApi {
   bootstrap(): Promise<DesktopBootstrap>;
   selectWorkspace(): Promise<string | null>;
+  inspectWorkspace(workspace: string): Promise<DesktopWorkspaceReadiness>;
+  createTutorialWorkspace(): Promise<DesktopTutorialWorkspaceResult>;
+  updateOnboarding(request: UpdateDesktopOnboardingRequest): Promise<DesktopOnboardingState>;
   storeProviderCredential(
     request: StoreDesktopProviderCredentialRequest,
   ): Promise<StoreDesktopProviderCredentialResult>;
@@ -204,9 +278,10 @@ export interface DesktopApi {
   approveIntegration(request: ApproveDesktopIntegrationRequest): Promise<DesktopRunView | null>;
   revertIntegration(request: RevertDesktopIntegrationRequest): Promise<DesktopRunView | null>;
   loadIntegrationDiff(request: DesktopRunActionRequest): Promise<DesktopIntegrationDiffView>;
+  loadArtifactPreview(request: DesktopArtifactActionRequest): Promise<DesktopArtifactPreviewView>;
   exportDiagnostics(request: DesktopRunActionRequest): Promise<string | null>;
   resolveToolApproval(request: ResolveDesktopToolApprovalRequest): Promise<DesktopRunView>;
-  openArtifact(workspace: string, absolutePath: string): Promise<void>;
+  openArtifact(request: DesktopArtifactActionRequest): Promise<void>;
   onRunUpdate(listener: (run: DesktopRunView) => void): () => void;
 }
 import type { RunExtensionSelection } from "./extension-contract.js";

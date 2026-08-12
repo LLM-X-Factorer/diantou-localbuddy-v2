@@ -11,7 +11,7 @@ if (publicKeyBase64 === undefined) throw new Error("--public-key or LOCALBUDDY_U
 const result = await fetchAndStageUpdate({
   manifestUrl: required(options, "manifest-url"),
   publicKeyBase64,
-  currentVersion: options.get("current-version") ?? "0.9.0",
+  currentVersion: options.get("current-version") ?? "0.11.0",
   stageRoot: resolve(options.get("stage-root") ?? defaultCoordinationRoot(), "updates"),
 });
 process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

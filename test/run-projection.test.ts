@@ -32,6 +32,35 @@ test("projects task, artifact, and recent event state", () => {
   assert.equal(view.eventCount, 7);
 });
 
+test("projects auditable Run cost, retry, duration, and failure-stage metrics", () => {
+  const events: RuntimeEvent[] = [
+    event(1, "run.started"),
+    event(2, "plan.created"),
+    event(3, "task.queued", { taskId: "integrate", data: { title: "Integrate" } }),
+    event(4, "task.started", { taskId: "integrate", agentId: "integrator" }),
+    event(5, "model.completed", { taskId: "integrate", data: { totalTokens: 420 } }),
+    event(6, "tool.failed", {
+      taskId: "integrate",
+      data: { toolName: "write_artifact", error: "Artifact Gate rejected the write" },
+    }),
+    event(7, "model.completed", { taskId: "integrate", data: { totalTokens: 80 } }),
+    event(8, "task.failed", { taskId: "integrate", data: { error: "gate budget exhausted" } }),
+    event(9, "run.failed", { data: { error: "gate budget exhausted" } }),
+  ];
+
+  const view = projectRun("run-1", "/tmp/localbuddy-metrics", events);
+  assert.deepEqual(view.metrics, {
+    durationMs: 8_000,
+    modelCalls: 2,
+    totalTokens: 500,
+    modelFailures: 0,
+    toolFailures: 1,
+    artifactGateRetries: 1,
+    failureStage: "artifact_gate",
+  });
+  assert.match(view.recentEvents.find((item) => item.type === "tool.failed")?.detail ?? "", /Artifact Gate/);
+});
+
 test("projects the persisted provider and M4 extension selection", () => {
   const events: RuntimeEvent[] = [
     event(1, "run.started", {

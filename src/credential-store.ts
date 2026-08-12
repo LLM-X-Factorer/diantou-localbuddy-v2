@@ -53,6 +53,18 @@ export async function resolveDeepSeekApiKey(
   return resolveProviderApiKey("deepseek", environment);
 }
 
+export async function hasProviderApiKey(
+  providerId: CredentialProviderId,
+  environment: NodeJS.ProcessEnv = process.env,
+): Promise<boolean> {
+  try {
+    await resolveProviderApiKey(providerId, environment);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function storeProviderApiKey(
   providerId: CredentialProviderId,
   apiKey: string,

@@ -1,4 +1,4 @@
-import { chmod, writeFile, mkdir, readFile, realpath } from "node:fs/promises";
+import { chmod, writeFile, mkdir, readFile, realpath, stat } from "node:fs/promises";
 import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -21,16 +21,25 @@ import { ProcessSharedCapacity } from "../src/process-shared-provider.js";
 import {
   DESKTOP_CHANNELS,
   type ApproveDesktopIntegrationRequest,
+  type DesktopArtifactActionRequest,
   type DesktopRunActionRequest,
   type RevertDesktopIntegrationRequest,
   type ResolveDesktopToolApprovalRequest,
   type StartDesktopRunRequest,
+  type UpdateDesktopOnboardingRequest,
 } from "../src/desktop-contract.js";
 import { DesktopRunManager } from "../src/desktop-run-manager.js";
+import { RecentWorkspaceStore } from "../src/recent-workspaces.js";
 import {
+  hasProviderApiKey,
   storeProviderApiKey,
   type CredentialProviderId,
 } from "../src/credential-store.js";
+import {
+  ensureTutorialWorkspace,
+  inspectWorkspaceReadiness,
+  OnboardingStateStore,
+} from "../src/onboarding.js";
 import { normalizeTrustProfile } from "../src/tool-runtime.js";
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url));
@@ -55,6 +64,8 @@ if (app.isPackaged && process.env.PLAYWRIGHT_BROWSERS_PATH === undefined) {
 }
 
 let mainWindow: BrowserWindow | null = null;
+let recentWorkspaceStore: RecentWorkspaceStore | undefined;
+let onboardingStateStore: OnboardingStateStore | undefined;
 const runManager = new DesktopRunManager({
   createProvider(selection) {
     return createConfiguredProvider(selection);
@@ -172,10 +183,28 @@ function rendererContentType(filePath: string): string {
 function registerIpcHandlers(): void {
   ipcMain.handle(DESKTOP_CHANNELS.bootstrap, async (event) => {
     assertTrustedSender(event);
-    const workspace = resolve(
-      process.env.LOCALBUDDY_DEFAULT_WORKSPACE ?? app.getPath("documents"),
-    );
-    return { workspace, runs: await runManager.list(workspace) };
+    const recentWorkspaces = await loadExistingRecentWorkspaces();
+    const requestedWorkspace = process.env.LOCALBUDDY_DEFAULT_WORKSPACE ?? recentWorkspaces[0];
+    const workspace = requestedWorkspace === undefined
+      ? ""
+      : await realpath(resolve(requestedWorkspace));
+    if (process.env.LOCALBUDDY_DEFAULT_WORKSPACE !== undefined) {
+      await getRecentWorkspaceStore().remember(workspace);
+    }
+    const [onboarding, deepseekAvailable, openaiAvailable, workspaceReadiness] = await Promise.all([
+      getOnboardingStateStore().load(),
+      hasProviderApiKey("deepseek"),
+      hasProviderApiKey("openai"),
+      inspectWorkspaceReadiness(workspace),
+    ]);
+    return {
+      workspace,
+      runs: workspace.length === 0 ? [] : await runManager.list(workspace),
+      recentWorkspaces: promoteRecentWorkspace(recentWorkspaces, workspace),
+      providerAvailability: { deepseek: deepseekAvailable, openai: openaiAvailable },
+      workspaceReadiness,
+      onboarding,
+    };
   });
 
   ipcMain.handle(DESKTOP_CHANNELS.selectWorkspace, async (event) => {
@@ -187,7 +216,41 @@ function registerIpcHandlers(): void {
     const result = mainWindow === null
       ? await dialog.showOpenDialog(options)
       : await dialog.showOpenDialog(mainWindow, options);
-    return result.canceled ? null : result.filePaths[0] ?? null;
+    if (result.canceled || result.filePaths[0] === undefined) return null;
+    const workspace = await realpath(result.filePaths[0]);
+    await getRecentWorkspaceStore().remember(workspace);
+    return workspace;
+  });
+
+  ipcMain.handle(DESKTOP_CHANNELS.inspectWorkspace, async (event, workspace: unknown) => {
+    assertTrustedSender(event);
+    return inspectWorkspaceReadiness(expectString(workspace, "workspace"));
+  });
+
+  ipcMain.handle(DESKTOP_CHANNELS.createTutorialWorkspace, async (event) => {
+    assertTrustedSender(event);
+    const current = await getOnboardingStateStore().load();
+    const tutorial = await ensureTutorialWorkspace(
+      resolve(app.getPath("userData"), "tutorial-workspaces"),
+      current.tutorialWorkspace,
+    );
+    const workspace = await realpath(tutorial.workspace);
+    const onboarding = await getOnboardingStateStore().rememberTutorialWorkspace(workspace);
+    await getRecentWorkspaceStore().remember(workspace);
+    const recentWorkspaces = await loadExistingRecentWorkspaces();
+    return {
+      workspace,
+      runs: await runManager.list(workspace),
+      recentWorkspaces: promoteRecentWorkspace(recentWorkspaces, workspace),
+      readiness: await inspectWorkspaceReadiness(workspace),
+      onboarding,
+      created: tutorial.created,
+    };
+  });
+
+  ipcMain.handle(DESKTOP_CHANNELS.updateOnboarding, async (event, request: unknown) => {
+    assertTrustedSender(event);
+    return getOnboardingStateStore().update(parseUpdateOnboardingRequest(request));
   });
 
   ipcMain.handle(DESKTOP_CHANNELS.storeProviderCredential, async (event, request: unknown) => {
@@ -199,12 +262,16 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle(DESKTOP_CHANNELS.listRuns, async (event, workspace: unknown) => {
     assertTrustedSender(event);
-    return runManager.list(expectString(workspace, "workspace"));
+    const canonical = await realpath(expectString(workspace, "workspace"));
+    await getRecentWorkspaceStore().remember(canonical);
+    return runManager.list(canonical);
   });
 
   ipcMain.handle(DESKTOP_CHANNELS.startRun, async (event, request: unknown) => {
     assertTrustedSender(event);
-    return runManager.start(parseStartRequest(request));
+    const parsed = parseStartRequest(request);
+    await getRecentWorkspaceStore().remember(await realpath(parsed.workspace));
+    return runManager.start(parsed);
   });
 
   ipcMain.handle(DESKTOP_CHANNELS.cancelRun, async (event, runId: unknown) => {
@@ -259,16 +326,9 @@ function registerIpcHandlers(): void {
   ipcMain.handle(DESKTOP_CHANNELS.revertIntegration, async (event, request: unknown) => {
     assertTrustedSender(event);
     const parsed = parseRevertIntegrationRequest(request);
-    const options: Electron.MessageBoxOptions = {
-      type: "warning",
-      title: "撤销 LocalBuddy 集成",
-      message: "确认反向撤销这次未提交的集成吗？",
-      detail: "只有当主工作区仍与已批准补丁完全一致时才会执行。",
-      buttons: ["取消", "确认撤销"],
-      defaultId: 0,
-      cancelId: 0,
-      noLink: true,
-    };
+    const current = (await runManager.list(parsed.workspace)).find((run) => run.runId === parsed.runId);
+    if (current === undefined) throw new Error(`Run history does not exist: ${parsed.runId}`);
+    const options = integrationRevertDialog(current.integration?.status === "committed");
     const confirmation = mainWindow === null
       ? await dialog.showMessageBox(options)
       : await dialog.showMessageBox(mainWindow, options);
@@ -283,6 +343,11 @@ function registerIpcHandlers(): void {
     return runManager.loadIntegrationDiff(parseRunActionRequest(request));
   });
 
+  ipcMain.handle(DESKTOP_CHANNELS.loadArtifactPreview, async (event, request: unknown) => {
+    assertTrustedSender(event);
+    return runManager.loadArtifactPreview(parseArtifactActionRequest(request));
+  });
+
   ipcMain.handle(DESKTOP_CHANNELS.exportDiagnostics, async (event, request: unknown) => {
     assertTrustedSender(event);
     const parsed = parseRunActionRequest(request);
@@ -293,9 +358,9 @@ function registerIpcHandlers(): void {
       filters: [{ name: "JSON", extensions: ["json"] }],
       properties: ["createDirectory", "showOverwriteConfirmation"],
     };
-    const result = mainWindow === null
-      ? await dialog.showSaveDialog(options)
-      : await dialog.showSaveDialog(mainWindow, options);
+    // Keep this dialog app-level. A parented sheet can outlive its renderer IPC
+    // promise on macOS after the save completes, leaving the button stuck busy.
+    const result = await dialog.showSaveDialog(options);
     if (result.canceled || result.filePath === undefined) return null;
     await writeFile(result.filePath, `${JSON.stringify(dossier, null, 2)}\n`, {
       encoding: "utf8",
@@ -312,14 +377,9 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle(
     DESKTOP_CHANNELS.openArtifact,
-    async (event, workspaceValue: unknown, pathValue: unknown) => {
+    async (event, request: unknown) => {
       assertTrustedSender(event);
-      const workspace = await realpath(expectString(workspaceValue, "workspace"));
-      const artifactPath = await realpath(expectString(pathValue, "absolutePath"));
-      const allowedRoot = resolve(workspace, ".localbuddy", "runs");
-      if (!artifactPath.startsWith(`${allowedRoot}${sep}`)) {
-        throw new Error("Artifact path is outside this workspace's LocalBuddy run directory");
-      }
+      const artifactPath = await runManager.resolveArtifactPath(parseArtifactActionRequest(request));
       const message = await shell.openPath(artifactPath);
       if (message.length > 0) {
         throw new Error(message);
@@ -369,6 +429,17 @@ function parseProviderCredentialRequest(value: unknown): {
   return {
     providerId,
     apiKey: expectString(record.apiKey, "apiKey"),
+  };
+}
+
+function parseUpdateOnboardingRequest(value: unknown): UpdateDesktopOnboardingRequest {
+  const record = expectRecord(value, "onboarding update request");
+  return {
+    guideSeen: expectOptionalBoolean(record.guideSeen, "guideSeen"),
+    contextHelpEnabled: expectOptionalBoolean(
+      record.contextHelpEnabled,
+      "contextHelpEnabled",
+    ),
   };
 }
 
@@ -444,6 +515,48 @@ function parseRunActionRequest(value: unknown): DesktopRunActionRequest {
   };
 }
 
+function parseArtifactActionRequest(value: unknown): DesktopArtifactActionRequest {
+  const record = expectRecord(value, "artifact action request");
+  return {
+    workspace: expectString(record.workspace, "workspace"),
+    runId: expectString(record.runId, "runId"),
+    fileName: expectString(record.fileName, "fileName"),
+  };
+}
+
+function getRecentWorkspaceStore(): RecentWorkspaceStore {
+  recentWorkspaceStore ??= new RecentWorkspaceStore(
+    resolve(app.getPath("userData"), "recent-workspaces.json"),
+  );
+  return recentWorkspaceStore;
+}
+
+function getOnboardingStateStore(): OnboardingStateStore {
+  onboardingStateStore ??= new OnboardingStateStore(
+    resolve(app.getPath("userData"), "onboarding.json"),
+  );
+  return onboardingStateStore;
+}
+
+async function loadExistingRecentWorkspaces(): Promise<string[]> {
+  const result: string[] = [];
+  for (const candidate of await getRecentWorkspaceStore().list()) {
+    try {
+      const canonical = await realpath(candidate);
+      if ((await stat(canonical)).isDirectory() && !result.includes(canonical)) result.push(canonical);
+    } catch (error) {
+      if (isNodeError(error) && error.code === "ENOENT") continue;
+      throw error;
+    }
+  }
+  return result;
+}
+
+function promoteRecentWorkspace(current: readonly string[], workspace: string): string[] {
+  if (workspace.length === 0) return current.slice(0, 5);
+  return [workspace, ...current.filter((candidate) => candidate !== workspace)].slice(0, 5);
+}
+
 function integrationApprovalDialog(
   request: ApproveDesktopIntegrationRequest,
 ): Electron.MessageBoxOptions {
@@ -456,6 +569,23 @@ function integrationApprovalDialog(
       ? "系统会再次核对 HEAD、clean 状态和补丁哈希，然后应用并提交。"
       : "系统会再次核对 HEAD、clean 状态和补丁哈希；应用后改动保持未提交，可在未继续编辑时撤销。",
     buttons: ["取消", willCommit ? "批准并提交" : "批准写回"],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+  };
+}
+
+function integrationRevertDialog(committed: boolean): Electron.MessageBoxOptions {
+  return {
+    type: "warning",
+    title: "撤销 LocalBuddy 集成",
+    message: committed
+      ? "确认创建一个反向 Git commit 吗？"
+      : "确认撤销这次尚未提交的集成吗？",
+    detail: committed
+      ? "原提交会保留在历史中；系统会重新校验仓库状态，再创建一个反向提交。"
+      : "只有当主工作区仍与已批准补丁完全一致时才会执行。",
+    buttons: ["取消", committed ? "创建反向提交" : "确认撤销"],
     defaultId: 0,
     cancelId: 0,
     noLink: true,

@@ -4,30 +4,30 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 
 这不是 Craft Agents 的分支，也不包含腾讯 WorkBuddy 的私有实现。仓库只参考公开产品行为、通用 Agent 架构模式，以及我们自行定义的验收契约。
 
-> **产品判断（2026-08-09）**：`0.9.0 / M10` 是可安装、可审计、可恢复的内部 Engineering Alpha。M0-M10 的代码与确定性验收已经完成，macOS 包完成本机烟测，Linux/Windows 完成原生 Runner 构建；Windows 真机安装和真实业务运行仍等待设备。它不是公开分发版，也还不是与 WorkBuddy 功能对等的商业产品。
+> **产品判断（2026-08-13）**：`0.11.0 / M10.2 First Trusted Run` 是当前私有 Engineering Alpha。在 M10.1 实机闭环之上，首次打开现已提供完全本地的指引会话、安全教程工作区、结果导向模板和真实状态提示；连续 7-14 天使用、Windows 真机、Linux 图形桌面和生产 MCP OAuth 仍未验收。它不是公开分发版，也不是与 WorkBuddy 功能对等的商业产品。
 
 ## 一页状态
 
 | 维度 | 当前事实 |
 |---|---|
-| 工作形态 | Desktop + CLI；以目标驱动的 Run 为主，不是持续聊天窗口 |
+| 工作形态 | Desktop + CLI；本地 Guide 负责第一次可信运行，真实工作仍以目标驱动的 Run 为主，不是持续聊天线程 |
 | Agent | Orchestrator、Research/Code Worker、Integrator、Merge Agent |
 | 并发 | 每个计划 1-3 个 Worker；Desktop 默认最多 2 个活动 Run；全局 Task 容量默认 3 |
 | Provider | DeepSeek、OpenAI；API Key 使用环境变量或操作系统凭证库 |
 | 本地安全 | macOS Seatbelt；Linux 固定容器镜像；Windows 本地进程型工具 fail closed |
 | 代码写回 | 独立 worktree、组合预检、人工 Gate、apply/commit/revert commit |
-| 恢复 | Research/Coding 同 Run checkpoint resume，并保留 replay 兜底 |
+| 恢复 | Research/Coding 同 Run checkpoint resume；失败 Run 可恢复未完成 Task 链，并保留 replay 兜底 |
 | 扩展 | 本地/签名 Skill、MCP stdio/HTTP/OAuth、受限 Playwright Browser |
-| 分发 | macOS ad-hoc DMG/ZIP 已完成本机验收；Linux DEB、Windows Setup/ZIP 已完成原生 Runner 构建；Windows `v0.9.0` 已发布到私有 GitHub Release |
+| 分发 | macOS `0.11.0` ad-hoc DMG/ZIP 已完成本机验收；Windows `v0.11.0` Setup/ZIP 由私有 Tag workflow 原生构建并发布；真机验收仍待设备 |
 | 当前主动暂缓 | Developer ID、生产 Hardened Runtime、notarization、公开 Gatekeeper |
 
-M10 已补齐 Desktop Provider/信任设置、哈希校验的可视化 diff 和脱敏诊断导出，并完成 macOS、Linux、Windows 原生 CI。`v0.9.0` 工程里程碑已经发布，但连续真实 dogfooding 仍是开放验证门；当前产品化缺口还包括 Windows 真机端到端验收、持续会话/工作区体验、生产 MCP OAuth、远程 Skill 市场与公开分发签名。不会把“代码已写”“Runner 已打包”冒充“真实设备/真实业务已验收”。
+M10.2 把首次体验从静态空状态升级为“第一次可信运行”：Guide 在本机工作，不调用模型、不读取文件或自动启动；教程目录显式创建，模板只预填，真实 Run 才进入既有审计和人工 Gate。连续真实 dogfooding 仍是开放验证门；当前产品化缺口还包括 Windows 真机端到端验收、持久化多轮工作线程、资料摄取、生产 MCP OAuth、远程 Skill 市场与公开分发签名。不会把“代码已写”“Runner 已打包”冒充“真实设备/真实业务已验收”。
 
 ## 文档入口
 
 - [`docs/QUICKSTART.md`](docs/QUICKSTART.md)：内部试用者从安装、凭证到第一个 Run 的最短路径；
-- [`docs/KNOWN-LIMITATIONS.md`](docs/KNOWN-LIMITATIONS.md)：`v0.9.0` 的已知限制和不能宣称的能力；
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)：当前 M10 架构事实；
+- [`docs/KNOWN-LIMITATIONS.md`](docs/KNOWN-LIMITATIONS.md)：`0.11.0` 的已知限制和不能宣称的能力；
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)：当前 M10.2 架构事实；
 - [`docs/ROADMAP.md`](docs/ROADMAP.md)：已完成里程碑、外部门禁和待确认的下一阶段；
 - [`docs/RELEASE.md`](docs/RELEASE.md)：版本、Tag、CI、Release 与校验流程；
 - [`docs/DOGFOOD.md`](docs/DOGFOOD.md)：真实任务试用矩阵与退出口径；
@@ -167,6 +167,25 @@ M10 已补齐 Desktop Provider/信任设置、哈希校验的可视化 diff 和�
 - 真实第三方 MCP OAuth 仍以指定生产服务和账户为外部验收门。
 - 规格和当前 macOS 验收见 [`docs/M10-SPEC.md`](docs/M10-SPEC.md) 与 [`docs/M10-VALIDATION.md`](docs/M10-VALIDATION.md)。
 
+**M10.1 Local Dogfood Closure** 已完成本机闭环；连续使用门禁仍开放：
+
+- Run 头部显示审计得出的耗时、模型调用、Provider token、失败、Artifact Gate 重试和失败阶段；
+- Artifact Gate 返回可执行修正意见并限制失败写入次数；失败 Run 可从安全 checkpoint 恢复未完成 Task 链；
+- 最近工作区、校验后的文本 Artifact 内嵌预览和显式“基于此产物继续”已进入 Desktop；
+- MCP stdio 启动失败保留有界脱敏线索，诊断导出通过原生保存流程完成；
+- macOS 安装应用已完成真实 Coding commit/reverse-commit，主工作区最终干净；
+- 完整证据见 [`docs/DOGFOOD-2026-08-12.md`](docs/DOGFOOD-2026-08-12.md) 与 [`docs/M10-VALIDATION.md`](docs/M10-VALIDATION.md)。
+
+**M10.2 First Trusted Run** 已完成本机实现与界面验收：
+
+- 首次打开显示永久可返回的本地指引会话，没有 Provider 也能浏览；
+- 不再把整个 Documents 当作隐式默认工作区；
+- 工作区/Git/Provider readiness 只检查边界，Renderer 不读取凭据或业务内容；
+- 教程工作区显式创建、唯一命名、私有存储且复用时不覆盖文件；
+- 教程、资料研究和安全 Coding 模板只填入编辑器，必须由用户点击开始；
+- 真实 Run 的规划、审批、集成、成功和失败提示由审计状态产生；
+- 规格与验收见 [`docs/M10.2-SPEC.md`](docs/M10.2-SPEC.md) 和 [`docs/M10.2-VALIDATION.md`](docs/M10.2-VALIDATION.md)。
+
 当前主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。Windows/Linux 首次原生 Runner 产物已经生成，但 Windows 真机安装/启动/业务运行尚未验收；第三方生产 MCP OAuth 仍需要服务方账户验收，不能用本地夹具冒充。
 
 ## 核心模型
@@ -208,7 +227,7 @@ pnpm make:win
 
 它们应分别在 Linux/Windows Runner 上执行；仓库不会把交叉编译配置冒充成目标平台运行验收。
 
-推送 `v*` Tag 会在 GitHub 的 Windows Runner 上运行平台合同测试与 `pnpm make:win`，随后把 Squirrel `Setup.exe`、便携 ZIP 和跨平台 LF 格式的 `SHA256SUMS-windows.txt` 发布到对应 GitHub Release。Release 只有在原生构建成功后才会创建或更新。首个原生版本见 [`v0.9.0`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.9.0)；它是私有、未做 Windows 代码签名的 Engineering Alpha。
+推送 `v*` Tag 会在 GitHub 的 Windows Runner 上运行平台合同测试与 `pnpm make:win`，随后把 Squirrel `Setup.exe`、便携 ZIP 和跨平台 LF 格式的 `SHA256SUMS-windows.txt` 发布到对应 GitHub Release。Release 只有在原生构建成功后才会创建或更新。当前内部发布见 [`v0.11.0`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.11.0)；首个原生基线是 [`v0.9.0`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.9.0)。二者都是私有、未做 Windows 代码签名的 Engineering Alpha。
 
 ## Headless 真实运行
 
@@ -308,4 +327,4 @@ pnpm desktop
 
 Desktop 的“扩展配置”可填写 Provider model/base URL，并把新 API Key 直接写入操作系统安全存储；Renderer 不读取既有 secret。代码集成审批区可在写回前校验并查看组合 Diff，顶部可导出脱敏诊断包。
 
-架构边界见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)，当前工程路线与暂缓项见 [`docs/ROADMAP.md`](docs/ROADMAP.md)。M0-M10 的规格和验证记录均在 [`docs/`](docs/) 下；面向内部安装包用户的入口见 [`docs/QUICKSTART.md`](docs/QUICKSTART.md)。
+架构边界见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)，当前工程路线与暂缓项见 [`docs/ROADMAP.md`](docs/ROADMAP.md)。M0-M10.2 的规格和验证记录均在 [`docs/`](docs/) 下；面向内部安装包用户的入口见 [`docs/QUICKSTART.md`](docs/QUICKSTART.md)。

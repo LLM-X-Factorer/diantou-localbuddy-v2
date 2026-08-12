@@ -6,6 +6,17 @@ const { FusesPlugin } = require("@electron-forge/plugin-fuses");
 const { FuseV1Options, FuseVersion } = require("@electron/fuses");
 
 const browserRoot = resolve(".localbuddy", "package-cache", "ms-playwright");
+const brandIcon = resolve(
+  "assets",
+  "brand",
+  process.platform === "darwin"
+    ? "localbuddy-icon.icns"
+    : process.platform === "win32"
+      ? "localbuddy-icon.ico"
+      : "localbuddy-icon.png",
+);
+const windowsBrandIcon = resolve("assets", "brand", "localbuddy-icon.ico");
+const linuxBrandIcon = resolve("assets", "brand", "localbuddy-icon.png");
 
 module.exports = {
   outDir: resolve(".localbuddy", "forge-out"),
@@ -14,6 +25,7 @@ module.exports = {
     executableName: "LocalBuddy",
     appBundleId: "com.diantou.localbuddy",
     appCategoryType: "public.app-category.developer-tools",
+    icon: brandIcon,
     asar: true,
     prune: true,
     osxSign: {
@@ -39,6 +51,7 @@ module.exports = {
       {
         name: "LocalBuddy",
         setupExe: "LocalBuddy-Setup.exe",
+        setupIcon: windowsBrandIcon,
       },
       ["win32"],
     ),
@@ -49,6 +62,7 @@ module.exports = {
           maintainer: "Diantou Education",
           homepage: "https://github.com/LLM-X-Factorer/diantou-localbuddy-v2",
           categories: ["Development"],
+          icon: linuxBrandIcon,
         },
       },
       ["linux"],

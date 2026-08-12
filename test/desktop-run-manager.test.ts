@@ -71,6 +71,23 @@ test("runs a workflow, publishes projections, and recovers it from history", asy
   assert.doesNotMatch(diagnosticJson, /Create a short grounded note/);
   assert.equal(diagnosticJson.includes(workspace), false);
   assert.match(diagnosticJson, /"goals":"omitted"/);
+  const preview = await manager.loadArtifactPreview({
+    workspace,
+    runId: initial.runId,
+    fileName: "result.md",
+  });
+  assert.equal(preview.text, "# Result\n\nverified local note\n");
+  assert.equal(preview.truncated, false);
+  assert.equal(await manager.resolveArtifactPath({
+    workspace,
+    runId: initial.runId,
+    fileName: "result.md",
+  }), completed.artifacts[0]?.absolutePath);
+  await writeFile(completed.artifacts[0]?.absolutePath ?? "", "tampered\n", "utf8");
+  await assert.rejects(
+    manager.loadArtifactPreview({ workspace, runId: initial.runId, fileName: "result.md" }),
+    /no longer matches its registered size and SHA-256/,
+  );
 });
 
 test("cancels an active desktop run through the shared abort signal", async (context) => {
@@ -379,6 +396,56 @@ test("resumes the same research Run from a child-process checkpoint after a hard
     event.type === "tool.reused" && event.data?.toolCallId === "read-note-tool").length, 1);
   assert.ok(events.some((event) => event.type === "run.resumed"));
   assert.equal(events.some((event) => event.type === "run.restarted"), false);
+});
+
+test("retries unfinished Tasks on a failed Run from its safe checkpoint", async (context) => {
+  const workspace = await mkdtemp(join(tmpdir(), "localbuddy-desktop-failed-retry-"));
+  context.after(async () => rm(workspace, { recursive: true, force: true }));
+  await writeFile(join(workspace, "notes.md"), "verified local note", "utf8");
+  const runId = "run-failed-checkpoint-retry";
+  const goal = "Create a short grounded note";
+  const runRoot = join(workspace, ".localbuddy", "runs", runId);
+  await new RunRequestStore().save(runRoot, {
+    runId,
+    workspace,
+    goal,
+    concurrency: 1,
+    mode: "research",
+    runtimeOwner: "desktop",
+  });
+  const fixturePath = resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    "fixtures",
+    "checkpoint-crash-worker.js",
+  );
+  await assert.rejects(
+    execFileAsync(process.execPath, [fixturePath, workspace, runId, goal], { encoding: "utf8" }),
+  );
+  const store = new JsonlEventStore(join(runRoot, "events.jsonl"));
+  await store.append({
+    type: "run.failed",
+    runId,
+    data: { error: "provider connection dropped after a safe tool checkpoint" },
+  });
+
+  const manager = new DesktopRunManager({
+    async createProvider() { return new DesktopWorkflowProvider(); },
+  });
+  assert.equal((await manager.list(workspace)).find((run) => run.runId === runId)?.status, "failed");
+  const terminal = new Promise<DesktopRunView>((resolvePromise) => {
+    manager.subscribe((run) => {
+      if (run.runId === runId && run.status === "succeeded") resolvePromise(run);
+    });
+  });
+  const retrying = await manager.resumeRun({ workspace, runId });
+  assert.equal(retrying.runId, runId);
+  const completed = await terminal;
+  assert.equal(completed.status, "succeeded");
+  assert.equal(completed.tasks.find((task) => task.id === "read-note")?.error, undefined);
+  const events = await store.list(runId);
+  assert.ok(events.some((event) => event.type === "run.resumed"));
+  assert.equal(events.filter((event) =>
+    event.type === "tool.completed" && event.data?.toolCallId === "read-note-tool").length, 1);
 });
 
 test("resumes a Coding Run after an isolated write completed before its message cursor", async (context) => {

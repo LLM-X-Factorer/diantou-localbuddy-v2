@@ -1,6 +1,6 @@
-# LocalBuddy V2 v0.9.0 Known Limitations
+# LocalBuddy V2 0.11.0 Known Limitations
 
-> 本文是 `v0.9.0 / M10` 的负面能力清单。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
+> 本文是私有 `v0.11.0 / M10.2 First Trusted Run` 的负面能力清单。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
 
 ## Platform and distribution
 
@@ -14,12 +14,14 @@
 
 ## Product experience
 
-- 产品以一次目标对应一个 Run 为主，不是持续聊天线程；
+- 产品仍以一次目标对应一个 Run；“基于此产物继续”只显式预填一个新 Run，不是持久聊天线程；
+- “指引与示例”是本地确定性导航，不是可自由问答或使用工具的 Guide Agent；
+- 教程材料是合成内容，只有用户点击开始后的 Provider/Agent 执行才是真实 Run；
 - 没有 Project/Workspace 首页、跨工作区统一搜索或 SQLite 投影；
-- Artifact 默认调用系统应用打开，没有通用 Markdown/PDF 内嵌预览和基于产物继续编辑；
+- 已登记的有限文本 Artifact 可在哈希/大小复核后内嵌预览；PDF/DOCX、超限文件和通用编辑仍依赖外部应用；
 - 没有通用附件上传、PDF/DOCX 解析或语义索引/RAG；
-- 计划由 Orchestrator 生成，当前没有启动前可视化编辑、运行中动态重规划或单 Task 手工重跑；
-- Token 预算在运行时受控，但 Desktop 没有完整的成本/耗时/失败统计面板。
+- 计划由 Orchestrator 生成，当前没有启动前可视化编辑或运行中动态重规划；失败 Run 只能从安全 checkpoint 恢复未完成 Task 链，不支持任意单 Task 手工重跑；
+- Desktop 只展示单 Run 的调用、Provider token、耗时和失败投影，没有币种成本换算、跨 Run 聚合或趋势阈值。
 
 ## Extensions and external services
 

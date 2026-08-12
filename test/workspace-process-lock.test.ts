@@ -32,6 +32,25 @@ test("workspace leases are reentrant in one process and removed after the final 
   }
 });
 
+test("waits for final lock cleanup before reacquiring the same workspace", async () => {
+  const workspace = await mkdtemp(join(tmpdir(), "localbuddy-process-lock-reacquire-"));
+  const lockPath = join(workspace, ".localbuddy", "runtime-lock");
+  try {
+    const manager = new WorkspaceProcessLockManager();
+    let lease = await manager.acquire(workspace, "initial");
+    for (let index = 0; index < 20; index += 1) {
+      const releasing = lease.release();
+      const acquiring = manager.acquire(workspace, `reacquire-${index}`);
+      [, lease] = await Promise.all([releasing, acquiring]);
+      await access(lockPath);
+    }
+    await lease.release();
+    await assert.rejects(access(lockPath), { code: "ENOENT" });
+  } finally {
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
 test("a live foreign process blocks the workspace and its dead lock is reclaimed", async () => {
   const workspace = await mkdtemp(join(tmpdir(), "localbuddy-process-lock-child-"));
   let child: ChildProcess | undefined;

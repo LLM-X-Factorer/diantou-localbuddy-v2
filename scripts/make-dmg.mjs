@@ -10,12 +10,15 @@ const outputPath = resolve(
   ".localbuddy",
   "forge-out",
   "make",
-  "LocalBuddy-0.9.0-arm64.dmg",
+  "LocalBuddy-0.11.0-arm64.dmg",
 );
 
 await rm(stagingRoot, { recursive: true, force: true });
 await mkdir(stagingRoot, { recursive: true });
-await cp(appPath, resolve(stagingRoot, "LocalBuddy.app"), { recursive: true });
+await cp(appPath, resolve(stagingRoot, "LocalBuddy.app"), {
+  recursive: true,
+  verbatimSymlinks: true,
+});
 await symlink("/Applications", resolve(stagingRoot, "Applications"));
 await mkdir(dirname(outputPath), { recursive: true });
 await execFileAsync("hdiutil", [
