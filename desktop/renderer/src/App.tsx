@@ -5,6 +5,7 @@ import localBuddyIcon from "../../../assets/brand/localbuddy-icon.png";
 import type {
   DesktopOnboardingState,
   DesktopProviderAvailability,
+  DesktopProviderCredentialStatus,
   DesktopRunMode,
   DesktopRunStatus,
   DesktopTrustProfile,
@@ -26,8 +27,8 @@ const ACTIVE_STATUSES = new Set<DesktopRunStatus>([
 ]);
 
 const EMPTY_PROVIDER_AVAILABILITY: DesktopProviderAvailability = {
-  deepseek: false,
-  openai: false,
+  deepseek: { available: false, source: "none" },
+  openai: { available: false, source: "none" },
 };
 const EMPTY_WORKSPACE_READINESS: DesktopWorkspaceReadiness = {
   selected: false,
@@ -54,6 +55,9 @@ export function App() {
   const [providerApiKey, setProviderApiKey] = useState("");
   const [credentialStatus, setCredentialStatus] = useState<string>();
   const [savingCredential, setSavingCredential] = useState(false);
+  const [deletingCredential, setDeletingCredential] = useState(false);
+  const [verifyingProvider, setVerifyingProvider] = useState(false);
+  const [providerSettingsOpen, setProviderSettingsOpen] = useState(false);
   const [trustProfile, setTrustProfile] = useState<DesktopTrustProfile>("balanced");
   const [extensionsOpen, setExtensionsOpen] = useState(false);
   const [skillIds, setSkillIds] = useState("");
@@ -111,6 +115,7 @@ export function App() {
     [runs, selectedRunId],
   );
   const activeRuns = runs.filter((run) => ACTIVE_STATUSES.has(run.status) && run.runtimeOwner !== "cli");
+  const selectedProviderCredential = providerAvailability[providerId];
   const selectedActiveRun = selectedRun !== undefined && ACTIVE_STATUSES.has(selectedRun.status)
     ? selectedRun
     : undefined;
@@ -217,16 +222,29 @@ export function App() {
   }
 
   function revealProviderSetup() {
-    setExtensionsOpen(true);
-    setTimeout(() => {
-      const input = document.querySelector<HTMLInputElement>('.provider-config-block input[type="password"]');
-      input?.scrollIntoView({ behavior: "smooth", block: "center" });
-      input?.focus();
-    }, 0);
+    setError(undefined);
+    setCredentialStatus(undefined);
+    setProviderSettingsOpen(true);
+  }
+
+  function selectProvider(nextProviderId: "deepseek" | "openai") {
+    if (nextProviderId !== providerId) {
+      setProviderModel("");
+      setProviderBaseUrl("");
+      setProviderApiKey("");
+      setError(undefined);
+      setCredentialStatus(undefined);
+    }
+    setProviderId(nextProviderId);
   }
 
   async function startRun() {
     setError(undefined);
+    if (!selectedProviderCredential.available) {
+      setCredentialStatus(`请先为 ${providerLabel(providerId)} 配置 API Key；任务尚未启动。`);
+      setProviderSettingsOpen(true);
+      return;
+    }
     try {
       const origins = csvValues(browserOrigins);
       const run = await window.localbuddy.startRun({
@@ -265,17 +283,57 @@ export function App() {
     setCredentialStatus(undefined);
     setSavingCredential(true);
     try {
-      await window.localbuddy.storeProviderCredential({
+      const result = await window.localbuddy.storeProviderCredential({
         providerId,
         apiKey: providerApiKey,
       });
       setProviderApiKey("");
-      setCredentialStatus(`${providerId === "deepseek" ? "DeepSeek" : "OpenAI"} 凭据已写入系统安全存储`);
-      setProviderAvailability((current) => ({ ...current, [providerId]: true }));
+      setCredentialStatus(result.status.source === "environment"
+        ? `${providerLabel(providerId)} 已写入系统安全存储；当前运行仍优先使用环境变量。`
+        : `${providerLabel(providerId)} 凭据已写入系统安全存储。`
+      );
+      setProviderAvailability((current) => ({ ...current, [providerId]: result.status }));
     } catch (cause) {
       setError(toMessage(cause));
     } finally {
       setSavingCredential(false);
+    }
+  }
+
+  async function deleteProviderCredential() {
+    if (selectedProviderCredential.source !== "system") return;
+    setError(undefined);
+    setCredentialStatus(undefined);
+    setDeletingCredential(true);
+    try {
+      const result = await window.localbuddy.deleteProviderCredential({ providerId });
+      setProviderAvailability((current) => ({ ...current, [providerId]: result.status }));
+      setCredentialStatus(result.deleted
+        ? `${providerLabel(providerId)} 凭据已从系统安全存储删除。`
+        : "已取消删除，凭据保持不变。"
+      );
+    } catch (cause) {
+      setError(toMessage(cause));
+    } finally {
+      setDeletingCredential(false);
+    }
+  }
+
+  async function verifySelectedProviderConnection() {
+    if (!selectedProviderCredential.available) return;
+    setError(undefined);
+    setCredentialStatus(undefined);
+    setVerifyingProvider(true);
+    try {
+      await window.localbuddy.verifyProviderConnection({
+        providerId,
+        baseUrl: providerBaseUrl.trim() || undefined,
+      });
+      setCredentialStatus(`${providerLabel(providerId)} 连接验证通过；没有发起模型生成或产生模型 token。`);
+    } catch (cause) {
+      setError(toMessage(cause));
+    } finally {
+      setVerifyingProvider(false);
     }
   }
 
@@ -497,6 +555,14 @@ export function App() {
           </span>
         </button>
 
+        <button className="provider-entry" onClick={revealProviderSetup}>
+          <span className={`provider-entry-icon ${selectedProviderCredential.available ? "ready" : "missing"}`}>◆</span>
+          <span>
+            <strong>Provider 设置</strong>
+            <small>{providerLabel(providerId)} · {providerCredentialShortLabel(selectedProviderCredential)}</small>
+          </span>
+        </button>
+
         {recentWorkspaces.filter((item) => item !== workspace).length > 0 && (
           <div className="recent-workspaces">
             <span>最近工作区</span>
@@ -539,6 +605,34 @@ export function App() {
           Keychain · local event log
         </div>
       </aside>
+
+      {providerSettingsOpen && (
+        <ProviderSettingsDialog
+          providerId={providerId}
+          availability={providerAvailability}
+          model={providerModel}
+          baseUrl={providerBaseUrl}
+          apiKey={providerApiKey}
+          status={credentialStatus}
+          error={error}
+          saving={savingCredential}
+          deleting={deletingCredential}
+          verifying={verifyingProvider}
+          onSelectProvider={selectProvider}
+          onChangeModel={setProviderModel}
+          onChangeBaseUrl={setProviderBaseUrl}
+          onChangeApiKey={setProviderApiKey}
+          onSave={saveProviderCredential}
+          onDelete={deleteProviderCredential}
+          onVerify={verifySelectedProviderConnection}
+          onClose={() => {
+            setProviderApiKey("");
+            setError(undefined);
+            setCredentialStatus(undefined);
+            setProviderSettingsOpen(false);
+          }}
+        />
+      )}
 
       <main className="workspace-main">
         <header className="main-header">
@@ -898,42 +992,91 @@ export function App() {
             onChange={(event) => setGoal(event.target.value)}
             placeholder="描述一个需要多个 Agent 协作完成的本地任务…"
           />
-          <button
-            className="extensions-toggle"
-            type="button"
-            onClick={() => setExtensionsOpen((current) => !current)}
-          >
-            扩展配置 {extensionsOpen ? "收起" : "展开"}
-            <span>{extensionCount(skillIds, mcpServerIds, browserOrigins)} enabled</span>
-          </button>
+          {!selectedProviderCredential.available && (
+            <div className="provider-required-banner">
+              <span><strong>{providerLabel(providerId)} 尚未配置</strong>真实任务需要可用的 API Key，Guide 和模板仍可离线使用。</span>
+              <button type="button" onClick={revealProviderSetup}>配置 {providerLabel(providerId)}</button>
+            </div>
+          )}
+          <div className="composer-actions">
+            <div className="composer-options">
+              <label className="provider-option" title="Provider">
+                <span className="control-label">Provider</span>
+                <select value={providerId} onChange={(event) => {
+                  selectProvider(event.target.value as "deepseek" | "openai");
+                }} aria-label="Provider">
+                  <option value="deepseek">DeepSeek</option>
+                  <option value="openai">OpenAI</option>
+                </select>
+              </label>
+              <button
+                className={`provider-status-button ${selectedProviderCredential.available ? "ready" : "missing"}`}
+                type="button"
+                onClick={revealProviderSetup}
+                title={`${providerLabel(providerId)} · ${providerCredentialShortLabel(selectedProviderCredential)}`}
+                aria-label={`${providerLabel(providerId)} · ${providerCredentialShortLabel(selectedProviderCredential)}，打开 Provider 设置`}
+              >
+                {providerCredentialCompactLabel(selectedProviderCredential)}
+              </button>
+              <label className="trust-option" title="信任档位">
+                <span className="control-label">信任档位</span>
+                <select aria-label="信任档位" value={trustProfile} onChange={(event) => setTrustProfile(event.target.value as DesktopTrustProfile)}>
+                  <option value="strict">严格审批</option>
+                  <option value="balanced">平衡（推荐）</option>
+                  <option value="automation">自动化（禁外部副作用）</option>
+                </select>
+              </label>
+              <label className="mode-option" title="模式">
+                <span className="control-label">模式</span>
+                <select aria-label="模式" value={mode} onChange={(event) => setMode(event.target.value as DesktopRunMode)}>
+                  <option value="research">研究</option>
+                  <option value="code">代码隔离</option>
+                </select>
+              </label>
+              <label className="concurrency-option" title="Run 并发">
+                <span className="control-label">Run 并发</span>
+                <select
+                  aria-label="Run 并发"
+                  value={concurrency}
+                  onChange={(event) => setConcurrency(Number(event.target.value))}
+                >
+                  <option value={1}>并发 1</option>
+                  <option value={2}>并发 2</option>
+                  <option value={3}>并发 3</option>
+                </select>
+              </label>
+              <span className="global-capacity">全局 3 · 活跃 {activeRuns.length}/2</span>
+              <button
+                className="extensions-toggle"
+                type="button"
+                aria-expanded={extensionsOpen}
+                onClick={() => setExtensionsOpen((current) => !current)}
+              >
+                扩展 {extensionCount(skillIds, mcpServerIds, browserOrigins)}
+                <span>{extensionsOpen ? "↑" : "↓"}</span>
+              </button>
+            </div>
+            <div className="composer-buttons">
+              {selectedActiveRun && (
+                <button className="cancel-button" onClick={cancelRun}>停止当前 Run</button>
+              )}
+              <button
+                className="start-button"
+                onClick={startRun}
+                disabled={
+                  goal.trim().length === 0
+                  || workspace.length === 0
+                  || activeRuns.length >= 2
+                  || (allowBrowserActions && csvValues(browserOrigins).length === 0)
+                  || !selectedProviderCredential.available
+                }
+              >
+                开始任务 <span>→</span>
+              </button>
+            </div>
+          </div>
           {extensionsOpen && (
             <div className="extensions-config">
-              <div className="provider-config-block">
-                <label>
-                  Provider Model（可选）
-                  <input value={providerModel} onChange={(event) => setProviderModel(event.target.value)} placeholder="使用 Provider 默认模型" />
-                </label>
-                <label>
-                  Base URL（可选）
-                  <input value={providerBaseUrl} onChange={(event) => setProviderBaseUrl(event.target.value)} placeholder="使用官方端点" />
-                </label>
-                <label>
-                  API Key（仅写入系统安全存储）
-                  <span className="credential-input-row">
-                    <input
-                      type="password"
-                      autoComplete="off"
-                      value={providerApiKey}
-                      onChange={(event) => setProviderApiKey(event.target.value)}
-                      placeholder="不会写入 Run 或事件日志"
-                    />
-                    <button type="button" onClick={saveProviderCredential} disabled={savingCredential || providerApiKey.trim().length === 0}>
-                      {savingCredential ? "写入中" : "安全保存"}
-                    </button>
-                  </span>
-                </label>
-                {credentialStatus && <small className="credential-status">{credentialStatus}</small>}
-              </div>
               <label>
                 Skills
                 <input value={skillIds} onChange={(event) => setSkillIds(event.target.value)} placeholder="skill-one, skill-two" />
@@ -956,64 +1099,6 @@ export function App() {
               </label>
             </div>
           )}
-          <div className="composer-actions">
-            <div className="composer-options">
-              <label>
-                Provider
-                <select value={providerId} onChange={(event) => {
-                  setProviderId(event.target.value as "deepseek" | "openai");
-                  setCredentialStatus(undefined);
-                }}>
-                  <option value="deepseek">DeepSeek</option>
-                  <option value="openai">OpenAI</option>
-                </select>
-              </label>
-              <label>
-                信任档位
-                <select value={trustProfile} onChange={(event) => setTrustProfile(event.target.value as DesktopTrustProfile)}>
-                  <option value="strict">严格审批</option>
-                  <option value="balanced">平衡（推荐）</option>
-                  <option value="automation">自动化（禁外部副作用）</option>
-                </select>
-              </label>
-              <label>
-                模式
-                <select value={mode} onChange={(event) => setMode(event.target.value as DesktopRunMode)}>
-                  <option value="research">研究</option>
-                  <option value="code">代码隔离</option>
-                </select>
-              </label>
-              <label>
-                Run 并发
-                <select
-                  value={concurrency}
-                  onChange={(event) => setConcurrency(Number(event.target.value))}
-                >
-                  <option value={1}>1</option>
-                  <option value={2}>2</option>
-                  <option value={3}>3</option>
-                </select>
-              </label>
-              <span className="global-capacity">全局 3 · 活跃 {activeRuns.length}/2</span>
-            </div>
-            <div className="composer-buttons">
-              {selectedActiveRun && (
-                <button className="cancel-button" onClick={cancelRun}>停止当前 Run</button>
-              )}
-              <button
-                className="start-button"
-                onClick={startRun}
-                disabled={
-                  goal.trim().length === 0
-                  || workspace.length === 0
-                  || activeRuns.length >= 2
-                  || (allowBrowserActions && csvValues(browserOrigins).length === 0)
-                }
-              >
-                开始任务 <span>→</span>
-              </button>
-            </div>
-          </div>
         </section>
       </main>
 
@@ -1059,6 +1144,142 @@ export function App() {
   );
 }
 
+function ProviderSettingsDialog({
+  providerId,
+  availability,
+  model,
+  baseUrl,
+  apiKey,
+  status,
+  error,
+  saving,
+  deleting,
+  verifying,
+  onSelectProvider,
+  onChangeModel,
+  onChangeBaseUrl,
+  onChangeApiKey,
+  onSave,
+  onDelete,
+  onVerify,
+  onClose,
+}: {
+  providerId: "deepseek" | "openai";
+  availability: DesktopProviderAvailability;
+  model: string;
+  baseUrl: string;
+  apiKey: string;
+  status?: string;
+  error?: string;
+  saving: boolean;
+  deleting: boolean;
+  verifying: boolean;
+  onSelectProvider(providerId: "deepseek" | "openai"): void;
+  onChangeModel(value: string): void;
+  onChangeBaseUrl(value: string): void;
+  onChangeApiKey(value: string): void;
+  onSave(): void;
+  onDelete(): void;
+  onVerify(): void;
+  onClose(): void;
+}) {
+  const credential = availability[providerId];
+  return (
+    <div className="provider-settings-overlay">
+      <section className="provider-settings-dialog" role="dialog" aria-modal="true" aria-labelledby="provider-settings-title">
+        <header>
+          <div>
+            <span>LOCAL PROVIDER CONTROL</span>
+            <h2 id="provider-settings-title">Provider 设置</h2>
+            <p>Provider 是真实运行的必要条件，不属于 Skills、MCP 或 Browser 扩展。</p>
+          </div>
+          <button className="provider-dialog-close" type="button" onClick={onClose} aria-label="关闭 Provider 设置">×</button>
+        </header>
+
+        <div className="provider-choice-grid">
+          {(["deepseek", "openai"] as const).map((id) => {
+            const item = availability[id];
+            return (
+              <button
+                className={id === providerId ? "selected" : ""}
+                type="button"
+                key={id}
+                onClick={() => onSelectProvider(id)}
+              >
+                <span className={item.available ? "ready" : "missing"}>{item.available ? "✓" : "!"}</span>
+                <div>
+                  <strong>{providerLabel(id)}</strong>
+                  <small>{providerCredentialLongLabel(item)}</small>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className={`provider-credential-summary ${credential.available ? "ready" : "missing"}`}>
+          <span>{credential.available ? "✓" : "!"}</span>
+          <div>
+            <strong>{providerLabel(providerId)} · {providerCredentialShortLabel(credential)}</strong>
+            <p>{credential.source === "environment"
+              ? "当前进程优先使用环境变量。你仍可保存一份到系统安全存储，但在环境变量移除前不会生效。"
+              : credential.source === "system"
+              ? "API Key 位于操作系统凭据库。LocalBuddy 只检查是否可用，不会读取并回显。"
+              : "保存后只返回可用状态；密钥不会写入 Run、事件日志、checkpoint 或 Renderer 存储。"}</p>
+          </div>
+        </div>
+
+        <div className="provider-credential-form">
+          <label>
+            {credential.source === "system" ? "替换 API Key" : "API Key"}
+            <span className="provider-key-row">
+              <input
+                type="password"
+                autoComplete="off"
+                value={apiKey}
+                onChange={(event) => onChangeApiKey(event.target.value)}
+                placeholder="仅写入操作系统安全存储"
+              />
+              <button type="button" onClick={onSave} disabled={saving || deleting || verifying || apiKey.trim().length === 0}>
+                {saving ? "写入中…" : credential.source === "system" ? "替换并保存" : credential.source === "environment" ? "另存到系统" : "安全保存"}
+              </button>
+            </span>
+          </label>
+          <button className="verify-provider-button" type="button" onClick={onVerify} disabled={!credential.available || saving || deleting || verifying}>
+            {verifying ? "验证中…" : "验证连接"}
+          </button>
+          {credential.source === "system" && (
+            <button className="delete-provider-button" type="button" onClick={onDelete} disabled={saving || deleting || verifying}>
+              {deleting ? "等待确认…" : "删除系统凭据"}
+            </button>
+          )}
+        </div>
+
+        {status && <div className="provider-settings-status" aria-live="polite">{status}</div>}
+        {error && <div className="provider-settings-error" role="alert">{error}</div>}
+
+        <details className="provider-advanced-settings">
+          <summary>当前 Run 高级设置</summary>
+          <div>
+            <label>
+              Model（可选）
+              <input value={model} onChange={(event) => onChangeModel(event.target.value)} placeholder="使用 Provider 默认模型" />
+            </label>
+            <label>
+              Base URL（可选）
+              <input value={baseUrl} onChange={(event) => onChangeBaseUrl(event.target.value)} placeholder="使用官方端点；仅支持 HTTPS/loopback" />
+            </label>
+          </div>
+        </details>
+
+        <footer>
+          <p>保存只验证本机安全写入，不会自动联网。点击“验证连接”会把凭据发送到上方显示的 Provider / Base URL，并请求模型列表；不会生成内容或消耗模型 token。</p>
+          <button type="button" onClick={onClose}>完成</button>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
 function FirstRunGuide({
   workspace,
   readiness,
@@ -1086,7 +1307,8 @@ function FirstRunGuide({
   onApplyTemplate(id: GuideTemplateId): void;
   onToggleContextHelp(enabled: boolean): void;
 }) {
-  const providerReady = providerAvailability[providerId];
+  const providerCredential = providerAvailability[providerId];
+  const providerReady = providerCredential.available;
   return (
     <div className="guide-state">
       <section className="guide-dialogue">
@@ -1120,7 +1342,7 @@ function FirstRunGuide({
             <span>{providerReady ? "✓" : "2"}</span>
             <div>
               <strong>{providerLabel(providerId)} 凭据</strong>
-              <small>{providerReady ? "系统安全存储中可用" : "这里只返回可用/不可用，不读取密钥"}</small>
+              <small>{providerReady ? providerCredentialLongLabel(providerCredential) : "这里只返回可用/不可用，不读取密钥"}</small>
             </div>
             <button onClick={onConfigureProvider}>{providerReady ? "查看配置" : "去配置"}</button>
           </article>
@@ -1234,6 +1456,30 @@ function extensionCount(skills: string, servers: string, origins: string): numbe
 
 function providerLabel(id: string): string {
   return id === "openai" ? "OpenAI" : id === "deepseek" ? "DeepSeek" : "Provider";
+}
+
+function providerCredentialShortLabel(status: DesktopProviderCredentialStatus): string {
+  return status.source === "environment"
+    ? "环境变量可用"
+    : status.source === "system"
+    ? "系统凭据已配置"
+    : "未配置";
+}
+
+function providerCredentialCompactLabel(status: DesktopProviderCredentialStatus): string {
+  return status.source === "environment"
+    ? "环境变量"
+    : status.source === "system"
+    ? "系统凭据"
+    : "去配置";
+}
+
+function providerCredentialLongLabel(status: DesktopProviderCredentialStatus): string {
+  return status.source === "environment"
+    ? "由当前进程环境变量提供"
+    : status.source === "system"
+    ? "系统安全存储中可用"
+    : "尚未保存 API Key";
 }
 
 function SummaryMetric({ label, value, detail }: { label: string; value: string; detail: string }) {

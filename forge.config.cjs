@@ -4,6 +4,11 @@ const { MakerSquirrel } = require("@electron-forge/maker-squirrel");
 const { MakerZIP } = require("@electron-forge/maker-zip");
 const { FusesPlugin } = require("@electron-forge/plugin-fuses");
 const { FuseV1Options, FuseVersion } = require("@electron/fuses");
+const { version: packageVersion } = require("./package.json");
+
+if (typeof packageVersion !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(packageVersion)) {
+  throw new Error("package.json contains an invalid package version");
+}
 
 const browserRoot = resolve(".localbuddy", "package-cache", "ms-playwright");
 const brandIcon = resolve(
@@ -50,7 +55,7 @@ module.exports = {
     new MakerSquirrel(
       {
         name: "LocalBuddy",
-        setupExe: "LocalBuddy-Setup.exe",
+        setupExe: `LocalBuddy-${packageVersion}-Setup.exe`,
         setupIcon: windowsBrandIcon,
       },
       ["win32"],
@@ -62,6 +67,7 @@ module.exports = {
           maintainer: "Diantou Education",
           homepage: "https://github.com/LLM-X-Factorer/diantou-localbuddy-v2",
           categories: ["Development"],
+          depends: ["libsecret-tools"],
           icon: linuxBrandIcon,
         },
       },

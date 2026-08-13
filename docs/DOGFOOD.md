@@ -1,6 +1,6 @@
 # LocalBuddy V2 Dogfood Plan
 
-> 状态：`active`。当前源码版本为 `0.11.0 / M10.2 First Trusted Run`。macOS arm64 首轮实机功能矩阵、M10.1 产品化闭环和 M10.2 本地指引/教程预填 UI 验收均已完成，详见 [`DOGFOOD-2026-08-12.md`](DOGFOOD-2026-08-12.md) 与 [`M10.2-VALIDATION.md`](M10.2-VALIDATION.md)；教程的真实 Provider Run、连续 7-14 天使用和 Windows 真机阶段仍是开放门禁。本文记录真实使用计划和结果，不把单元测试、静态 Guide 或 CI 产物重复计作 dogfooding。
+> 状态：`active`。当前源码版本为 `0.11.1 / M10.3 Provider Setup`。macOS arm64 首轮实机功能矩阵、M10.1 产品化闭环、M10.2 本地指引以及 M10.3 Provider/紧凑 Composer GUI 验收均已完成；Windows 自动化合成灰度见 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md)。真实 Provider Run、连续 7-14 天使用和 Windows 11 真人灰度仍是开放门禁；Linux 图形桌面当前不优先。本文不把单元测试、静态 Guide、CI 产物或 workflow 配置重复计作真人 dogfooding。
 
 ## 目标
 
@@ -27,7 +27,15 @@
 
 建议连续运行 7-14 天后再决定 M11，而不是以单次成功结束。
 
-## 阶段 B · Windows 真机
+## 阶段 B1 · Windows 托管合成灰度
+
+自动化范围、触发方式和证据边界以 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 为准。它持续验证真实 Setup、安装版 App、Credential Manager、loopback Mock Provider、故障矩阵、Research Run、两个活动 Run、取消、硬退出恢复和重启持久化。
+
+当前基线为提交 `d686cd6`：[`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610) 已完成完整故障矩阵和 5 次额外重启，脱敏摘要 9 项检查全部通过；配套 [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 的 Windows 合同、macOS 回归和 Setup 无凭据首启也全部通过。
+
+该阶段不使用真实 Provider Key，不产生模型费用，也不能证明 Windows 11 消费者桌面环境。
+
+## 阶段 B2 · Windows 11 真人灰度
 
 设备到位后按顺序执行：
 
@@ -40,6 +48,15 @@
 7. 记录 SmartScreen、路径、中文文件名、长路径和杀进程恢复表现。
 
 Windows 执行宿主不在本阶段临时补做；先用真机证据确定 WSL2、容器或 Windows 原生隔离方案的产品边界。
+
+## 阶段 C · Linux 图形桌面（当前非优先）
+
+1. 从同一版本 Release 下载 DEB 并核对 `SHA256SUMS-linux.txt`；
+2. 在受支持的 Debian/Ubuntu 图形桌面安装、启动、退出和卸载；
+3. 确认 DEB 安装了 `libsecret-tools`，并在可用 Secret Service 会话中保存、读取和删除测试凭据；
+4. 完成 Research Run、取消与 checkpoint resume；
+5. 使用固定容器镜像验证默认断网、只读 rootfs、精确 mount 与进程树取消；
+6. 记录 Wayland/X11、桌面 Keyring、中文路径和默认外部应用打开 Artifact 的表现。
 
 ## 单次记录模板
 

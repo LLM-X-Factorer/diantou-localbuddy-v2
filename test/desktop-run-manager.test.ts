@@ -119,6 +119,7 @@ test("cancels an active desktop run through the shared abort signal", async (con
   await running;
   manager.cancel(runId);
   const cancelled = await terminal;
+  await manager.waitForIdle();
 
   assert.equal(cancelled.status, "cancelled");
   assert.ok(cancelled.tasks.some((task) => task.status === "cancelled"));
@@ -158,7 +159,9 @@ test("allows two active runs and rejects a third", async (context) => {
   await manager.waitForIdle();
 });
 
-test("applies and reverts a persisted proposal through DesktopRunManager", async (context) => {
+test("applies and reverts a persisted proposal through DesktopRunManager", {
+  skip: process.platform === "win32" ? "Windows Coding integration requires a supported isolation host" : false,
+}, async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "localbuddy-desktop-integration-"));
   context.after(async () => rm(workspace, { recursive: true, force: true }));
   await desktopGit(workspace, ["init", "-b", "main"]);
@@ -210,7 +213,9 @@ test("applies and reverts a persisted proposal through DesktopRunManager", async
   assert.equal(await readFile(join(workspace, "app.txt"), "utf8"), "before\n");
 });
 
-test("reconciles an interrupted Integration apply while rebuilding Desktop history", async (context) => {
+test("reconciles an interrupted Integration apply while rebuilding Desktop history", {
+  skip: process.platform === "win32" ? "Windows Coding integration requires a supported isolation host" : false,
+}, async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "localbuddy-desktop-apply-reconcile-"));
   context.after(async () => rm(workspace, { recursive: true, force: true }));
   await desktopGit(workspace, ["init", "-b", "main"]);
@@ -448,7 +453,9 @@ test("retries unfinished Tasks on a failed Run from its safe checkpoint", async 
     event.type === "tool.completed" && event.data?.toolCallId === "read-note-tool").length, 1);
 });
 
-test("resumes a Coding Run after an isolated write completed before its message cursor", async (context) => {
+test("resumes a Coding Run after an isolated write completed before its message cursor", {
+  skip: process.platform === "win32" ? "Windows Coding requires a supported isolation host" : false,
+}, async (context) => {
   const result = await runCodingCheckpointRecovery(context, "edit");
   assert.equal(result.interrupted.checkpoint?.completedTasks, 0);
   assert.equal(result.interrupted.checkpoint?.resumableTasks, 2);
@@ -458,7 +465,9 @@ test("resumes a Coding Run after an isolated write completed before its message 
     event.type === "tool.reused" && event.data?.toolCallId === "code-edit").length, 1);
 });
 
-test("restores completed Coding Tasks and retries preflight in a new preview worktree", async (context) => {
+test("restores completed Coding Tasks and retries preflight in a new preview worktree", {
+  skip: process.platform === "win32" ? "Windows Coding requires a supported isolation host" : false,
+}, async (context) => {
   const result = await runCodingCheckpointRecovery(context, "preflight");
   assert.equal(result.interrupted.checkpoint?.completedTasks, 2);
   assert.equal(result.interrupted.checkpoint?.resumableTasks, 0);

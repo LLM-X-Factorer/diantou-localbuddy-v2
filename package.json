@@ -1,6 +1,6 @@
 {
   "name": "@diantou/localbuddy-v2",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "private": true,
   "description": "Local-first multi-agent desktop runtime with remote LLM providers",
   "author": "Diantou Education",
@@ -28,6 +28,9 @@
     "make:mac": "pnpm package:prepare && electron-forge make --platform=darwin --arch=arm64 && node scripts/make-dmg.mjs",
     "make:linux": "pnpm package:prepare && electron-forge make --platform=linux --arch=x64",
     "make:win": "pnpm package:prepare && electron-forge make --platform=win32 --arch=x64",
+    "verify:first-run-package": "node scripts/verify-clean-first-launch.mjs",
+    "verify:first-run-windows-installer": "pwsh -NoLogo -NoProfile -File scripts/verify-windows-installer-first-launch.ps1",
+    "verify:windows-gray-installer": "pwsh -NoLogo -NoProfile -File scripts/verify-windows-installer-gray.ps1",
     "verify:mac-package": "node scripts/verify-macos-package.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
     "test": "pnpm build:core && node --test dist/test/*.test.js",
@@ -51,6 +54,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",
+    "electron-squirrel-startup": "1.0.1",
     "playwright": "1.62.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

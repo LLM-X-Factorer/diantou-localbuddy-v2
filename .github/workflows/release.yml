@@ -1,4 +1,4 @@
-name: release
+name: release-windows-first
 
 on:
   push:
@@ -11,6 +11,10 @@ permissions:
 jobs:
   windows-release:
     runs-on: windows-2025
+    timeout-minutes: 45
+    env:
+      LOCALBUDDY_GRAY_FAULT_MATRIX: "1"
+      LOCALBUDDY_GRAY_SOAK_CYCLES: "3"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -21,23 +25,21 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
-      - run: pnpm build:core
-      - name: Run platform-neutral contracts
-        run: >-
-          node --test
-          dist/test/deepseek-provider.test.js
-          dist/test/openai-provider.test.js
-          dist/test/process-shared-provider.test.js
-          dist/test/provider-factory.test.js
-          dist/test/run-request-store.test.js
-          dist/test/scheduler.test.js
-          dist/test/tool-runtime.test.js
-          dist/test/trust-policy.test.js
-          dist/test/update-manifest.test.js
-          dist/test/workspace-process-lock.test.js
+      - run: pnpm audit --prod --audit-level high
+      - run: pnpm exec playwright install --only-shell chromium
+      - run: pnpm check
       - name: Build Windows installer and portable ZIP
         run: pnpm make:win
+      - name: Install and exercise LocalBuddy with a local deterministic Provider
+        run: pnpm verify:windows-gray-installer
+      - name: Upload sanitized installed-app evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: localbuddy-windows-gray-evidence-${{ github.ref_name }}
+          path: .localbuddy/windows-gray/win32-installer/**
+          if-no-files-found: warn
+          retention-days: 90
       - name: Collect release assets and checksums
         shell: pwsh
         run: |
@@ -66,14 +68,39 @@ jobs:
           name: localbuddy-windows-${{ github.ref_name }}
           path: release-assets/**
           if-no-files-found: error
-      - name: Publish GitHub Release assets
-        shell: pwsh
+
+  publish-release:
+    needs: [windows-release]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: localbuddy-windows-${{ github.ref_name }}
+          path: release-assets
+      - name: Verify release version and Windows checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_version=$(node -p "require('./package.json').version")
+          expected_tag="v${package_version}"
+          if [[ "$GITHUB_REF_NAME" != "$expected_tag" ]]; then
+            echo "Tag $GITHUB_REF_NAME does not match package version $expected_tag" >&2
+            exit 1
+          fi
+          cd release-assets
+          sha256sum --check SHA256SUMS-windows.txt
+      - name: Publish Windows-first GitHub Release
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view $env:GITHUB_REF_NAME *> $null
-          if ($LASTEXITCODE -ne 0) {
-            gh release create $env:GITHUB_REF_NAME --verify-tag --generate-notes --title "LocalBuddy $env:GITHUB_REF_NAME"
-          }
-          $releaseAssets = Get-ChildItem release-assets -File | ForEach-Object { $_.FullName }
-          gh release upload $env:GITHUB_REF_NAME $releaseAssets --clobber
+          set -euo pipefail
+          release_flags=(--verify-tag --generate-notes --title "LocalBuddy $GITHUB_REF_NAME")
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            release_flags+=(--prerelease)
+          fi
+          if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" "${release_flags[@]}"
+          fi
+          gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber

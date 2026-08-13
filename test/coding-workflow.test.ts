@@ -19,7 +19,9 @@ import type {
 
 const execFileAsync = promisify(execFile);
 
-test("runs an isolated coding workflow, saves a patch, and leaves the primary checkout unchanged", async (context) => {
+test("runs an isolated coding workflow, saves a patch, and leaves the primary checkout unchanged", {
+  skip: process.platform === "win32" ? "Windows Coding requires a supported isolation host" : false,
+}, async (context) => {
   const fixture = await createGitFixture(context);
   const eventStore = new InMemoryEventStore();
   const artifactRoot = join(fixture.root, ".localbuddy", "runs", "run-code", "artifacts");
@@ -55,7 +57,9 @@ test("runs an isolated coding workflow, saves a patch, and leaves the primary ch
   assert.ok(events.some((event) => event.type === "workspace.diff_captured"));
 });
 
-test("makes selected Skills and MCP tools available inside an isolated coding workflow", async (context) => {
+test("makes selected Skills and MCP tools available inside an isolated coding workflow", {
+  skip: process.platform === "win32" ? "Windows stdio extensions require a supported isolation host" : false,
+}, async (context) => {
   const fixture = await createGitFixture(context);
   const skillDirectory = join(fixture.root, ".localbuddy", "skills", "m4-code");
   await mkdir(skillDirectory, { recursive: true });

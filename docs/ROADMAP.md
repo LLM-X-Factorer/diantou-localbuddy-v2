@@ -1,8 +1,27 @@
-# LocalBuddy V2 Roadmap after M10.2
+# LocalBuddy V2 Roadmap after M10.3
 
-> **状态真源**：2026-08-13。当前私有发布线为 `v0.11.0 / M10.2 First Trusted Run Engineering Alpha`。本文件只记录跨里程碑状态和后续决策，阶段内证据以对应 `M*-VALIDATION.md` 为准。
+> **状态真源**：2026-08-13。当前私有发布版为 `v0.11.1 / M10.3 Provider Setup Engineering Alpha`。后续灰度与发布已转为 Windows-first，Linux 降为每周/手动维护。阶段内证据以对应 Validation 和 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 为准。
 
 ## 当前里程碑
+
+### v0.11.1 · M10.3 Provider Setup — private Engineering Alpha
+
+- Provider 成为侧边栏一级设置，不再藏在 Skills/MCP/Browser 扩展折叠区；
+- DeepSeek/OpenAI 独立显示环境变量、系统安全存储或未配置状态，Renderer 不接收 secret；
+- 支持安全保存、替换和经原生确认删除系统凭据；环境变量保持进程级优先级且不能从应用删除；
+- 保存只验证本机写入，不自动联网；显式“验证连接”只请求 Provider 的 `/models`，不调用生成接口；
+- 当前 Run 的 model/base URL 归入 Provider 高级设置，Base URL 继续限制为 HTTPS 或 loopback HTTP；
+- Composer 就近显示状态，凭据缺失时阻止真实 Run 并直达配置；
+- Composer 已改为紧凑的“任务输入 + 控制工具栏”，扩展只在显式展开时占用额外空间；
+- 当前自动合同为 123 项，本机结果 121 passed、2 项 Windows-only 合同按平台跳过；macOS `0.11.1` DMG/ZIP 已通过版本、签名、Fuse、ASAR、浏览器、Renderer 和挂载后完整性验证，并安装到 `/Applications/LocalBuddy.app`；
+- 已安装应用通过真实 GUI 验收：独立入口、来源状态、显式验证文案、未配置 Provider 启动门禁，以及 Composer 收起/扩展布局均可见；
+- Windows Setup 文件名、Linux `libsecret-tools` 依赖和两个平台的 Provider 合同均由 `0.11.1` 真源约束；
+- Tag Release 改为 Windows-only：必须通过生产依赖审计、全量测试、安装版合成灰度和 SHA-256 后才发布 Setup/ZIP；Linux 不再阻塞 Windows RC；
+- Windows 发布作业强制通过生产依赖高危审计；开发期 Forge 打包链的上游 `extract-zip` 告警已在 Tag 前复查，当前稳定 Forge 仍无修复，本次 private Engineering Alpha 已记录接受该打包期风险；
+- macOS 包已通过全新用户数据、无 Provider 凭据首次启动 smoke；[`windows-2025` PR run `31665000997`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31665000997) 还运行真实 Setup、从版本化安装目录在隔离用户数据与无 Provider 凭据条件下启动，并回下载核对截图与 JSON，最后调用 Squirrel 卸载；
+- draft PR #1 的提交 `d686cd6` 已通过 [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 和 [`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610)：Windows 完整合同、Setup 无凭据首启、Credential Manager、故障矩阵、安装版 Research Run、双 Run 取消、硬退出恢复和 5 次额外重启均为绿色；`v0.11.1` Tag/Release 固定该已验证范围并发布 Windows Setup/ZIP。
+
+M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批边界；它解决的是必要配置的可发现性、可判断性和安全生命周期。M11 仍未立项。
 
 ### v0.11.0 · M10.2 First Trusted Run — private Engineering Alpha
 
@@ -99,15 +118,28 @@
 
 规格与本机证据见 [`M10.2-SPEC.md`](M10.2-SPEC.md) 和 [`M10.2-VALIDATION.md`](M10.2-VALIDATION.md)。
 
+### M10.3 · Provider Setup — private Engineering Alpha released
+
+- Provider 从扩展概念中拆出，成为真实 Run 的显式必要前置；
+- 凭据管理覆盖状态、保存、替换、删除和按需连接验证；
+- 缺失状态、Composer 就近反馈与启动前拦截形成闭环；
+- Composer 已收敛为紧凑输入与可换行工具栏，不再用大栅格承载少量设置；
+- 连接检查是用户触发的认证/网络探针，不等价于真实生成 Run；
+- 保持 Key 不进 Renderer 持久状态、不进 Run/事件/checkpoint/诊断的既有边界。
+- Windows Setup/ZIP 使用 `package.json` 版本真源并进入 Windows-first 发布门禁；Linux DEB 仍声明 Secret Service CLI 依赖，但只做低频维护。
+- GitHub 托管 `windows-2025` Runner 已持续化验证无 Provider 首启，并用公开 loopback 夹具覆盖 Windows Credential Manager、安装版 Research Run、双 Run 取消、硬退出恢复和重启持久化，不再依赖固定 Windows 测试机；终端用户 Windows 11、SmartScreen、标准用户/UAC、真实 Provider 与真实网络仍属于独立外部门禁。
+
+规格与本机证据见 [`M10.3-SPEC.md`](M10.3-SPEC.md) 和 [`M10.3-VALIDATION.md`](M10.3-VALIDATION.md)。
+
 ## 外部门禁与明确暂缓
 
 以下条件没有被本地测试或 CI 替代：
 
-1. Windows 真机端到端验收：等待可用 Windows 设备；
+1. Windows 11 真人灰度：托管 Runner 只能先关闭自动化边界，SmartScreen、Defender、UAC、DPI、输入法与真实网络仍需 3-10 名内部用户；
 2. 生产 MCP OAuth：等待指定真实服务与账户；
 3. 正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper：明确暂缓；
 4. Windows 代码签名与 SmartScreen 信誉：公开分发前再决策；
-5. Linux 图形桌面安装/启动验收：原生 Runner 当前只证明合同和产物构建。
+5. Linux 图形桌面安装/启动验收：当前降为非优先，不阻塞 Windows 灰度和 Release。
 
 ## 下一阶段候选，尚未立项
 

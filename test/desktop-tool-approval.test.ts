@@ -10,7 +10,9 @@ import type { DesktopRunView } from "../src/desktop-contract.js";
 import { JsonlEventStore } from "../src/event-store.js";
 import type { ChatMessage, ModelProvider, ModelRequest, ModelResponse } from "../src/provider.js";
 
-test("pauses an effectful Desktop extension call until the user approves that exact call", async (context) => {
+test("pauses an effectful Desktop extension call until the user approves that exact call", {
+  skip: process.platform === "win32" ? "Windows stdio extensions require a supported isolation host" : false,
+}, async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "localbuddy-desktop-approval-"));
   context.after(async () => rm(workspace, { recursive: true, force: true }));
   await mkdir(join(workspace, ".localbuddy"), { recursive: true });

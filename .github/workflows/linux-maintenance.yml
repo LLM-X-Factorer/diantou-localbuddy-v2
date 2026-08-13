@@ -1,0 +1,55 @@
+name: linux-maintenance
+
+on:
+  schedule:
+    - cron: "29 19 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package-linux:
+    name: Weekly non-release Linux package check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm build:core
+      - name: Run platform-neutral contracts
+        run: >-
+          node --test
+          dist/test/credential-store.test.js
+          dist/test/deepseek-provider.test.js
+          dist/test/openai-provider.test.js
+          dist/test/process-shared-provider.test.js
+          dist/test/provider-connection.test.js
+          dist/test/provider-factory.test.js
+          dist/test/run-request-store.test.js
+          dist/test/scheduler.test.js
+          dist/test/tool-runtime.test.js
+          dist/test/trust-policy.test.js
+          dist/test/update-manifest.test.js
+          dist/test/workspace-process-lock.test.js
+      - run: pnpm make:linux
+      - name: Stage Linux DEB
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p linux-assets
+          find .localbuddy/forge-out/make -type f -name '*.deb' -exec cp {} linux-assets/ \;
+          test -n "$(find linux-assets -type f -name '*.deb' -print -quit)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: localbuddy-linux-weekly-${{ github.run_id }}
+          path: linux-assets/**
+          if-no-files-found: error
+          retention-days: 7

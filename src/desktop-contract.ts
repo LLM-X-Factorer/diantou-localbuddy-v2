@@ -5,6 +5,8 @@ export const DESKTOP_CHANNELS = {
   createTutorialWorkspace: "localbuddy:create-tutorial-workspace",
   updateOnboarding: "localbuddy:update-onboarding",
   storeProviderCredential: "localbuddy:store-provider-credential",
+  deleteProviderCredential: "localbuddy:delete-provider-credential",
+  verifyProviderConnection: "localbuddy:verify-provider-connection",
   listRuns: "localbuddy:list-runs",
   startRun: "localbuddy:start-run",
   cancelRun: "localbuddy:cancel-run",
@@ -169,8 +171,13 @@ export interface DesktopBootstrap {
 }
 
 export interface DesktopProviderAvailability {
-  deepseek: boolean;
-  openai: boolean;
+  deepseek: DesktopProviderCredentialStatus;
+  openai: DesktopProviderCredentialStatus;
+}
+
+export interface DesktopProviderCredentialStatus {
+  available: boolean;
+  source: "environment" | "system" | "none";
 }
 
 export interface DesktopWorkspaceReadiness {
@@ -218,6 +225,27 @@ export interface StoreDesktopProviderCredentialRequest {
 export interface StoreDesktopProviderCredentialResult {
   providerId: "deepseek" | "openai";
   stored: true;
+  status: DesktopProviderCredentialStatus;
+}
+
+export interface DeleteDesktopProviderCredentialRequest {
+  providerId: "deepseek" | "openai";
+}
+
+export interface DeleteDesktopProviderCredentialResult {
+  providerId: "deepseek" | "openai";
+  deleted: boolean;
+  status: DesktopProviderCredentialStatus;
+}
+
+export interface VerifyDesktopProviderConnectionRequest {
+  providerId: "deepseek" | "openai";
+  baseUrl?: string;
+}
+
+export interface VerifyDesktopProviderConnectionResult {
+  providerId: "deepseek" | "openai";
+  verified: true;
 }
 
 export interface ApproveDesktopIntegrationRequest {
@@ -269,6 +297,12 @@ export interface DesktopApi {
   storeProviderCredential(
     request: StoreDesktopProviderCredentialRequest,
   ): Promise<StoreDesktopProviderCredentialResult>;
+  deleteProviderCredential(
+    request: DeleteDesktopProviderCredentialRequest,
+  ): Promise<DeleteDesktopProviderCredentialResult>;
+  verifyProviderConnection(
+    request: VerifyDesktopProviderConnectionRequest,
+  ): Promise<VerifyDesktopProviderConnectionResult>;
   listRuns(workspace: string): Promise<readonly DesktopRunView[]>;
   startRun(request: StartDesktopRunRequest): Promise<DesktopRunView>;
   cancelRun(runId: string): Promise<void>;

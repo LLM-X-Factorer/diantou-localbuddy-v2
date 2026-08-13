@@ -6,6 +6,53 @@
 
 暂无。
 
+## 0.11.1 — 2026-08-13
+
+M10.3 Provider Setup 私有 Engineering Alpha。完成本机源码、测试、macOS 打包与安装验收，并将后续灰度与发布转为 Windows-first；Windows 11 真人灰度仍开放，不属于公开稳定版。
+
+### Added
+
+- 侧边栏一级“Provider 设置”和 DeepSeek/OpenAI 独立状态卡；
+- 环境变量、系统安全存储、未配置三种凭据来源状态；
+- 系统凭据替换，以及经 Electron 原生确认的删除流程；
+- 用户显式触发、只请求 `/models` 的连接验证；
+- Composer Provider 状态标签、缺失提示和启动前硬拦截。
+
+### Changed
+
+- Model 与 Base URL 移入 Provider 高级设置；“扩展配置”只保留 Skills、MCP 和 Browser；
+- Bootstrap 和凭据写入 IPC 返回有界状态对象，不再只返回布尔值；
+- 保存凭据不会自动联网，连接验证与真实 Run 分别需要独立用户动作。
+- Windows Setup 文件名从 `package.json` 派生版本；Linux DEB 显式依赖提供 `secret-tool` 的 `libsecret-tools`；
+- Windows 发布作业新增生产依赖高危审计；开发期 Electron 打包链的上游 `extract-zip` 无修复版本告警已如实登记，不做静默忽略。
+- 包级首次启动 smoke 会清空 Provider 环境变量、隔离用户数据并屏蔽系统凭据命令，断言 Guide、DeepSeek/OpenAI 未配置状态以及连接/运行禁用门禁；Windows 原生构建与 Release 还必须先运行 Setup、从安装目录首启并调用 Squirrel 卸载。
+- Electron Main 接入标准 Squirrel install/update/uninstall 生命周期处理，避免安装生命周期事件误开普通窗口。
+- CI 调整为 Windows-first：Windows `pnpm check` 与安装级无 Provider 首启成为 PR 门禁，Linux 移至每周/手动的非阻塞维护；
+- 新增 `windows-synthetic-gray` 夜间、手动和 PR label 工作流，以本地确定性 Provider 驱动真实安装版完成 Credential Manager、连接故障、Research Run、双 Run 取消、硬退出、checkpoint 恢复和重启循环；
+- `v*` Tag Release 改为 Windows-only 门禁和资产发布；带预发布后缀的 Tag 自动创建 GitHub prerelease，Linux 不再阻塞 Windows RC；
+- PR 不再上传约 800 MB 的完整 Forge 目录；只在 `main` 保存 Setup/ZIP，并缩短普通 CI artifact 保留期；
+- Windows 全量测试先安装 Chromium；macOS-only/隔离宿主依赖用例逐项标记平台边界，同时新增 Windows 本地进程与 stdio MCP fail-closed 反向合同，并修复最近工作区测试的 Windows 路径兼容性；
+- 取消测试在删除临时工作区前等待 `DesktopRunManager.waitForIdle()`，避免 Windows 在终态事件已发布但 `runtime-lock` 仍释放中时触发 `EPERM`；这不改变取消语义。
+
+### Fixed
+
+- macOS DMG 制作和验证脚本不再硬编码旧版本文件名，改为读取、校验 `package.json` 版本，并复核 App Bundle 版本一致。
+- Composer 控制台改为紧凑的“任务输入 + 控制工具栏”：移除占高的字段标题与 16 列空栅格，Provider、信任、模式和并发只展示当前值，凭据与扩展入口使用短状态，执行按钮固定在右侧；窄窗口仅让工具项自然换行。
+
+### Security
+
+- Windows 合成灰度只使用 loopback Mock Provider 和固定公开夹具凭据，不读取 Actions secrets；测试前拒绝覆盖现有系统凭据，结束时删除测试项；
+- 上传证据限定为脱敏 JSON 和固定夹具截图，不上传 Run Request、事件日志、工作区或凭据内容。
+
+### Evidence
+
+- 规格：[`docs/M10.3-SPEC.md`](docs/M10.3-SPEC.md)；
+- 验收：[`docs/M10.3-VALIDATION.md`](docs/M10.3-VALIDATION.md)；
+- `pnpm check`：当前 123 项；macOS 本机 121 passed、2 项 Windows-only 合同按平台跳过、0 failed；
+- macOS 无 Provider 凭据包级首次启动 smoke 通过；[`windows-2025` 安装级 PR run `31665000997`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31665000997) 也已通过，Setup 退出码、安装目录 EXE、截图与 JSON artifact 均已核对；
+- Windows-first 最终证据：[`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 与 [`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610) 均通过；后者覆盖 Credential Manager、完整连接故障矩阵、安装版 Research Run、双 Run 取消、硬退出恢复和 5 次额外重启；
+- macOS DMG：224,991,198 bytes，SHA-256 `0a533b7d2397f40e82073697e0b026f243518c98198ef10625a6eecbffb46437`，挂载后包验证通过。
+
 ## 0.11.0 — 2026-08-13
 
 M10.2 First Trusted Run 私有 Engineering Alpha。macOS 内部包已完成本机验收；Windows 资产已由 `v0.11.0` Tag 的原生 workflow 构建、发布并回下载核验。本版本不属于公开分发。

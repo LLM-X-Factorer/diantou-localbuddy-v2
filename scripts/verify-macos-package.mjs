@@ -9,11 +9,14 @@ import { promisify } from "node:util";
 import { chromium } from "playwright";
 
 const execFileAsync = promisify(execFile);
+const packageMetadata = JSON.parse(await readFile(resolve("package.json"), "utf8"));
+const packageVersion = packageMetadata.version;
+assert.match(packageVersion, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/);
 const appPath = resolve(
   process.argv[2] ?? ".localbuddy/forge-out/LocalBuddy-darwin-arm64/LocalBuddy.app",
 );
 const dmgPath = resolve(
-  process.argv[3] ?? ".localbuddy/forge-out/make/LocalBuddy-0.11.0-arm64.dmg",
+  process.argv[3] ?? `.localbuddy/forge-out/make/LocalBuddy-${packageVersion}-arm64.dmg`,
 );
 const executable = join(appPath, "Contents", "MacOS", "LocalBuddy");
 const resources = join(appPath, "Contents", "Resources");
@@ -22,6 +25,10 @@ const verificationRoot = resolve(".localbuddy", "package-verification");
 const screenshot = join(verificationRoot, "desktop.png");
 await mkdir(verificationRoot, { recursive: true });
 
+const { stdout: bundleVersion } = await execFileAsync("/usr/libexec/PlistBuddy", [
+  "-c", "Print :CFBundleShortVersionString", join(appPath, "Contents", "Info.plist"),
+]);
+assert.equal(bundleVersion.trim(), packageVersion);
 await execFileAsync("codesign", ["--verify", "--deep", "--strict", "--verbose=2", appPath]);
 const { stdout: fuseOutput } = await execFileAsync(
   "pnpm",
@@ -118,6 +125,7 @@ try {
 process.stdout.write(`${JSON.stringify({
   appPath,
   dmgPath,
+  packageVersion,
   codeSignature: "valid-ad-hoc",
   dmgIntegrity: "verified",
   mountedAppCodeSignature: "valid-ad-hoc",

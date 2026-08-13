@@ -8,8 +8,29 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  test-windows:
+    name: Windows full check
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --only-shell chromium
+      - run: pnpm check
+
   test-macos:
+    name: macOS regression check
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -24,12 +45,9 @@ jobs:
       - run: pnpm exec playwright install --only-shell chromium
       - run: pnpm check
 
-  platform-contract:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, windows-2025]
-    runs-on: ${{ matrix.os }}
+  windows-installed-smoke:
+    name: Windows Setup clean first launch
+    runs-on: windows-2025
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -40,45 +58,31 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
-      - run: pnpm build:core
-      - name: Run platform-neutral contracts
-        run: >-
-          node --test
-          dist/test/deepseek-provider.test.js
-          dist/test/openai-provider.test.js
-          dist/test/process-shared-provider.test.js
-          dist/test/provider-factory.test.js
-          dist/test/run-request-store.test.js
-          dist/test/scheduler.test.js
-          dist/test/tool-runtime.test.js
-          dist/test/trust-policy.test.js
-          dist/test/update-manifest.test.js
-          dist/test/workspace-process-lock.test.js
-
-  package-native:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-24.04
-            command: make:linux
-          - os: windows-2025
-            command: make:win
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - name: Build Windows installer and portable ZIP
+        run: pnpm make:win
+      - name: Install Windows Setup and verify clean first launch without Provider credentials
+        run: pnpm verify:first-run-windows-installer
+      - name: Upload installed clean first-launch evidence
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          version: 9.15.9
-      - uses: actions/setup-node@v4
+          name: localbuddy-installed-clean-first-launch-windows-2025
+          path: .localbuddy/first-run-smoke/win32-installer/**
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Stage Windows distributables on main only
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force ci-assets | Out-Null
+          Get-ChildItem .localbuddy/forge-out/make -Recurse -File |
+            Where-Object { $_.Extension -in @(".exe", ".zip") } |
+            ForEach-Object { Copy-Item $_.FullName -Destination ci-assets/$($_.Name) }
+      - name: Upload Windows distributables on main only
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
         with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm ${{ matrix.command }}
-      - uses: actions/upload-artifact@v4
-        with:
-          name: localbuddy-${{ matrix.os }}
-          path: .localbuddy/forge-out/make/**
+          name: localbuddy-windows-main
+          path: ci-assets/**
           if-no-files-found: error
+          retention-days: 7

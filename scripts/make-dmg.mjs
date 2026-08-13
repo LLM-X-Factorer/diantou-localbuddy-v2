@@ -1,16 +1,21 @@
 import { execFile } from "node:child_process";
-import { cp, mkdir, rm, symlink } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, symlink } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
+const packageMetadata = JSON.parse(await readFile(resolve("package.json"), "utf8"));
+const packageVersion = packageMetadata.version;
+if (typeof packageVersion !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(packageVersion)) {
+  throw new Error("package.json contains an invalid package version");
+}
 const appPath = resolve(".localbuddy", "forge-out", "LocalBuddy-darwin-arm64", "LocalBuddy.app");
 const stagingRoot = resolve(".localbuddy", "dmg-stage");
 const outputPath = resolve(
   ".localbuddy",
   "forge-out",
   "make",
-  "LocalBuddy-0.11.0-arm64.dmg",
+  `LocalBuddy-${packageVersion}-arm64.dmg`,
 );
 
 await rm(stagingRoot, { recursive: true, force: true });
