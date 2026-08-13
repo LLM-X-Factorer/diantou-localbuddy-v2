@@ -87,4 +87,4 @@ Linux 不再进入 Tag Release。`.github/workflows/linux-maintenance.yml` 只�
 - 集成代码回滚使用普通 revert commit，不 amend 已推送提交；
 - Release 事实变化后同步 Changelog、Known Limitations 和 Validation。
 
-`v0.11.0` 的原生 Windows Release 和回下载证据见 [`M10.2-VALIDATION.md`](M10.2-VALIDATION.md)；`v0.9.0` 的首次 Windows Release、CRLF 清单修复和回下载证据见 [`M10-VALIDATION.md`](M10-VALIDATION.md)。旧 Release 不回写、不替换；Linux 资产不再计划进入 `v0.11.1`。
+`v0.11.1` 的 Windows-first Release 和回下载证据见 [`M10.3-VALIDATION.md`](M10.3-VALIDATION.md)；`v0.11.0` 的原生 Windows Release 证据见 [`M10.2-VALIDATION.md`](M10.2-VALIDATION.md)；`v0.9.0` 的首次 Windows Release、CRLF 清单修复和回下载证据见 [`M10-VALIDATION.md`](M10-VALIDATION.md)。旧 Release 不回写、不替换；Linux 资产不进入 `v0.11.1`。

@@ -11,7 +11,7 @@
 - Windows 包未做代码签名，可能出现 SmartScreen 提示；
 - Tag workflow 只发布 Windows x64 Setup/ZIP；Linux 与 macOS 不自动进入 GitHub Release。Windows Release 前运行安装版合成灰度；
 - `windows-2025` 是 Windows Server 2025 管理员 Runner，不能覆盖 Windows 11 的 SmartScreen、Defender、标准用户/UAC、DPI、输入法、睡眠或企业代理；
-- 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。仓库没有静默忽略该项，`0.11.1` Tag 前必须复查稳定版上游或做明确风险决策；
+- 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。`0.11.1` Tag 前已复查稳定版上游并记录 private Engineering Alpha 的打包期风险接受；后续继续跟踪稳定 Forge 迁移；
 - 更新协议只下载、验签并 staging，不会自动替换正在使用的应用。
 
 ## Product experience

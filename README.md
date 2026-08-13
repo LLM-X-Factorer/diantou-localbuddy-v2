@@ -198,7 +198,7 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 - Windows 托管 Runner 已运行版本对应的 Squirrel Setup，从实际安装目录验证无 Provider 首启并调用卸载清理；安装/更新/卸载生命周期由标准 Squirrel 处理器提前收口；
 - 规格与验收见 [`docs/M10.3-SPEC.md`](docs/M10.3-SPEC.md) 和 [`docs/M10.3-VALIDATION.md`](docs/M10.3-VALIDATION.md)。
 
-当前主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。`0.11.1` 已有 Windows 安装级无凭据首启和完整安装版合成灰度证据；只有推送目标 Tag 后才会生成正式 Release 资产。终端用户 Windows 11、真实 Provider 和第三方生产 MCP OAuth 仍需外部验收，不能用托管 Runner 或本地夹具冒充。Linux 当前不进入发布门禁。
+当前主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。`0.11.1` 已有 Windows 安装级无凭据首启和完整安装版合成灰度证据，并已发布 Windows Setup/ZIP 与 SHA-256 清单。终端用户 Windows 11、真实 Provider 和第三方生产 MCP OAuth 仍需外部验收，不能用托管 Runner 或本地夹具冒充。Linux 当前不进入发布门禁。
 
 ## 核心模型
 

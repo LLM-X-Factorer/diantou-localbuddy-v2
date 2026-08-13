@@ -19,7 +19,7 @@
 - Tag Release 改为 Windows-only：必须通过生产依赖审计、全量测试、安装版合成灰度和 SHA-256 后才发布 Setup/ZIP；Linux 不再阻塞 Windows RC；
 - Windows 发布作业强制通过生产依赖高危审计；开发期 Forge 打包链的上游 `extract-zip` 告警已在 Tag 前复查，当前稳定 Forge 仍无修复，本次 private Engineering Alpha 已记录接受该打包期风险；
 - macOS 包已通过全新用户数据、无 Provider 凭据首次启动 smoke；[`windows-2025` PR run `31665000997`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31665000997) 还运行真实 Setup、从版本化安装目录在隔离用户数据与无 Provider 凭据条件下启动，并回下载核对截图与 JSON，最后调用 Squirrel 卸载；
-- draft PR #1 的提交 `d686cd6` 已通过 [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 和 [`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610)：Windows 完整合同、Setup 无凭据首启、Credential Manager、故障矩阵、安装版 Research Run、双 Run 取消、硬退出恢复和 5 次额外重启均为绿色；`v0.11.1` Tag/Release 固定该已验证范围并发布 Windows Setup/ZIP。
+- [PR #1](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/pull/1) 已以 `09c7be6` 合入 `main`；最终 PR 门禁与 `main` CI 均为绿色。[`v0.11.1` Release Gate `31675334513`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31675334513) 在固定 Tag 上完成完整 Windows 合成灰度并发布 Setup/ZIP；三个资产已回下载完成 SHA-256、字节数和 LF 清单核验。
 
 M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批边界；它解决的是必要配置的可发现性、可判断性和安全生命周期。M11 仍未立项。
 
