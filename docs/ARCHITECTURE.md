@@ -1,6 +1,6 @@
 # LocalBuddy V2 Architecture
 
-> **状态基线**：2026-08-13，`0.11.0 / M10.2`。本文件描述当前架构事实；各 `M*-SPEC.md` 保留对应阶段当时的范围，不因后续实现而回写历史。
+> **状态基线**：2026-08-13，`0.11.1 / M10.3` 本机候选。最新私有 GitHub Release 仍是 `v0.11.0`。本文件描述当前架构事实；各 `M*-SPEC.md` 保留对应阶段当时的范围，不因后续实现而回写历史。
 
 ## 1. 产品判断
 
@@ -183,6 +183,8 @@ MCP transport 支持本地 stdio 与 Streamable HTTP。HTTP 只接受 HTTPS 或 
 - 默认全局最多 3 个并发 Task，可配置但不能无限制。
 - DeepSeek 与 OpenAI 使用同一 Provider 接口；Run Request 固定实际 Provider 选择。
 - 凭证从进程环境或平台凭证库解析：macOS Keychain、Linux Secret Service、Windows Credential Manager；不进入 Run Request、checkpoint 或事件日志。
+- Desktop Bootstrap 只返回每个 Provider 的 `available` 与 `source` 状态。Renderer 的密码输入是瞬时受控状态，保存后立即清空；替换与删除均由 Main 操作平台凭证库，删除必须经过原生确认。
+- 保存凭证只验证本机安全写入，不触发网络。显式连接验证在 Main 中解析凭证并向经同一 HTTPS/loopback 校验的端点请求 `/models`；Renderer 只接收成功或有界错误，不接收凭证或远端响应正文。
 - 内建工具包括受限文件读写、搜索、patch、确定性计算和受控检查命令；M4/M5 增加显式选择的 MCP stdio/Streamable HTTP 与浏览器工具。
 - Skills 支持显式选择的工作区本地内容，以及经发布者信任、版本锁、权限声明、内容哈希和撤销校验的签名包；远程 Skill 市场、云同步和团队账号仍不在当前边界。
 
@@ -223,5 +225,6 @@ Desktop 使用 Electron single-instance lock，避免两个桌面进程同时拥
 15. **M10 Dogfooding + Productization（已完成代码、本机与原生 Runner 范围）**：Desktop Provider/凭证设置、持久信任档、哈希校验 inline diff、脱敏诊断导出、macOS 包复验、Linux/Windows 原生构建和 Windows GitHub Release。Windows 真机端到端与生产 MCP OAuth 仍是外部门禁。
 16. **M10.1 Local Dogfood Closure（已完成本机闭环）**：Run 指标投影、Artifact Gate 反馈/预算、失败 Run 安全 checkpoint 恢复、最近工作区、校验后的文本 Artifact 预览与显式继续、MCP stdio 脱敏失败诊断，以及真实 Coding commit/reverse-commit 验证。连续 7-14 天使用仍是开放门禁。
 17. **M10.2 First Trusted Run（已完成本机实现与 UI 验收）**：本地确定性 Guide、私有版本化偏好、Provider 布尔 readiness、显式合成教程工作区、只预填模板和真实 Run 状态提示。Guide 不属于 Run，不调用模型，也不进入审计指标；真实执行仍复用既有 Run 合同。
+18. **M10.3 Provider Setup（已完成本机闭环）**：独立 Provider 一级入口、来源状态、安全保存/替换/删除、显式 `/models` 连接探针、紧凑 Composer 状态和缺失凭据启动拦截。Skills/MCP/Browser 继续作为可选扩展单独配置；macOS 包与已安装 App 已验收，Windows/Linux 版本、依赖与同步 Tag Release 合同已准备，原生 `0.11.1` 构建仍待提交/Tag 授权。
 
 M11 尚未立项。持久化多轮工作线程、Project/Workspace 首页、资料摄取、非纯文本产物预览和更可控的多 Agent 交互属于候选方向，必须在连续 dogfooding 后再确定范围，不能写成已承诺能力。

@@ -21,14 +21,18 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --prod --audit-level high
       - run: pnpm typecheck
       - run: pnpm build:core
       - name: Run platform-neutral contracts
         run: >-
           node --test
+          dist/test/credential-store.test.js
           dist/test/deepseek-provider.test.js
           dist/test/openai-provider.test.js
+          dist/test/platform-contract.test.js
           dist/test/process-shared-provider.test.js
+          dist/test/provider-connection.test.js
           dist/test/provider-factory.test.js
           dist/test/run-request-store.test.js
           dist/test/scheduler.test.js
@@ -38,6 +42,15 @@ jobs:
           dist/test/workspace-process-lock.test.js
       - name: Build Windows installer and portable ZIP
         run: pnpm make:win
+      - name: Verify clean first launch without Provider credentials
+        run: pnpm verify:first-run-package
+      - name: Upload clean first-launch evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: localbuddy-clean-first-launch-windows-${{ github.ref_name }}
+          path: .localbuddy/first-run-smoke/windows/**
+          if-no-files-found: warn
       - name: Collect release assets and checksums
         shell: pwsh
         run: |
@@ -66,14 +79,91 @@ jobs:
           name: localbuddy-windows-${{ github.ref_name }}
           path: release-assets/**
           if-no-files-found: error
-      - name: Publish GitHub Release assets
-        shell: pwsh
+
+  linux-release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --prod --audit-level high
+      - run: pnpm typecheck
+      - run: pnpm build:core
+      - name: Run platform-neutral contracts
+        run: >-
+          node --test
+          dist/test/credential-store.test.js
+          dist/test/deepseek-provider.test.js
+          dist/test/openai-provider.test.js
+          dist/test/platform-contract.test.js
+          dist/test/process-shared-provider.test.js
+          dist/test/provider-connection.test.js
+          dist/test/provider-factory.test.js
+          dist/test/run-request-store.test.js
+          dist/test/scheduler.test.js
+          dist/test/tool-runtime.test.js
+          dist/test/trust-policy.test.js
+          dist/test/update-manifest.test.js
+          dist/test/workspace-process-lock.test.js
+      - name: Build Linux DEB
+        run: pnpm make:linux
+      - name: Collect release assets and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          mapfile -t assets < <(find .localbuddy/forge-out/make -type f -name '*.deb' -print | sort)
+          if [[ ${#assets[@]} -lt 1 ]]; then
+            echo "Expected a Linux DEB" >&2
+            exit 1
+          fi
+          cp "${assets[@]}" release-assets/
+          (
+            cd release-assets
+            sha256sum -- *.deb > SHA256SUMS-linux.txt
+          )
+      - uses: actions/upload-artifact@v4
+        with:
+          name: localbuddy-linux-${{ github.ref_name }}
+          path: release-assets/**
+          if-no-files-found: error
+
+  publish-release:
+    needs: [windows-release, linux-release]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: localbuddy-*-${{ github.ref_name }}
+          path: release-assets
+          merge-multiple: true
+      - name: Verify release version and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_version=$(node -p "require('./package.json').version")
+          expected_tag="v${package_version}"
+          if [[ "$GITHUB_REF_NAME" != "$expected_tag" ]]; then
+            echo "Tag $GITHUB_REF_NAME does not match package version $expected_tag" >&2
+            exit 1
+          fi
+          cd release-assets
+          sha256sum --check SHA256SUMS-windows.txt
+          sha256sum --check SHA256SUMS-linux.txt
+      - name: Publish synchronized GitHub Release assets
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view $env:GITHUB_REF_NAME *> $null
-          if ($LASTEXITCODE -ne 0) {
-            gh release create $env:GITHUB_REF_NAME --verify-tag --generate-notes --title "LocalBuddy $env:GITHUB_REF_NAME"
-          }
-          $releaseAssets = Get-ChildItem release-assets -File | ForEach-Object { $_.FullName }
-          gh release upload $env:GITHUB_REF_NAME $releaseAssets --clobber
+          set -euo pipefail
+          if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --title "LocalBuddy $GITHUB_REF_NAME"
+          fi
+          gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber

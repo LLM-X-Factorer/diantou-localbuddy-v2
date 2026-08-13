@@ -1,8 +1,27 @@
-# LocalBuddy V2 Roadmap after M10.2
+# LocalBuddy V2 Roadmap after M10.3
 
-> **状态真源**：2026-08-13。当前私有发布线为 `v0.11.0 / M10.2 First Trusted Run Engineering Alpha`。本文件只记录跨里程碑状态和后续决策，阶段内证据以对应 `M*-VALIDATION.md` 为准。
+> **状态真源**：2026-08-13。当前本机候选版为 `0.11.1 / M10.3 Provider Setup`；最新私有 GitHub Release 仍是 `v0.11.0 / M10.2`。本文件只记录跨里程碑状态和后续决策，阶段内证据以对应 `M*-VALIDATION.md` 为准。
 
 ## 当前里程碑
+
+### 0.11.1 · M10.3 Provider Setup — completed locally; synchronized native release prepared
+
+- Provider 成为侧边栏一级设置，不再藏在 Skills/MCP/Browser 扩展折叠区；
+- DeepSeek/OpenAI 独立显示环境变量、系统安全存储或未配置状态，Renderer 不接收 secret；
+- 支持安全保存、替换和经原生确认删除系统凭据；环境变量保持进程级优先级且不能从应用删除；
+- 保存只验证本机写入，不自动联网；显式“验证连接”只请求 Provider 的 `/models`，不调用生成接口；
+- 当前 Run 的 model/base URL 归入 Provider 高级设置，Base URL 继续限制为 HTTPS 或 loopback HTTP；
+- Composer 就近显示状态，凭据缺失时阻止真实 Run 并直达配置；
+- Composer 已改为紧凑的“任务输入 + 控制工具栏”，扩展只在显式展开时占用额外空间；
+- 自动门禁为 119/119 tests；macOS `0.11.1` DMG/ZIP 已通过版本、签名、Fuse、ASAR、浏览器、Renderer 和挂载后完整性验证，并安装到 `/Applications/LocalBuddy.app`；
+- 已安装应用通过真实 GUI 验收：独立入口、来源状态、显式验证文案、未配置 Provider 启动门禁，以及 Composer 收起/扩展布局均可见；
+- Windows Setup 文件名、Linux `libsecret-tools` 依赖和两个平台的 Provider 合同均由 `0.11.1` 真源约束；
+- Tag Release 必须等待 Windows/Linux 原生作业同时成功，分别验证 SHA-256 后才一次性发布；
+- 两个平台的发布作业都强制通过生产依赖高危审计；开发期 Forge 打包链的上游 `extract-zip` 告警已登记，正式 Tag 前仍需复查稳定版修复或明确风险决策；
+- macOS 包已通过全新用户数据、无 Provider 凭据首次启动 smoke；同一门禁已进入 Windows PR/Release 原生作业，等待首次 `windows-2025` 结果；
+- 本版本尚未 commit、Tag、push 或创建 Release，Windows 可下载版本仍为 `v0.11.0`，Linux `0.11.1` DEB 也尚未由原生 Runner 生成。
+
+M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批边界；它解决的是必要配置的可发现性、可判断性和安全生命周期。M11 仍未立项。
 
 ### v0.11.0 · M10.2 First Trusted Run — private Engineering Alpha
 
@@ -98,6 +117,18 @@
 - 保持每次真实执行显式启动、每次外部副作用独立审批和每次代码写回人工 Gate。
 
 规格与本机证据见 [`M10.2-SPEC.md`](M10.2-SPEC.md) 和 [`M10.2-VALIDATION.md`](M10.2-VALIDATION.md)。
+
+### M10.3 · Provider Setup — completed locally; release pending
+
+- Provider 从扩展概念中拆出，成为真实 Run 的显式必要前置；
+- 凭据管理覆盖状态、保存、替换、删除和按需连接验证；
+- 缺失状态、Composer 就近反馈与启动前拦截形成闭环；
+- Composer 已收敛为紧凑输入与可换行工具栏，不再用大栅格承载少量设置；
+- 连接检查是用户触发的认证/网络探针，不等价于真实生成 Run；
+- 保持 Key 不进 Renderer 持久状态、不进 Run/事件/checkpoint/诊断的既有边界。
+- Windows/Linux 使用同一包版本与双平台发布门禁；Linux DEB 声明 Secret Service CLI 依赖。
+
+规格与本机证据见 [`M10.3-SPEC.md`](M10.3-SPEC.md) 和 [`M10.3-VALIDATION.md`](M10.3-VALIDATION.md)。
 
 ## 外部门禁与明确暂缓
 

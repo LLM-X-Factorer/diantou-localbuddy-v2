@@ -6,6 +6,41 @@
 
 暂无。
 
+## 0.11.1 — 2026-08-13
+
+M10.3 Provider Setup 本机候选版。当前只进入本机源码、测试、macOS 打包与安装验收流程；尚未 commit、Tag、push 或创建 GitHub Release。
+
+### Added
+
+- 侧边栏一级“Provider 设置”和 DeepSeek/OpenAI 独立状态卡；
+- 环境变量、系统安全存储、未配置三种凭据来源状态；
+- 系统凭据替换，以及经 Electron 原生确认的删除流程；
+- 用户显式触发、只请求 `/models` 的连接验证；
+- Composer Provider 状态标签、缺失提示和启动前硬拦截。
+
+### Changed
+
+- Model 与 Base URL 移入 Provider 高级设置；“扩展配置”只保留 Skills、MCP 和 Browser；
+- Bootstrap 和凭据写入 IPC 返回有界状态对象，不再只返回布尔值；
+- 保存凭据不会自动联网，连接验证与真实 Run 分别需要独立用户动作。
+- Windows Setup 文件名从 `package.json` 派生版本；Linux DEB 显式依赖提供 `secret-tool` 的 `libsecret-tools`；
+- `v*` Tag Release 改为 Windows/Linux 原生构建双门禁，分别生成 SHA-256 清单，校验 Tag 与包版本一致后一次性发布两个平台资产。
+- Windows/Linux 发布作业新增生产依赖高危审计；开发期 Electron 打包链的上游 `extract-zip` 无修复版本告警已如实登记，不做静默忽略。
+- 包级首次启动 smoke 会清空 Provider 环境变量、隔离用户数据并屏蔽系统凭据命令，断言 Guide、DeepSeek/OpenAI 未配置状态以及连接/运行禁用门禁；Windows 原生构建与 Release 均强制执行。
+
+### Fixed
+
+- macOS DMG 制作和验证脚本不再硬编码旧版本文件名，改为读取、校验 `package.json` 版本，并复核 App Bundle 版本一致。
+- Composer 控制台改为紧凑的“任务输入 + 控制工具栏”：移除占高的字段标题与 16 列空栅格，Provider、信任、模式和并发只展示当前值，凭据与扩展入口使用短状态，执行按钮固定在右侧；窄窗口仅让工具项自然换行。
+
+### Evidence
+
+- 规格：[`docs/M10.3-SPEC.md`](docs/M10.3-SPEC.md)；
+- 验收：[`docs/M10.3-VALIDATION.md`](docs/M10.3-VALIDATION.md)；
+- `pnpm check`：119/119 tests passed；
+- macOS 无 Provider 凭据包级首次启动 smoke 通过；Windows 同门禁等待 `windows-2025` 原生 PR 作业；
+- macOS DMG：224,991,198 bytes，SHA-256 `0a533b7d2397f40e82073697e0b026f243518c98198ef10625a6eecbffb46437`，挂载后包验证通过。
+
 ## 0.11.0 — 2026-08-13
 
 M10.2 First Trusted Run 私有 Engineering Alpha。macOS 内部包已完成本机验收；Windows 资产已由 `v0.11.0` Tag 的原生 workflow 构建、发布并回下载核验。本版本不属于公开分发。

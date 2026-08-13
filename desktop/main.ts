@@ -17,6 +17,7 @@ import {
 import { normalizeRunExtensions, type RunExtensionSelection } from "../src/extension-config.js";
 import { normalizeProviderSelection, type ProviderSelection } from "../src/provider-config.js";
 import { createConfiguredProvider } from "../src/provider-factory.js";
+import { verifyProviderConnection as probeProviderConnection } from "../src/provider-connection.js";
 import { ProcessSharedCapacity } from "../src/process-shared-provider.js";
 import {
   DESKTOP_CHANNELS,
@@ -31,7 +32,8 @@ import {
 import { DesktopRunManager } from "../src/desktop-run-manager.js";
 import { RecentWorkspaceStore } from "../src/recent-workspaces.js";
 import {
-  hasProviderApiKey,
+  deleteProviderApiKey,
+  inspectProviderCredential,
   storeProviderApiKey,
   type CredentialProviderId,
 } from "../src/credential-store.js";
@@ -191,17 +193,17 @@ function registerIpcHandlers(): void {
     if (process.env.LOCALBUDDY_DEFAULT_WORKSPACE !== undefined) {
       await getRecentWorkspaceStore().remember(workspace);
     }
-    const [onboarding, deepseekAvailable, openaiAvailable, workspaceReadiness] = await Promise.all([
+    const [onboarding, deepseekCredential, openaiCredential, workspaceReadiness] = await Promise.all([
       getOnboardingStateStore().load(),
-      hasProviderApiKey("deepseek"),
-      hasProviderApiKey("openai"),
+      inspectProviderCredential("deepseek"),
+      inspectProviderCredential("openai"),
       inspectWorkspaceReadiness(workspace),
     ]);
     return {
       workspace,
       runs: workspace.length === 0 ? [] : await runManager.list(workspace),
       recentWorkspaces: promoteRecentWorkspace(recentWorkspaces, workspace),
-      providerAvailability: { deepseek: deepseekAvailable, openai: openaiAvailable },
+      providerAvailability: { deepseek: deepseekCredential, openai: openaiCredential },
       workspaceReadiness,
       onboarding,
     };
@@ -257,7 +259,53 @@ function registerIpcHandlers(): void {
     assertTrustedSender(event);
     const parsed = parseProviderCredentialRequest(request);
     await storeProviderApiKey(parsed.providerId, parsed.apiKey);
-    return { providerId: parsed.providerId, stored: true as const };
+    return {
+      providerId: parsed.providerId,
+      stored: true as const,
+      status: await inspectProviderCredential(parsed.providerId),
+    };
+  });
+
+  ipcMain.handle(DESKTOP_CHANNELS.deleteProviderCredential, async (event, request: unknown) => {
+    assertTrustedSender(event);
+    const providerId = parseProviderIdRequest(request);
+    const label = providerId === "deepseek" ? "DeepSeek" : "OpenAI";
+    const options = {
+      type: "warning" as const,
+      title: `删除 ${label} 凭据`,
+      message: `确认从系统安全存储中删除 ${label} API Key 吗？`,
+      detail: "删除后，LocalBuddy 将无法使用这个 Provider，除非环境变量仍然提供凭据或你重新保存。密钥内容不会被读取或显示。",
+      buttons: ["取消", "删除凭据"],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    };
+    const result = mainWindow === null
+      ? await dialog.showMessageBox(options)
+      : await dialog.showMessageBox(mainWindow, options);
+    if (result.response !== 1) {
+      return {
+        providerId,
+        deleted: false,
+        status: await inspectProviderCredential(providerId),
+      };
+    }
+    await deleteProviderApiKey(providerId);
+    return {
+      providerId,
+      deleted: true,
+      status: await inspectProviderCredential(providerId),
+    };
+  });
+
+  ipcMain.handle(DESKTOP_CHANNELS.verifyProviderConnection, async (event, request: unknown) => {
+    assertTrustedSender(event);
+    const record = expectRecord(request, "provider connection request");
+    const providerId = parseProviderIdRequest(record);
+    return probeProviderConnection({
+      id: providerId,
+      baseUrl: expectOptionalString(record.baseUrl, "baseUrl"),
+    });
   });
 
   ipcMain.handle(DESKTOP_CHANNELS.listRuns, async (event, workspace: unknown) => {
@@ -430,6 +478,15 @@ function parseProviderCredentialRequest(value: unknown): {
     providerId,
     apiKey: expectString(record.apiKey, "apiKey"),
   };
+}
+
+function parseProviderIdRequest(value: unknown): CredentialProviderId {
+  const record = expectRecord(value, "provider request");
+  const providerId = expectString(record.providerId, "providerId");
+  if (providerId !== "deepseek" && providerId !== "openai") {
+    throw new Error("providerId must be deepseek or openai");
+  }
+  return providerId;
 }
 
 function parseUpdateOnboardingRequest(value: unknown): UpdateDesktopOnboardingRequest {
@@ -649,14 +706,37 @@ async function captureSmokeScreenshotIfRequested(window: BrowserWindow): Promise
   if (target === undefined) {
     return;
   }
-  await new Promise((resolvePromise) => setTimeout(resolvePromise, 1_000));
-  const diagnostics = await window.webContents.executeJavaScript(`({
-    url: location.href,
-    title: document.title,
-    bodyCharacters: document.body?.innerText?.length ?? -1,
-    api: typeof globalThis.localbuddy,
-    rootChildren: document.getElementById("root")?.childElementCount ?? -1
-  })`);
+  const diagnostics = await window.webContents.executeJavaScript(`(async () => {
+    const waitFor = async (selector) => {
+      const deadline = Date.now() + 10_000;
+      while (Date.now() < deadline) {
+        const element = document.querySelector(selector);
+        if (element !== null) return element;
+        await new Promise((resolvePromise) => setTimeout(resolvePromise, 50));
+      }
+      throw new Error('Timed out waiting for ' + selector);
+    };
+    const providerEntry = await waitFor('.provider-entry');
+    const startButton = await waitFor('.start-button');
+    providerEntry.click();
+    const providerDialog = await waitFor('.provider-settings-dialog');
+    const providerChoices = [...providerDialog.querySelectorAll('.provider-choice-grid button')]
+      .map((element) => element.innerText.trim());
+    return {
+      url: location.href,
+      title: document.title,
+      bodyCharacters: document.body?.innerText?.length ?? -1,
+      api: typeof globalThis.localbuddy,
+      rootChildren: document.getElementById('root')?.childElementCount ?? -1,
+      guideVisible: document.querySelector('.guide-state') !== null,
+      providerEntry: providerEntry.innerText.trim(),
+      providerDialogVisible: providerDialog !== null,
+      providerChoices,
+      providerSummary: providerDialog.querySelector('.provider-credential-summary')?.innerText.trim() ?? '',
+      verifyDisabled: providerDialog.querySelector('.verify-provider-button')?.disabled ?? null,
+      startDisabled: startButton.disabled
+    };
+  })()`);
   const image = await window.webContents.capturePage();
   await mkdir(dirname(target), { recursive: true });
   await writeFile(target, image.toPNG());

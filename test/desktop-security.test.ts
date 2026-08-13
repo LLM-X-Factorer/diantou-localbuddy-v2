@@ -21,6 +21,9 @@ test("desktop runtime uses the privileged local protocol and Electron isolation 
   assert.match(html, /connect-src 'none'/);
   assert.match(html, /object-src 'none'/);
   assert.match(main, /storeProviderApiKey\(parsed\.providerId, parsed\.apiKey\)/);
+  assert.match(main, /deleteProviderApiKey\(providerId\)/);
+  assert.match(main, /probeProviderConnection/);
+  assert.match(main, /确认从系统安全存储中删除/);
   assert.match(renderer, /type="password"/);
   assert.doesNotMatch(renderer, /localStorage|sessionStorage/);
   assert.match(main, /const result = await dialog\.showSaveDialog\(options\)/);
@@ -28,8 +31,18 @@ test("desktop runtime uses the privileged local protocol and Electron isolation 
   assert.match(main, /runManager\.loadArtifactPreview/);
   assert.match(main, /runManager\.resolveArtifactPath/);
   assert.match(main, /createTutorialWorkspace/);
-  assert.match(main, /hasProviderApiKey\("deepseek"\)/);
+  assert.match(main, /inspectProviderCredential\("deepseek"\)/);
+  assert.match(main, /inspectProviderCredential\("openai"\)/);
+  assert.match(renderer, /Provider 是真实运行的必要条件，不属于 Skills、MCP 或 Browser 扩展/);
+  assert.match(renderer, /!selectedProviderCredential\.available/);
+  assert.match(renderer, /保存只验证本机安全写入，不会自动联网/);
+  assert.match(renderer, /点击“验证连接”会把凭据发送到上方显示的 Provider \/ Base URL/);
+  assert.match(renderer, /没有发起模型生成或产生模型 token/);
+  assert.match(renderer, /provider-settings-error/);
   assert.match(main, /requestedWorkspace === undefined\s*\? ""/);
+  assert.match(main, /providerDialogVisible/);
+  assert.match(main, /verifyDisabled/);
+  assert.match(main, /startDisabled/);
   assert.doesNotMatch(main, /recentWorkspaces\[0\]\s*\?\? app\.getPath\("documents"\)/);
   assert.match(renderer, /我不会在这里调用模型、读取文件或启动任务/);
   assert.match(renderer, /只有点击“开始任务”后才会调用 Provider/);
@@ -39,6 +52,9 @@ test("desktop runtime uses the privileged local protocol and Electron isolation 
 
 test("Forge package is ASAR-only and declares every Electron 43 fuse", async () => {
   const config = await readFile("forge.config.cjs", "utf8");
+  const makeDmg = await readFile("scripts/make-dmg.mjs", "utf8");
+  const verifyMacPackage = await readFile("scripts/verify-macos-package.mjs", "utf8");
+  const verifyCleanFirstLaunch = await readFile("scripts/verify-clean-first-launch.mjs", "utf8");
 
   assert.match(config, /asar: true/);
   assert.match(config, /strictlyRequireAllFuses: true/);
@@ -63,6 +79,18 @@ test("Forge package is ASAR-only and declares every Electron 43 fuse", async () 
   assert.match(config, /icon: brandIcon/);
   assert.match(config, /setupIcon: windowsBrandIcon/);
   assert.match(config, /icon: linuxBrandIcon/);
+  assert.match(makeDmg, /readFile\(resolve\("package\.json"\)/);
+  assert.match(makeDmg, /`LocalBuddy-\$\{packageVersion\}-arm64\.dmg`/);
+  assert.doesNotMatch(makeDmg, /LocalBuddy-\d+\.\d+\.\d+-arm64\.dmg/);
+  assert.match(verifyMacPackage, /`\.localbuddy\/forge-out\/make\/LocalBuddy-\$\{packageVersion\}-arm64\.dmg`/);
+  assert.match(verifyMacPackage, /CFBundleShortVersionString/);
+  assert.doesNotMatch(verifyMacPackage, /LocalBuddy-\d+\.\d+\.\d+-arm64\.dmg/);
+  assert.match(verifyCleanFirstLaunch, /DEEPSEEK_API_KEY/);
+  assert.match(verifyCleanFirstLaunch, /OPENAI_API_KEY/);
+  assert.match(verifyCleanFirstLaunch, /credentialCommandPath: "empty"/);
+  assert.match(verifyCleanFirstLaunch, /providerChoices/);
+  assert.match(verifyCleanFirstLaunch, /verifyDisabled/);
+  assert.match(verifyCleanFirstLaunch, /startDisabled/);
 });
 
 test("Renderer uses the shared LocalBuddy brand icon instead of a text placeholder", async () => {
@@ -73,6 +101,21 @@ test("Renderer uses the shared LocalBuddy brand icon instead of a text placehold
   assert.match(renderer, /<img src=\{localBuddyIcon\} alt="" \/>/);
   assert.doesNotMatch(renderer, /<span className="brand-mark">LB<\/span>/);
   assert.match(styles, /\.brand-mark img/);
+});
+
+test("Renderer composer is a compact input plus wrapping control toolbar", async () => {
+  const renderer = await readFile("desktop/renderer/src/App.tsx", "utf8");
+  const styles = await readFile("desktop/renderer/src/styles.css", "utf8");
+
+  assert.match(renderer, /className="control-label">Provider<\/span>/);
+  assert.match(renderer, /aria-expanded=\{extensionsOpen\}/);
+  assert.match(renderer, /providerCredentialCompactLabel/);
+  assert.match(styles, /\.composer textarea \{[^}]*height: 46px/);
+  assert.match(styles, /\.composer-actions \{ display: grid; grid-template-columns: minmax\(0,1fr\) auto/);
+  assert.match(styles, /\.composer-options \{ display: flex; flex-wrap: wrap/);
+  assert.match(styles, /\.control-label \{ position: absolute; width: 1px; height: 1px/);
+  assert.match(styles, /\.extensions-toggle \{[^}]*min-height: 32px/);
+  assert.doesNotMatch(styles, /\.composer-actions \{[^}]*repeat\(16/);
 });
 
 test("brand assets provide native macOS, Windows, and Linux icon formats", async () => {

@@ -1,6 +1,6 @@
 # LocalBuddy V2 Internal Quickstart
 
-> 适用版本：私有 `v0.11.0 / M10.2 First Trusted Run` Engineering Alpha。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
+> 适用版本：三平台源码候选 `0.11.1 / M10.3 Provider Setup`。macOS 本机包已验证；Windows/Linux 同版本原生构建与同步发布流程已准备，但最新私有 GitHub Release 仍为 `v0.11.0 / M10.2`。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
 
 ## 1. 选择可用入口
 
@@ -8,7 +8,7 @@
 |---|---|---|
 | macOS arm64 | 从仓库执行 `pnpm desktop`，或使用本机生成的 ad-hoc ZIP/DMG | 本机 Renderer、Fuse、ASAR、内置浏览器和包完整性烟测 |
 | Windows x64 | 私有 [`v0.11.0` Release](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.11.0) 的 Setup/ZIP | Windows Runner 合同、构建与 Release 哈希；真机运行待验收 |
-| Linux x64 | GitHub CI 生成的 DEB artifact | Ubuntu Runner 合同与构建；图形桌面安装/启动待验收 |
+| Linux x64 | 既有 GitHub CI DEB artifact；`v0.11.1` 起计划随同 Windows 资产进入同一私有 Release | Ubuntu Runner 合同与构建；`0.11.1` 原生运行和图形桌面安装/启动待验收 |
 
 Windows 包未签名。只有明确获准参与内部测试时才下载；不要把 SmartScreen 提示解释为已完成发布信誉或代码签名。
 
@@ -39,13 +39,18 @@ Guide 本身不调用模型，也不生成假 Run。用户可以进入工作台�
 
 ## 3. 配置 Provider
 
-1. 在 Desktop 底部展开“扩展配置”；
-2. 选择 DeepSeek 或 OpenAI；
-3. 可选填写模型和 HTTPS/loopback Base URL；
-4. 在密码框输入 API Key，点击“安全保存”；
-5. 成功后输入框会清空，Renderer 不会读取或回显已有凭证。
+1. 点击侧边栏固定的“Provider 设置”；
+2. 选择 DeepSeek 或 OpenAI，并确认状态是“环境变量”“系统安全存储”或“未配置”；
+3. 在密码框输入 API Key，点击“安全保存”；已有系统凭据时可“替换并保存”；
+4. 成功后输入框会清空，Renderer 不会读取或回显已有凭证；
+5. 如需确认认证和网络，主动点击“验证连接”。它会向当前 Provider/Base URL 请求 `/models`，不会生成内容或消耗模型 token；
+6. Model 和 HTTPS/loopback Base URL 位于“当前 Run 高级设置”，只影响之后的验证或 Run。
 
-凭证写入 macOS Keychain、Linux Secret Service 或 Windows Credential Manager。也可以在 CLI 进程环境中使用 `DEEPSEEK_API_KEY` / `OPENAI_API_KEY`。
+凭证写入 macOS Keychain、Linux Secret Service 或 Windows Credential Manager。系统凭据可经原生确认删除。也可以在 CLI 进程环境中使用 `DEEPSEEK_API_KEY` / `OPENAI_API_KEY`；环境变量优先，应用只能显示其存在，不能替换或删除进程环境。
+
+Linux DEB 声明 `libsecret-tools` 依赖以提供 `secret-tool`；系统仍必须运行可用的 Secret Service/桌面 Keyring。没有该会话时，应用应报告系统凭据不可用，而不是回退到明文文件。
+
+保存本身不会联网。只有点击“验证连接”或“开始任务”才会把凭据发送到界面所示端点。没有所选 Provider 的可用凭据时，“开始任务”会保持禁用并提供直达设置入口。
 
 ## 4. 完成第一个 Research Run
 
@@ -69,7 +74,7 @@ Coding 工作区必须：
 
 Code Worker 只在 detached worktree 中修改授权路径。组合补丁通过预检后仍停在 `awaiting_approval`；必须阅读 inline diff，再决定仅应用、应用并提交或拒绝。LocalBuddy 不会把 Agent 判断当成人类批准。
 
-Windows `v0.11.0` 没有受支持的本地进程隔离宿主，涉及检查命令或 stdio 进程的能力会 fail closed；不要把 Windows 包当成 Coding 全功能版本。
+Windows `0.11.x` 没有受支持的本地进程隔离宿主，涉及检查命令或 stdio 进程的能力会 fail closed；不要把 Windows 包当成 Coding 全功能版本。
 
 ## 6. 中断、恢复与诊断
 

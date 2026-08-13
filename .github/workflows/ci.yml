@@ -45,9 +45,12 @@ jobs:
       - name: Run platform-neutral contracts
         run: >-
           node --test
+          dist/test/credential-store.test.js
           dist/test/deepseek-provider.test.js
           dist/test/openai-provider.test.js
+          dist/test/platform-contract.test.js
           dist/test/process-shared-provider.test.js
+          dist/test/provider-connection.test.js
           dist/test/provider-factory.test.js
           dist/test/run-request-store.test.js
           dist/test/scheduler.test.js
@@ -77,6 +80,16 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm ${{ matrix.command }}
+      - name: Verify clean first launch without Provider credentials
+        if: runner.os == 'Windows'
+        run: pnpm verify:first-run-package
+      - name: Upload clean first-launch evidence
+        if: runner.os == 'Windows' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: localbuddy-clean-first-launch-${{ matrix.os }}
+          path: .localbuddy/first-run-smoke/windows/**
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         with:
           name: localbuddy-${{ matrix.os }}
