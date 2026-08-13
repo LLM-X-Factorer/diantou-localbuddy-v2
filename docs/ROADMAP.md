@@ -4,7 +4,7 @@
 
 ## 当前里程碑
 
-### 0.11.1 · M10.3 Provider Setup — native PR verified; release pending
+### 0.11.1 · M10.3 Provider Setup — hosted Windows gray verified; release pending
 
 - Provider 成为侧边栏一级设置，不再藏在 Skills/MCP/Browser 扩展折叠区；
 - DeepSeek/OpenAI 独立显示环境变量、系统安全存储或未配置状态，Renderer 不接收 secret；
@@ -17,9 +17,9 @@
 - 已安装应用通过真实 GUI 验收：独立入口、来源状态、显式验证文案、未配置 Provider 启动门禁，以及 Composer 收起/扩展布局均可见；
 - Windows Setup 文件名、Linux `libsecret-tools` 依赖和两个平台的 Provider 合同均由 `0.11.1` 真源约束；
 - Tag Release 改为 Windows-only：必须通过生产依赖审计、全量测试、安装版合成灰度和 SHA-256 后才发布 Setup/ZIP；Linux 不再阻塞 Windows RC；
-- 两个平台的发布作业都强制通过生产依赖高危审计；开发期 Forge 打包链的上游 `extract-zip` 告警已登记，正式 Tag 前仍需复查稳定版修复或明确风险决策；
+- Windows 发布作业强制通过生产依赖高危审计；开发期 Forge 打包链的上游 `extract-zip` 告警已登记，正式 Tag 前仍需复查稳定版修复或明确风险决策；
 - macOS 包已通过全新用户数据、无 Provider 凭据首次启动 smoke；[`windows-2025` PR run `31665000997`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31665000997) 还运行真实 Setup、从版本化安装目录在隔离用户数据与无 Provider 凭据条件下启动，并回下载核对截图与 JSON，最后调用 Squirrel 卸载；
-- 历史 draft PR #1 的五项原生作业已通过；当前分支正在加入 Windows 完整 PR 门禁、夜间/手动安装版合成灰度和 Windows-only Release。本版本尚未合并、创建 Tag 或 Release，正式可下载版本仍为 `v0.11.0`。
+- draft PR #1 的提交 `d686cd6` 已通过 [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 和 [`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610)：Windows 完整合同、Setup 无凭据首启、Credential Manager、故障矩阵、安装版 Research Run、双 Run 取消、硬退出恢复和 5 次额外重启均为绿色。本版本尚未合并、创建 Tag 或 Release，正式可下载版本仍为 `v0.11.0`。
 
 M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批边界；它解决的是必要配置的可发现性、可判断性和安全生命周期。M11 仍未立项。
 
@@ -118,7 +118,7 @@ M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批
 
 规格与本机证据见 [`M10.2-SPEC.md`](M10.2-SPEC.md) 和 [`M10.2-VALIDATION.md`](M10.2-VALIDATION.md)。
 
-### M10.3 · Provider Setup — native PR verified; release pending
+### M10.3 · Provider Setup — hosted Windows gray verified; release pending
 
 - Provider 从扩展概念中拆出，成为真实 Run 的显式必要前置；
 - 凭据管理覆盖状态、保存、替换、删除和按需连接验证；
@@ -127,7 +127,7 @@ M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批
 - 连接检查是用户触发的认证/网络探针，不等价于真实生成 Run；
 - 保持 Key 不进 Renderer 持久状态、不进 Run/事件/checkpoint/诊断的既有边界。
 - Windows Setup/ZIP 使用 `package.json` 版本真源并进入 Windows-first 发布门禁；Linux DEB 仍声明 Secret Service CLI 依赖，但只做低频维护。
-- GitHub 托管 `windows-2025` Runner 已持续化验证“Setup 安装后、没有任何 Provider 配置也能正常打开 App”，不再依赖固定 Windows 测试机；终端用户设备上的 SmartScreen、系统凭据、真实 Run 与恢复仍属于独立外部门禁。
+- GitHub 托管 `windows-2025` Runner 已持续化验证无 Provider 首启，并用公开 loopback 夹具覆盖 Windows Credential Manager、安装版 Research Run、双 Run 取消、硬退出恢复和重启持久化，不再依赖固定 Windows 测试机；终端用户 Windows 11、SmartScreen、标准用户/UAC、真实 Provider 与真实网络仍属于独立外部门禁。
 
 规格与本机证据见 [`M10.3-SPEC.md`](M10.3-SPEC.md) 和 [`M10.3-VALIDATION.md`](M10.3-VALIDATION.md)。
 

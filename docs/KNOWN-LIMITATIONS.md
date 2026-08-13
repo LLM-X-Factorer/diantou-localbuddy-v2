@@ -4,7 +4,7 @@
 
 ## Platform and distribution
 
-- Windows `v0.11.0` Setup/ZIP 已发布；`0.11.1` 已在 `windows-2025` PR Runner 原生打包，静默运行 Setup，从版本化安装目录以隔离用户数据、无 Provider 凭据启动，并调用 Squirrel 卸载；截图与结构化结果均已回下载核对。该门禁不覆盖终端用户设备上的 SmartScreen、凭据写入、真实 Provider Run 与恢复；
+- Windows `v0.11.0` Setup/ZIP 已发布；`0.11.1` 已在 `windows-2025` PR Runner 原生打包，静默运行 Setup，从版本化安装目录覆盖无 Provider 首启、Credential Manager、loopback Provider、安装版 Research Run、双 Run 取消、硬退出恢复与重启，并调用 Squirrel 卸载；脱敏截图与摘要均已回下载核对。该门禁不覆盖终端用户设备上的 SmartScreen、标准用户/UAC、真实 Provider 与真实网络；
 - Windows 没有受支持的本地进程隔离宿主，检查命令和本地进程型扩展 fail closed；
 - Linux `0.11.1` DEB 历史上已由 `ubuntu-24.04` PR Runner 原生构建；当前 Linux 只保留每周/手动维护，不进入 PR 或 Release 门禁，真实图形桌面与 Secret Service 验收暂不优先；
 - macOS 包是 ad-hoc 签名，未启用生产 Hardened Runtime，未 notarize；

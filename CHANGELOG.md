@@ -49,8 +49,9 @@ M10.3 Provider Setup 候选版。当前已完成本机源码、测试、macOS �
 
 - 规格：[`docs/M10.3-SPEC.md`](docs/M10.3-SPEC.md)；
 - 验收：[`docs/M10.3-VALIDATION.md`](docs/M10.3-VALIDATION.md)；
-- `pnpm check`：119/119 tests passed；
+- `pnpm check`：当前 123 项；macOS 本机 121 passed、2 项 Windows-only 合同按平台跳过、0 failed；
 - macOS 无 Provider 凭据包级首次启动 smoke 通过；[`windows-2025` 安装级 PR run `31665000997`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31665000997) 也已通过，Setup 退出码、安装目录 EXE、截图与 JSON artifact 均已核对；
+- Windows-first 最终证据：[`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 与 [`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610) 均通过；后者覆盖 Credential Manager、完整连接故障矩阵、安装版 Research Run、双 Run 取消、硬退出恢复和 5 次额外重启；
 - macOS DMG：224,991,198 bytes，SHA-256 `0a533b7d2397f40e82073697e0b026f243518c98198ef10625a6eecbffb46437`，挂载后包验证通过。
 
 ## 0.11.0 — 2026-08-13

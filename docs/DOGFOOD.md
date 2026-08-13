@@ -31,6 +31,8 @@
 
 自动化范围、触发方式和证据边界以 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 为准。它持续验证真实 Setup、安装版 App、Credential Manager、loopback Mock Provider、故障矩阵、Research Run、两个活动 Run、取消、硬退出恢复和重启持久化。
 
+当前基线为提交 `d686cd6`：[`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610) 已完成完整故障矩阵和 5 次额外重启，脱敏摘要 9 项检查全部通过；配套 [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 的 Windows 合同、macOS 回归和 Setup 无凭据首启也全部通过。
+
 该阶段不使用真实 Provider Key，不产生模型费用，也不能证明 Windows 11 消费者桌面环境。
 
 ## 阶段 B2 · Windows 11 真人灰度

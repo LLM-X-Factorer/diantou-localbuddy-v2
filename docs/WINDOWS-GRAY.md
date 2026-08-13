@@ -50,7 +50,18 @@ Mock Provider 只监听 `127.0.0.1`，使用固定公开夹具值，不读取仓
 
 禁止上传 Provider Key、用户 Prompt、私有 Artifact、事件日志、Run Request、系统凭据导出或真实用户目录。失败时若上述三项未生成，Actions 日志只允许保留有界进程错误；新增调试证据必须先验证脱敏边界。
 
-## 5. 真实 Windows 11 灰度
+## 5. 当前托管证据
+
+2026-08-13，draft PR #1 的提交 `d686cd6` 已同时通过：
+
+- [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596)：Windows 全量合同、macOS 回归、Windows Setup 无 Provider 凭据首启均为绿色；
+- [`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610)：约 7 分钟完成完整故障矩阵、安装版 Research Run、双 Run 取消、硬退出恢复和 5 次额外重启，0 失败；
+- 脱敏 artifact `localbuddy-windows-synthetic-gray-31670064610`（ID `9169479458`，压缩后 190,592 bytes）已回下载核对。摘要确认 `win32/x64`、Windows Credential Manager、故障矩阵启用、5 次重启，以及 9 项检查全部 `passed`；Mock 共收到 6 次 model probe、13 次 completion、2 次已取消请求和 1 次恢复中断；
+- `windows-gray-summary.json` 为 708 bytes，SHA-256 `72b60e40524ad7b765f43b6fafc2340cd713c44285acdde2ffdb3b5cb1c75a4d`；两张固定夹具截图也已目视核对，没有凭据、绝对路径或用户内容。
+
+Windows 全量合同在该 Runner 上为 123 项：98 passed、25 项按明确平台边界跳过、0 failed。这里的跳过项包括 macOS Seatbelt、Windows 尚无受支持隔离宿主而 fail closed 的 Coding/stdio MCP 等，不被误写成已支持能力。
+
+## 6. 真实 Windows 11 灰度
 
 合成灰度全绿后发布私有 `vX.Y.Z-rc.N`。首轮 3-10 名内部用户至少覆盖：
 
