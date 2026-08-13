@@ -225,6 +225,6 @@ Desktop 使用 Electron single-instance lock，避免两个桌面进程同时拥
 15. **M10 Dogfooding + Productization（已完成代码、本机与原生 Runner 范围）**：Desktop Provider/凭证设置、持久信任档、哈希校验 inline diff、脱敏诊断导出、macOS 包复验、Linux/Windows 原生构建和 Windows GitHub Release。Windows 真机端到端与生产 MCP OAuth 仍是外部门禁。
 16. **M10.1 Local Dogfood Closure（已完成本机闭环）**：Run 指标投影、Artifact Gate 反馈/预算、失败 Run 安全 checkpoint 恢复、最近工作区、校验后的文本 Artifact 预览与显式继续、MCP stdio 脱敏失败诊断，以及真实 Coding commit/reverse-commit 验证。连续 7-14 天使用仍是开放门禁。
 17. **M10.2 First Trusted Run（已完成本机实现与 UI 验收）**：本地确定性 Guide、私有版本化偏好、Provider 布尔 readiness、显式合成教程工作区、只预填模板和真实 Run 状态提示。Guide 不属于 Run，不调用模型，也不进入审计指标；真实执行仍复用既有 Run 合同。
-18. **M10.3 Provider Setup（已完成本机闭环）**：独立 Provider 一级入口、来源状态、安全保存/替换/删除、显式 `/models` 连接探针、紧凑 Composer 状态和缺失凭据启动拦截。Skills/MCP/Browser 继续作为可选扩展单独配置；macOS 包与已安装 App 已验收，Windows/Linux 版本、依赖与同步 Tag Release 合同已准备，原生 `0.11.1` 构建仍待提交/Tag 授权。
+18. **M10.3 Provider Setup（已完成本机与原生 PR 闭环）**：独立 Provider 一级入口、来源状态、安全保存/替换/删除、显式 `/models` 连接探针、紧凑 Composer 状态和缺失凭据启动拦截。Skills/MCP/Browser 继续作为可选扩展单独配置；macOS 包与已安装 App 已验收，Windows/Linux `0.11.1` 已原生构建，Windows Setup 已完成托管 Runner 安装、无凭据首启和卸载。正式 Tag/Release 与终端用户设备验收仍待授权。
 
 M11 尚未立项。持久化多轮工作线程、Project/Workspace 首页、资料摄取、非纯文本产物预览和更可控的多 Agent 交互属于候选方向，必须在连续 dogfooding 后再确定范围，不能写成已承诺能力。

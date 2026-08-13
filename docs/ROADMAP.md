@@ -18,7 +18,7 @@
 - Windows Setup 文件名、Linux `libsecret-tools` 依赖和两个平台的 Provider 合同均由 `0.11.1` 真源约束；
 - Tag Release 必须等待 Windows/Linux 原生作业同时成功，分别验证 SHA-256 后才一次性发布；
 - 两个平台的发布作业都强制通过生产依赖高危审计；开发期 Forge 打包链的上游 `extract-zip` 告警已登记，正式 Tag 前仍需复查稳定版修复或明确风险决策；
-- macOS 包已通过全新用户数据、无 Provider 凭据首次启动 smoke；[`windows-2025` PR run `31663327629`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31663327629) 也已在隔离用户数据、无 Provider 凭据条件下启动真实打包 App，并回下载核对截图与 JSON；
+- macOS 包已通过全新用户数据、无 Provider 凭据首次启动 smoke；[`windows-2025` PR run `31665000997`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31665000997) 还运行真实 Setup、从版本化安装目录在隔离用户数据与无 Provider 凭据条件下启动，并回下载核对截图与 JSON，最后调用 Squirrel 卸载；
 - draft PR #1 的 macOS、Windows/Linux 合同和 Windows/Linux 原生打包五项作业全部通过；Windows/Linux 临时 artifacts 已生成。本版本尚未合并、创建 Tag 或 Release，正式可下载版本仍为 `v0.11.0`。
 
 M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批边界；它解决的是必要配置的可发现性、可判断性和安全生命周期。M11 仍未立项。
@@ -127,7 +127,7 @@ M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批
 - 连接检查是用户触发的认证/网络探针，不等价于真实生成 Run；
 - 保持 Key 不进 Renderer 持久状态、不进 Run/事件/checkpoint/诊断的既有边界。
 - Windows/Linux 使用同一包版本与双平台发布门禁；Linux DEB 声明 Secret Service CLI 依赖。
-- GitHub 托管 `windows-2025` Runner 已持续化验证“没有任何 Provider 配置也能正常打开 App”的安装前置状态，不再依赖固定 Windows 测试机；终端用户设备上的 Setup、系统凭据、真实 Run 与卸载仍属于独立外部门禁。
+- GitHub 托管 `windows-2025` Runner 已持续化验证“Setup 安装后、没有任何 Provider 配置也能正常打开 App”，不再依赖固定 Windows 测试机；终端用户设备上的 SmartScreen、系统凭据、真实 Run 与恢复仍属于独立外部门禁。
 
 规格与本机证据见 [`M10.3-SPEC.md`](M10.3-SPEC.md) 和 [`M10.3-VALIDATION.md`](M10.3-VALIDATION.md)。
 

@@ -54,13 +54,13 @@ git push origin vX.Y.Z
 
 `v*` Tag 必须与 `package.json` 的 `vX.Y.Z` 完全一致，并启动两个原生构建作业：
 
-1. Windows：frozen install、生产依赖高危审计、typecheck、Core/Provider 合同、`pnpm make:win`，随后以隔离用户数据和无 Provider 凭据条件启动真实打包 App，通过首次启动 smoke 后才收集带版本号的 Setup 与便携 ZIP；
+1. Windows：frozen install、生产依赖高危审计、typecheck、Core/Provider 合同、`pnpm make:win`，随后静默运行带版本号的 Setup，从真实安装目录以隔离用户数据和无 Provider 凭据条件启动 App，并在验收后调用 Squirrel 卸载；
 2. Linux：frozen install、生产依赖高危审计、typecheck、Core/Provider 合同、`pnpm make:linux`，收集 DEB；
 3. 分别生成 UTF-8、LF 行尾的 `SHA256SUMS-windows.txt` 与 `SHA256SUMS-linux.txt`；
 4. 发布作业下载两组 Actions artifact，复核 Tag/包版本和全部 SHA-256；
 5. 只有两个原生作业同时成功，才创建或更新同一个 GitHub Release。
 
-Windows 首次启动 smoke 的截图与结构化 JSON 作为 Actions artifact 上传；断言范围包括 Guide、DeepSeek/OpenAI 未配置状态、“验证连接”禁用和“开始任务”禁用。这样可以持续使用 GitHub 托管 Runner 验收该安装前置状态，不依赖固定 Windows 测试机。
+Windows 安装后首次启动 smoke 的截图与结构化 JSON 作为 Actions artifact 上传；断言范围包括 Setup 退出码、版本化安装路径、Guide、DeepSeek/OpenAI 未配置状态、“验证连接”禁用和“开始任务”禁用。这样可以持续使用 GitHub 托管 Runner 验收静默安装与无凭据首次启动，不依赖固定 Windows 测试机；SmartScreen、真实凭据与 Provider Run 仍需终端用户设备。
 
 当前 workflow 使用 `--clobber` 以允许故障恢复，但正常发布策略是 Tag 和二进制不可变：已经公开或交付的版本出现问题，应发布新的 patch 版本，不移动旧 Tag、不静默替换旧二进制。
 

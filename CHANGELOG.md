@@ -26,7 +26,8 @@ M10.3 Provider Setup 候选版。当前已完成本机源码、测试、macOS �
 - Windows Setup 文件名从 `package.json` 派生版本；Linux DEB 显式依赖提供 `secret-tool` 的 `libsecret-tools`；
 - `v*` Tag Release 改为 Windows/Linux 原生构建双门禁，分别生成 SHA-256 清单，校验 Tag 与包版本一致后一次性发布两个平台资产。
 - Windows/Linux 发布作业新增生产依赖高危审计；开发期 Electron 打包链的上游 `extract-zip` 无修复版本告警已如实登记，不做静默忽略。
-- 包级首次启动 smoke 会清空 Provider 环境变量、隔离用户数据并屏蔽系统凭据命令，断言 Guide、DeepSeek/OpenAI 未配置状态以及连接/运行禁用门禁；Windows 原生构建与 Release 均强制执行。
+- 包级首次启动 smoke 会清空 Provider 环境变量、隔离用户数据并屏蔽系统凭据命令，断言 Guide、DeepSeek/OpenAI 未配置状态以及连接/运行禁用门禁；Windows 原生构建与 Release 还必须先运行 Setup、从安装目录首启并调用 Squirrel 卸载。
+- Electron Main 接入标准 Squirrel install/update/uninstall 生命周期处理，避免安装生命周期事件误开普通窗口。
 
 ### Fixed
 
@@ -38,7 +39,7 @@ M10.3 Provider Setup 候选版。当前已完成本机源码、测试、macOS �
 - 规格：[`docs/M10.3-SPEC.md`](docs/M10.3-SPEC.md)；
 - 验收：[`docs/M10.3-VALIDATION.md`](docs/M10.3-VALIDATION.md)；
 - `pnpm check`：119/119 tests passed；
-- macOS 无 Provider 凭据包级首次启动 smoke 通过；[`windows-2025` PR run `31663327629`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31663327629) 也已通过，截图与 JSON artifact 已回下载核对；
+- macOS 无 Provider 凭据包级首次启动 smoke 通过；[`windows-2025` 安装级 PR run `31665000997`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31665000997) 也已通过，Setup 退出码、安装目录 EXE、截图与 JSON artifact 均已核对；
 - macOS DMG：224,991,198 bytes，SHA-256 `0a533b7d2397f40e82073697e0b026f243518c98198ef10625a6eecbffb46437`，挂载后包验证通过。
 
 ## 0.11.0 — 2026-08-13

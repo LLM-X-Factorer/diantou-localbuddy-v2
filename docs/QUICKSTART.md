@@ -1,14 +1,14 @@
 # LocalBuddy V2 Internal Quickstart
 
-> 适用版本：三平台源码候选 `0.11.1 / M10.3 Provider Setup`。macOS 本机包已验证；Windows/Linux 同版本原生构建与同步发布流程已准备，但最新私有 GitHub Release 仍为 `v0.11.0 / M10.2`。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
+> 适用版本：三平台源码候选 `0.11.1 / M10.3 Provider Setup`。macOS 本机包已验证；Windows/Linux 同版本已通过 PR 原生构建，Windows Setup 还通过安装后无凭据首启；最新私有 GitHub Release 仍为 `v0.11.0 / M10.2`。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
 
 ## 1. 选择可用入口
 
 | 平台 | 当前可用入口 | 已证明范围 |
 |---|---|---|
 | macOS arm64 | 从仓库执行 `pnpm desktop`，或使用本机生成的 ad-hoc ZIP/DMG | 本机 Renderer、Fuse、ASAR、内置浏览器和包完整性烟测 |
-| Windows x64 | 私有 [`v0.11.0` Release](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.11.0) 的 Setup/ZIP | Windows Runner 合同、构建与 Release 哈希；真机运行待验收 |
-| Linux x64 | 既有 GitHub CI DEB artifact；`v0.11.1` 起计划随同 Windows 资产进入同一私有 Release | Ubuntu Runner 合同与构建；`0.11.1` 原生运行和图形桌面安装/启动待验收 |
+| Windows x64 | 私有 [`v0.11.0` Release](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.11.0) 的 Setup/ZIP | `0.11.1` PR Runner 已完成合同、Setup 构建、静默安装、无凭据首启和卸载；终端用户设备待验收 |
+| Linux x64 | `0.11.1` PR CI DEB artifact；正式 Release 仍待 Tag | Ubuntu Runner 合同与构建；真实图形桌面安装/启动待验收 |
 
 Windows 包未签名。只有明确获准参与内部测试时才下载；不要把 SmartScreen 提示解释为已完成发布信誉或代码签名。
 

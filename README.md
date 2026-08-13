@@ -4,7 +4,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 
 这不是 Craft Agents 的分支，也不包含腾讯 WorkBuddy 的私有实现。仓库只参考公开产品行为、通用 Agent 架构模式，以及我们自行定义的验收契约。
 
-> **产品判断（2026-08-13）**：`0.11.1 / M10.3 Provider Setup` 是当前三平台源码候选版，最新私有 GitHub Release 仍是 `v0.11.0`。Provider 已从“扩展配置”中独立出来，凭据生命周期、显式连接验证和启动门禁形成闭环；Composer 已收敛为紧凑的“任务输入 + 控制工具栏”。Windows/Linux 的原生构建、版本校验和同步 Tag Release 流程已落盘，但 `0.11.1` 原生 Runner 与真机/图形桌面验收尚未执行。它不是公开分发版，也不是与 WorkBuddy 功能对等的商业产品。
+> **产品判断（2026-08-13）**：`0.11.1 / M10.3 Provider Setup` 是当前三平台源码候选版，最新私有 GitHub Release 仍是 `v0.11.0`。Provider 已从“扩展配置”中独立出来，凭据生命周期、显式连接验证和启动门禁形成闭环；Composer 已收敛为紧凑的“任务输入 + 控制工具栏”。Windows/Linux `0.11.1` 已通过原生 PR 构建；Windows 2025 Runner 还实际运行 Setup、从安装目录完成无 Provider 首次启动并卸载。终端用户 Windows 设备与 Linux 图形桌面验收仍开放。它不是公开分发版，也不是与 WorkBuddy 功能对等的商业产品。
 
 ## 一页状态
 
@@ -18,7 +18,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 | 代码写回 | 独立 worktree、组合预检、人工 Gate、apply/commit/revert commit |
 | 恢复 | Research/Coding 同 Run checkpoint resume；失败 Run 可恢复未完成 Task 链，并保留 replay 兜底 |
 | 扩展 | 本地/签名 Skill、MCP stdio/HTTP/OAuth、受限 Playwright Browser |
-| 分发 | macOS `0.11.1` ad-hoc DMG/ZIP 已完成本机包、安装和 GUI 验收；同版本 Windows Setup/ZIP 与 Linux DEB 将由原生 Runner 同步构建、校验后一次性发布，当前最新可下载版本仍为私有 `v0.11.0` |
+| 分发 | macOS `0.11.1` ad-hoc DMG/ZIP 已完成本机包、安装和 GUI 验收；同版本 Windows Setup/ZIP 与 Linux DEB 已由 PR 原生 Runner 构建，Windows Setup 还通过安装后无凭据首启；正式可下载版本仍为私有 `v0.11.0` |
 | 当前主动暂缓 | Developer ID、生产 Hardened Runtime、notarization、公开 Gatekeeper |
 
 M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M10.3 继续补齐它的必要前置条件：Provider 不再藏在扩展折叠区，凭据状态、管理动作、显式连接检查和启动门禁形成单一纵向闭环。保存不会自动联网；验证连接会明确把凭据发送到所示 Provider/Base URL 并只请求模型列表；真实 Run 仍必须由用户点击开始。连续真实 dogfooding 仍是开放验证门。
@@ -194,9 +194,10 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 - 保存只验证本机安全写入；用户可显式请求 `/models` 验证认证与网络，不调用生成接口；
 - Composer 就近显示 Provider 状态，缺少凭据时阻止启动并直接打开设置；
 - Composer 采用紧凑的任务输入与单行工具栏，扩展配置只在用户展开时占用额外空间；
+- Windows 托管 Runner 已运行版本对应的 Squirrel Setup，从实际安装目录验证无 Provider 首启并调用卸载清理；安装/更新/卸载生命周期由标准 Squirrel 处理器提前收口；
 - 规格与验收见 [`docs/M10.3-SPEC.md`](docs/M10.3-SPEC.md) 和 [`docs/M10.3-VALIDATION.md`](docs/M10.3-VALIDATION.md)。
 
-当前主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。`0.11.1` 的 Windows/Linux 同步发布流程已经准备好，但只有提交并推送目标 Tag 后才能获得这两个平台的原生构建证据；Windows 真机、Linux 图形桌面和第三方生产 MCP OAuth 仍需外部验收，不能用 macOS、本地夹具或静态 workflow 冒充。
+当前主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。`0.11.1` 的 Windows/Linux PR 原生构建与 Windows 安装级无凭据首启已取得证据，但只有推送目标 Tag 后才会生成正式 Release 资产；终端用户 Windows 设备、Linux 图形桌面和第三方生产 MCP OAuth 仍需外部验收，不能用托管 Runner 或本地夹具冒充。
 
 ## 核心模型
 
@@ -237,7 +238,7 @@ pnpm make:win
 
 它们应分别在 Linux/Windows Runner 上执行；仓库不会把交叉编译配置冒充成目标平台运行验收。
 
-推送 `v*` Tag 会分别在 `windows-2025` 与 `ubuntu-24.04` Runner 上运行新增的 Provider 合同与既有平台合同，构建 Squirrel Setup/ZIP 和 Linux DEB，并生成 LF 格式的 `SHA256SUMS-windows.txt` / `SHA256SUMS-linux.txt`。Windows 构建还必须在隔离用户数据、无 Provider 环境变量和不可用系统凭据命令的条件下真实启动打包后的 Electron App，确认 Guide 可见、两种 Provider 均未配置、连接验证和任务启动保持禁用。独立发布作业会确认 Tag 与 `package.json` 完全一致并复核两个清单；只有 Windows 与 Linux 都成功，才创建或更新同一个 GitHub Release。当前内部发布见 [`v0.11.0`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.11.0)；`v0.11.1` 尚未发布。
+推送 `v*` Tag 会分别在 `windows-2025` 与 `ubuntu-24.04` Runner 上运行新增的 Provider 合同与既有平台合同，构建 Squirrel Setup/ZIP 和 Linux DEB，并生成 LF 格式的 `SHA256SUMS-windows.txt` / `SHA256SUMS-linux.txt`。Windows 构建还必须静默运行版本对应的 Setup，再从 `%LOCALAPPDATA%\LocalBuddy\app-<version>\LocalBuddy.exe` 以隔离用户数据、无 Provider 环境变量和不可用系统凭据命令启动，确认 Guide 可见、两种 Provider 均未配置、连接验证和任务启动保持禁用，最后调用 Squirrel 卸载。独立发布作业会确认 Tag 与 `package.json` 完全一致并复核两个清单；只有 Windows 与 Linux 都成功，才创建或更新同一个 GitHub Release。当前内部发布见 [`v0.11.0`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.11.0)；`v0.11.1` 尚未发布。
 
 ## Headless 真实运行
 

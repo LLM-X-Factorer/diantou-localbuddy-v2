@@ -1,10 +1,10 @@
 # LocalBuddy V2 0.11.1 Known Limitations
 
-> 本文是三平台源码候选 `0.11.1 / M10.3 Provider Setup` 的负面能力清单；其中只有 macOS 本机包完成实装验收，最新私有 GitHub Release 仍为 `v0.11.0`。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
+> 本文是三平台源码候选 `0.11.1 / M10.3 Provider Setup` 的负面能力清单；macOS 已完成本机实装验收，Windows 已完成托管 Runner 安装级自动验收，最新私有 GitHub Release 仍为 `v0.11.0`。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
 
 ## Platform and distribution
 
-- Windows `v0.11.0` Setup/ZIP 已发布；`0.11.1` 已在 `windows-2025` PR Runner 原生打包，并以隔离用户数据、无 Provider 凭据启动真实打包 App，截图与结构化结果均已回下载核对。该门禁不覆盖终端用户 Windows 设备上的 Setup、凭据写入、真实 Provider Run、恢复与卸载；
+- Windows `v0.11.0` Setup/ZIP 已发布；`0.11.1` 已在 `windows-2025` PR Runner 原生打包，静默运行 Setup，从版本化安装目录以隔离用户数据、无 Provider 凭据启动，并调用 Squirrel 卸载；截图与结构化结果均已回下载核对。该门禁不覆盖终端用户设备上的 SmartScreen、凭据写入、真实 Provider Run 与恢复；
 - Windows 没有受支持的本地进程隔离宿主，检查命令和本地进程型扩展 fail closed；
 - Linux `0.11.1` DEB 已由 `ubuntu-24.04` PR Runner 原生构建，并声明 `libsecret-tools` 依赖；尚未在真实图形桌面与 Secret Service 会话完成安装、启动和凭据验收；
 - macOS 包是 ad-hoc 签名，未启用生产 Hardened Runtime，未 notarize；
