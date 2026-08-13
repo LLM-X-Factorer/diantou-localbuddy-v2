@@ -235,6 +235,12 @@ async function startRun(page, goal) {
   const priorRuns = await listRuns(page);
   await page.locator(".composer textarea").fill(goal);
   await page.getByLabel("Run 并发").selectOption("1");
+  await poll(
+    () => page.locator(".start-button").isEnabled(),
+    (enabled) => enabled,
+    10_000,
+    "Start button did not become enabled after the task was filled",
+  );
   await page.locator(".start-button").click();
   return poll(async () => {
     const runs = await listRuns(page);
