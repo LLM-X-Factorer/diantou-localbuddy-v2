@@ -242,10 +242,17 @@ async function startRun(page, goal) {
     "Start button did not become enabled after the task was filled",
   );
   await page.locator(".start-button").click();
-  return poll(async () => {
+  const run = await poll(async () => {
     const runs = await listRuns(page);
     return runs.find((candidate) => !priorRuns.some((prior) => prior.runId === candidate.runId));
   }, (candidate) => candidate !== undefined, 20_000, "new Run was not created");
+  await poll(
+    () => page.locator(".composer textarea").inputValue(),
+    (value) => value.length === 0,
+    10_000,
+    "Composer was not cleared after the Run started",
+  );
+  return run;
 }
 
 async function startConcurrentRunsAndCancel(page) {
