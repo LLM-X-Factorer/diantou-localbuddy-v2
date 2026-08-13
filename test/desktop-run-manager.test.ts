@@ -119,6 +119,7 @@ test("cancels an active desktop run through the shared abort signal", async (con
   await running;
   manager.cancel(runId);
   const cancelled = await terminal;
+  await manager.waitForIdle();
 
   assert.equal(cancelled.status, "cancelled");
   assert.ok(cancelled.tasks.some((task) => task.status === "cancelled"));
