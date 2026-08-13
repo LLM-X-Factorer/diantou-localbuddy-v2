@@ -39,6 +39,8 @@ test("declares Windows-first CI plus low-frequency Linux maintenance boundaries"
   assert.match(windowsGray, /playwright install --only-shell chromium/);
   assert.match(windowsGray, /LOCALBUDDY_GRAY_FAULT_MATRIX/);
   assert.match(windowsGray, /LOCALBUDDY_GRAY_SOAK_CYCLES/);
+  assert.match(windowsGray, /github\.event_name != 'workflow_dispatch' \|\| inputs\.fault_matrix/);
+  assert.match(windowsGray, /github\.event_name == 'workflow_dispatch' && inputs\.soak_cycles \|\| '5'/);
   assert.match(windowsGray, /windows-gray/);
   assert.match(windowsGray, /schedule:/);
   assert.match(windowsGray, /workflow_dispatch:/);

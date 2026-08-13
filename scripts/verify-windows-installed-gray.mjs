@@ -95,6 +95,7 @@ try {
     return runs.find((candidate) => candidate.runId === recoveryRun.runId);
   }, (candidate) => candidate?.status === "succeeded", 60_000, "Interrupted Run did not resume from checkpoint");
   await assertRunFilesAreCredentialSafe(recoveredRun.runId);
+  await waitForRendererActiveRuns(activeApp.page, 0);
 
   const cancelledRuns = await startConcurrentRunsAndCancel(activeApp.page);
   assert.ok(mockProvider.state.cancelledRequests >= 2);
@@ -249,6 +250,7 @@ async function startConcurrentRunsAndCancel(page) {
     20_000,
     "First concurrent Run did not become active",
   );
+  await waitForRendererActiveRuns(page, 1);
   const second = await startRun(page, "WINDOWS_GRAY_CANCEL_TWO");
   await poll(
     () => listRuns(page),
@@ -265,6 +267,14 @@ async function startConcurrentRunsAndCancel(page) {
     const runs = await listRuns(page);
     return runs.find((candidate) => candidate.runId === runId);
   }, (candidate) => candidate?.status === "cancelled", 30_000, `Run ${runId} was not cancelled`)));
+}
+
+async function waitForRendererActiveRuns(page, expected) {
+  await waitForText(
+    page.locator(".global-capacity"),
+    new RegExp(`活跃\\s+${expected}/2`),
+    10_000,
+  );
 }
 
 async function assertPersistedState(page, succeededRunId) {
