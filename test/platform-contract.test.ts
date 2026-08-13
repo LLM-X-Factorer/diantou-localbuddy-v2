@@ -9,12 +9,15 @@ const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 test("declares native Linux and Windows packaging plus CI acceptance boundaries", async () => {
   const packageJson = JSON.parse(await readFile(resolve(repository, "package.json"), "utf8")) as {
     scripts: Record<string, string>;
+    dependencies: Record<string, string>;
     devDependencies: Record<string, string>;
   };
   assert.match(packageJson.scripts["make:linux"] ?? "", /--platform=linux/);
   assert.match(packageJson.scripts["make:win"] ?? "", /--platform=win32/);
   assert.equal(packageJson.devDependencies["@electron-forge/maker-deb"], "7.11.2");
   assert.equal(packageJson.devDependencies["@electron-forge/maker-squirrel"], "7.11.2");
+  assert.equal(packageJson.dependencies["electron-squirrel-startup"], "1.0.1");
+  assert.match(packageJson.scripts["verify:first-run-windows-installer"] ?? "", /verify-windows-installer-first-launch\.ps1/);
   const forgeConfig = await readFile(resolve(repository, "forge.config.cjs"), "utf8");
   assert.match(forgeConfig, /const \{ version: packageVersion \} = require\("\.\/package\.json"\)/);
   assert.match(forgeConfig, /setupExe: `LocalBuddy-\$\{packageVersion\}-Setup\.exe`/);
@@ -23,9 +26,9 @@ test("declares native Linux and Windows packaging plus CI acceptance boundaries"
   assert.match(workflow, /ubuntu-24\.04/);
   assert.match(workflow, /windows-2025/);
   assert.match(workflow, /macos-15/);
-  assert.match(workflow, /Verify clean first launch without Provider credentials/);
-  assert.match(workflow, /pnpm verify:first-run-package/);
-  assert.match(workflow, /\.localbuddy\/first-run-smoke\/win32\/\*\*/);
+  assert.match(workflow, /Install Windows Setup and verify clean first launch without Provider credentials/);
+  assert.match(workflow, /pnpm verify:first-run-windows-installer/);
+  assert.match(workflow, /\.localbuddy\/first-run-smoke\/win32-installer\/\*\*/);
 });
 
 test("tag releases synchronize native Windows and Linux assets before publication", async () => {
@@ -41,9 +44,10 @@ test("tag releases synchronize native Windows and Linux assets before publicatio
   assert.match(workflow, /SHA256SUMS-linux\.txt/);
   assert.match(workflow, /expected_tag="v\$\{package_version\}"/);
   assert.match(workflow, /merge-multiple: true/);
-  assert.match(workflow, /Verify clean first launch without Provider credentials/);
-  assert.match(workflow, /localbuddy-clean-first-launch-windows/);
-  assert.match(workflow, /\.localbuddy\/first-run-smoke\/win32\/\*\*/);
+  assert.match(workflow, /Install Windows Setup and verify clean first launch without Provider credentials/);
+  assert.match(workflow, /localbuddy-installed-clean-first-launch-windows/);
+  assert.match(workflow, /pnpm verify:first-run-windows-installer/);
+  assert.match(workflow, /\.localbuddy\/first-run-smoke\/win32-installer\/\*\*/);
 });
 
 test("platform process execution has explicit Linux isolation and Windows fail-closed text", async () => {

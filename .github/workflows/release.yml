@@ -42,14 +42,14 @@ jobs:
           dist/test/workspace-process-lock.test.js
       - name: Build Windows installer and portable ZIP
         run: pnpm make:win
-      - name: Verify clean first launch without Provider credentials
-        run: pnpm verify:first-run-package
-      - name: Upload clean first-launch evidence
+      - name: Install Windows Setup and verify clean first launch without Provider credentials
+        run: pnpm verify:first-run-windows-installer
+      - name: Upload installed clean first-launch evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: localbuddy-clean-first-launch-windows-${{ github.ref_name }}
-          path: .localbuddy/first-run-smoke/win32/**
+          name: localbuddy-installed-clean-first-launch-windows-${{ github.ref_name }}
+          path: .localbuddy/first-run-smoke/win32-installer/**
           if-no-files-found: warn
       - name: Collect release assets and checksums
         shell: pwsh

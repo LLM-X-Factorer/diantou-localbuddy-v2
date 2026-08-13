@@ -80,15 +80,15 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm ${{ matrix.command }}
-      - name: Verify clean first launch without Provider credentials
+      - name: Install Windows Setup and verify clean first launch without Provider credentials
         if: runner.os == 'Windows'
-        run: pnpm verify:first-run-package
-      - name: Upload clean first-launch evidence
+        run: pnpm verify:first-run-windows-installer
+      - name: Upload installed clean first-launch evidence
         if: runner.os == 'Windows' && always()
         uses: actions/upload-artifact@v4
         with:
-          name: localbuddy-clean-first-launch-${{ matrix.os }}
-          path: .localbuddy/first-run-smoke/win32/**
+          name: localbuddy-installed-clean-first-launch-${{ matrix.os }}
+          path: .localbuddy/first-run-smoke/win32-installer/**
           if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         with:

@@ -43,6 +43,8 @@ test("desktop runtime uses the privileged local protocol and Electron isolation 
   assert.match(main, /providerDialogVisible/);
   assert.match(main, /verifyDisabled/);
   assert.match(main, /startDisabled/);
+  assert.match(main, /electron-squirrel-startup/);
+  assert.match(main, /requireForSquirrel/);
   assert.doesNotMatch(main, /recentWorkspaces\[0\]\s*\?\? app\.getPath\("documents"\)/);
   assert.match(renderer, /我不会在这里调用模型、读取文件或启动任务/);
   assert.match(renderer, /只有点击“开始任务”后才会调用 Provider/);
@@ -55,6 +57,7 @@ test("Forge package is ASAR-only and declares every Electron 43 fuse", async () 
   const makeDmg = await readFile("scripts/make-dmg.mjs", "utf8");
   const verifyMacPackage = await readFile("scripts/verify-macos-package.mjs", "utf8");
   const verifyCleanFirstLaunch = await readFile("scripts/verify-clean-first-launch.mjs", "utf8");
+  const verifyWindowsInstaller = await readFile("scripts/verify-windows-installer-first-launch.ps1", "utf8");
 
   assert.match(config, /asar: true/);
   assert.match(config, /strictlyRequireAllFuses: true/);
@@ -91,6 +94,12 @@ test("Forge package is ASAR-only and declares every Electron 43 fuse", async () 
   assert.match(verifyCleanFirstLaunch, /providerChoices/);
   assert.match(verifyCleanFirstLaunch, /verifyDisabled/);
   assert.match(verifyCleanFirstLaunch, /startDisabled/);
+  assert.match(verifyWindowsInstaller, /LocalBuddy-\$version-Setup\.exe/);
+  assert.match(verifyWindowsInstaller, /--silent/);
+  assert.match(verifyWindowsInstaller, /app-\$version\/LocalBuddy\.exe/);
+  assert.match(verifyWindowsInstaller, /Refusing to overwrite an existing LocalBuddy installation or user profile/);
+  assert.match(verifyWindowsInstaller, /pnpm verify:first-run-package/);
+  assert.match(verifyWindowsInstaller, /--uninstall/);
 });
 
 test("Renderer uses the shared LocalBuddy brand icon instead of a text placeholder", async () => {

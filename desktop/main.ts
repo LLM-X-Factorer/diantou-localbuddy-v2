@@ -1,4 +1,5 @@
 import { chmod, writeFile, mkdir, readFile, realpath, stat } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { dirname, extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,6 +14,11 @@ import {
   type IpcMainInvokeEvent,
   type OpenDialogOptions,
 } from "electron";
+
+const requireForSquirrel = createRequire(import.meta.url);
+if (requireForSquirrel("electron-squirrel-startup") === true) {
+  app.quit();
+}
 
 import { normalizeRunExtensions, type RunExtensionSelection } from "../src/extension-config.js";
 import { normalizeProviderSelection, type ProviderSelection } from "../src/provider-config.js";
