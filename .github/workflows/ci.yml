@@ -88,7 +88,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: localbuddy-clean-first-launch-${{ matrix.os }}
-          path: .localbuddy/first-run-smoke/windows/**
+          path: .localbuddy/first-run-smoke/win32/**
           if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         with:

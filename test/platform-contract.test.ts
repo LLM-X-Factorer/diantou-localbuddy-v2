@@ -25,6 +25,7 @@ test("declares native Linux and Windows packaging plus CI acceptance boundaries"
   assert.match(workflow, /macos-15/);
   assert.match(workflow, /Verify clean first launch without Provider credentials/);
   assert.match(workflow, /pnpm verify:first-run-package/);
+  assert.match(workflow, /\.localbuddy\/first-run-smoke\/win32\/\*\*/);
 });
 
 test("tag releases synchronize native Windows and Linux assets before publication", async () => {
@@ -42,6 +43,7 @@ test("tag releases synchronize native Windows and Linux assets before publicatio
   assert.match(workflow, /merge-multiple: true/);
   assert.match(workflow, /Verify clean first launch without Provider credentials/);
   assert.match(workflow, /localbuddy-clean-first-launch-windows/);
+  assert.match(workflow, /\.localbuddy\/first-run-smoke\/win32\/\*\*/);
 });
 
 test("platform process execution has explicit Linux isolation and Windows fail-closed text", async () => {
