@@ -22,7 +22,9 @@ const codeWorker: AgentDefinition = {
   maxParallelTasks: 1,
 };
 
-test("edits a detached worktree and captures a patch without touching the primary checkout", async (context) => {
+test("edits a detached worktree and captures a patch without touching the primary checkout", {
+  skip: process.platform === "win32" ? "Windows edits require a supported isolation host" : false,
+}, async (context) => {
   const fixture = await createGitFixture(context);
   const manager = new GitWorktreeManager();
   const handle = await manager.create(fixture.root, "run-one", "change-greeting");

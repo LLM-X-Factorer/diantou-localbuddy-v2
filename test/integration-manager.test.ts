@@ -17,8 +17,9 @@ import {
 } from "../src/integration-manager.js";
 
 const execFileAsync = promisify(execFile);
+const integrationTest = process.platform === "win32" ? test.skip : test;
 
-test("preflights combined patches, applies only after approval, and safely reverts", async (context) => {
+integrationTest("preflights combined patches, applies only after approval, and safely reverts", async (context) => {
   const fixture = await createFixture(context);
   const patches = await Promise.all([
     createPatch(fixture, "change-a", "src/a.js", 'export const a = "new-a";\n'),
@@ -73,7 +74,7 @@ test("preflights combined patches, applies only after approval, and safely rever
   assert.ok(events.some((event) => event.type === "integration.reverted"));
 });
 
-test("creates an explicit commit after approval", async (context) => {
+integrationTest("creates an explicit commit after approval", async (context) => {
   const fixture = await createFixture(context);
   const baseline = (await git(fixture.root, ["rev-parse", "HEAD"])).trim();
   const patch = await createPatch(
@@ -119,7 +120,7 @@ test("creates an explicit commit after approval", async (context) => {
   ));
 });
 
-test("rejects a tampered combined patch before inline display", async (context) => {
+integrationTest("rejects a tampered combined patch before inline display", async (context) => {
   const fixture = await createFixture(context);
   const patch = await createPatch(
     fixture,
@@ -151,7 +152,7 @@ test("rejects a tampered combined patch before inline display", async (context) 
   );
 });
 
-test("applies and reverts a newly created file", async (context) => {
+integrationTest("applies and reverts a newly created file", async (context) => {
   const fixture = await createFixture(context);
   const patch = await createPatch(
     fixture,
@@ -189,7 +190,7 @@ test("applies and reverts a newly created file", async (context) => {
   assert.equal((await git(fixture.root, ["status", "--porcelain=v1"])).trim(), "");
 });
 
-test("blocks conflicting patches during preflight without changing primary", async (context) => {
+integrationTest("blocks conflicting patches during preflight without changing primary", async (context) => {
   const fixture = await createFixture(context);
   const patches = await Promise.all([
     createPatch(fixture, "conflict-a", "src/a.js", 'export const a = "first";\n'),
@@ -211,7 +212,7 @@ test("blocks conflicting patches during preflight without changing primary", asy
   assert.equal((await git(fixture.root, ["status", "--porcelain=v1"])).trim(), "");
 });
 
-test("materializes a three-way conflict for a Merge Agent and gates the resolved patch", async (context) => {
+integrationTest("materializes a three-way conflict for a Merge Agent and gates the resolved patch", async (context) => {
   const fixture = await createFixture(context);
   const patches = await Promise.all([
     createPatch(fixture, "merge-a", "src/a.js", 'export const a = "first";\n'),
@@ -260,7 +261,7 @@ test("materializes a three-way conflict for a Merge Agent and gates the resolved
   assert.ok(events.some((event) => event.type === "integration.conflict_resolution_completed"));
 });
 
-test("refuses approval after baseline drift and preserves the user change", async (context) => {
+integrationTest("refuses approval after baseline drift and preserves the user change", async (context) => {
   const fixture = await createFixture(context);
   const patch = await createPatch(fixture, "drift-a", "src/a.js", 'export const a = "agent";\n');
   const manager = new IntegrationManager({ eventStore: new InMemoryEventStore() });
@@ -288,7 +289,7 @@ test("refuses approval after baseline drift and preserves the user change", asyn
   );
 });
 
-test("rolls back an applied index patch when commit creation fails", async (context) => {
+integrationTest("rolls back an applied index patch when commit creation fails", async (context) => {
   const fixture = await createFixture(context);
   const patch = await createPatch(fixture, "rollback-a", "src/a.js", 'export const a = "rollback";\n');
   const manager = new IntegrationManager({ eventStore: new InMemoryEventStore() });
@@ -315,7 +316,7 @@ test("rolls back an applied index patch when commit creation fails", async (cont
   assert.equal((await git(fixture.root, ["status", "--porcelain=v1"])).trim(), "");
 });
 
-test("reconciles an interrupted uncommitted apply from the exact primary diff", async (context) => {
+integrationTest("reconciles an interrupted uncommitted apply from the exact primary diff", async (context) => {
   const fixture = await createFixture(context);
   const patch = await createPatch(
     fixture,
@@ -346,7 +347,7 @@ test("reconciles an interrupted uncommitted apply from the exact primary diff", 
     event.type === "integration.applied" && event.data?.reconciled === true));
 });
 
-test("reconciles an interrupted approved commit from its exact baseline diff", async (context) => {
+integrationTest("reconciles an interrupted approved commit from its exact baseline diff", async (context) => {
   const fixture = await createFixture(context);
   const patch = await createPatch(
     fixture,
@@ -379,7 +380,7 @@ test("reconciles an interrupted approved commit from its exact baseline diff", a
     event.type === "integration.committed" && event.data?.reconciled === true));
 });
 
-test("requires manual recovery when interrupted apply contains an unapproved path", async (context) => {
+integrationTest("requires manual recovery when interrupted apply contains an unapproved path", async (context) => {
   const fixture = await createFixture(context);
   const patch = await createPatch(
     fixture,

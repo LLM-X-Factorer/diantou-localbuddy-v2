@@ -10,6 +10,7 @@
 - 新增 `windows-synthetic-gray` 夜间、手动和 PR label 工作流，以本地确定性 Provider 驱动真实安装版完成 Credential Manager、连接故障、Research Run、双 Run 取消、硬退出、checkpoint 恢复和重启循环；
 - `v*` Tag Release 改为 Windows-only 门禁和资产发布；带预发布后缀的 Tag 自动创建 GitHub prerelease，Linux 不再阻塞 Windows RC；
 - PR 不再上传约 800 MB 的完整 Forge 目录；只在 `main` 保存 Setup/ZIP，并缩短普通 CI artifact 保留期。
+- Windows 全量测试先安装 Chromium；macOS-only/隔离宿主依赖用例逐项标记平台边界，同时新增 Windows 本地进程与 stdio MCP fail-closed 反向合同，并修复最近工作区测试的 Windows 路径兼容性。
 
 ### Security
 

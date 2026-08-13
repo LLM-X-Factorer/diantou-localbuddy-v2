@@ -27,6 +27,7 @@ test("declares Windows-first CI plus low-frequency Linux maintenance boundaries"
   assert.match(workflow, /windows-2025/);
   assert.match(workflow, /macos-15/);
   assert.match(workflow, /pnpm check/);
+  assert.match(workflow, /playwright install --only-shell chromium/);
   assert.match(workflow, /Install Windows Setup and verify clean first launch without Provider credentials/);
   assert.match(workflow, /pnpm verify:first-run-windows-installer/);
   assert.match(workflow, /\.localbuddy\/first-run-smoke\/win32-installer\/\*\*/);
@@ -35,6 +36,7 @@ test("declares Windows-first CI plus low-frequency Linux maintenance boundaries"
   const windowsGray = await readFile(resolve(repository, ".github", "workflows", "windows-gray.yml"), "utf8");
   assert.match(windowsGray, /windows-2025/);
   assert.match(windowsGray, /pnpm verify:windows-gray-installer/);
+  assert.match(windowsGray, /playwright install --only-shell chromium/);
   assert.match(windowsGray, /LOCALBUDDY_GRAY_FAULT_MATRIX/);
   assert.match(windowsGray, /LOCALBUDDY_GRAY_SOAK_CYCLES/);
   assert.match(windowsGray, /windows-gray/);

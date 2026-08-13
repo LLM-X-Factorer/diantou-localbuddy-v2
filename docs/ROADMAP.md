@@ -13,7 +13,7 @@
 - 当前 Run 的 model/base URL 归入 Provider 高级设置，Base URL 继续限制为 HTTPS 或 loopback HTTP；
 - Composer 就近显示状态，凭据缺失时阻止真实 Run 并直达配置；
 - Composer 已改为紧凑的“任务输入 + 控制工具栏”，扩展只在显式展开时占用额外空间；
-- 自动门禁为 119/119 tests；macOS `0.11.1` DMG/ZIP 已通过版本、签名、Fuse、ASAR、浏览器、Renderer 和挂载后完整性验证，并安装到 `/Applications/LocalBuddy.app`；
+- 当前自动合同为 123 项，本机结果 121 passed、2 项 Windows-only 合同按平台跳过；macOS `0.11.1` DMG/ZIP 已通过版本、签名、Fuse、ASAR、浏览器、Renderer 和挂载后完整性验证，并安装到 `/Applications/LocalBuddy.app`；
 - 已安装应用通过真实 GUI 验收：独立入口、来源状态、显式验证文案、未配置 Provider 启动门禁，以及 Composer 收起/扩展布局均可见；
 - Windows Setup 文件名、Linux `libsecret-tools` 依赖和两个平台的 Provider 合同均由 `0.11.1` 真源约束；
 - Tag Release 改为 Windows-only：必须通过生产依赖审计、全量测试、安装版合成灰度和 SHA-256 后才发布 Setup/ZIP；Linux 不再阻塞 Windows RC；

@@ -15,7 +15,9 @@ import type {
   ModelResponse,
 } from "../src/provider.js";
 
-test("runs Skills, MCP, and browser through the audited Research workflow", async (context) => {
+test("runs Skills, MCP, and browser through the audited Research workflow", {
+  skip: process.platform === "win32" ? "This combined fixture includes a Windows-disabled stdio MCP server" : false,
+}, async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "localbuddy-m4-workflow-"));
   context.after(async () => rm(workspace, { recursive: true, force: true }));
   await writeFile(join(workspace, "local.md"), "local fixture evidence\n", "utf8");

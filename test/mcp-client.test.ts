@@ -10,7 +10,9 @@ import { z } from "zod";
 
 import { connectMcpServers } from "../src/mcp-client.js";
 
-test("discovers and calls allowlisted MCP stdio tools with conservative risk", async () => {
+test("discovers and calls allowlisted MCP stdio tools with conservative risk", {
+  skip: process.platform === "win32" ? "Windows stdio MCP requires a supported isolation host" : false,
+}, async () => {
   const fixture = resolve(dirname(fileURLToPath(import.meta.url)), "fixtures", "mcp-stdio-server.js");
   const bridge = await connectMcpServers([{
     id: "fixture",
@@ -46,7 +48,9 @@ test("discovers and calls allowlisted MCP stdio tools with conservative risk", a
   }
 });
 
-test("reports bounded sanitized MCP child stderr when the handshake fails", async () => {
+test("reports bounded sanitized MCP child stderr when the handshake fails", {
+  skip: process.platform === "win32" ? "Windows stdio MCP requires a supported isolation host" : false,
+}, async () => {
   const fixture = resolve(dirname(fileURLToPath(import.meta.url)), "fixtures", "mcp-stdio-failure.js");
   await assert.rejects(
     connectMcpServers([{

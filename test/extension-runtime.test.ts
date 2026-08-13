@@ -8,7 +8,9 @@ import { fileURLToPath } from "node:url";
 import { prepareRunExtensions } from "../src/extension-runtime.js";
 import { RoleBasedApprovalPolicy } from "../src/tool-runtime.js";
 
-test("requires explicit Run authorization for effectful MCP and browser tools", async (context) => {
+test("requires explicit Run authorization for effectful MCP and browser tools", {
+  skip: process.platform === "win32" ? "This combined fixture includes a Windows-disabled stdio MCP server" : false,
+}, async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "localbuddy-extension-policy-"));
   context.after(async () => rm(workspace, { recursive: true, force: true }));
   await mkdir(join(workspace, ".localbuddy"), { recursive: true });
