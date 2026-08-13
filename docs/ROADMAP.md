@@ -1,6 +1,6 @@
 # LocalBuddy V2 Roadmap after M10.3
 
-> **状态真源**：2026-08-13。当前候选版为 `0.11.1 / M10.3 Provider Setup`，已进入 draft PR #1 并通过原生 PR 门禁；最新私有 GitHub Release 仍是 `v0.11.0 / M10.2`。本文件只记录跨里程碑状态和后续决策，阶段内证据以对应 `M*-VALIDATION.md` 为准。
+> **状态真源**：2026-08-13。当前候选版为 `0.11.1 / M10.3 Provider Setup`，已进入 draft PR #1；最新私有 GitHub Release 仍是 `v0.11.0 / M10.2`。后续灰度与发布已转为 Windows-first，Linux 降为每周/手动维护。阶段内证据以对应 Validation 和 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 为准。
 
 ## 当前里程碑
 
@@ -16,10 +16,10 @@
 - 自动门禁为 119/119 tests；macOS `0.11.1` DMG/ZIP 已通过版本、签名、Fuse、ASAR、浏览器、Renderer 和挂载后完整性验证，并安装到 `/Applications/LocalBuddy.app`；
 - 已安装应用通过真实 GUI 验收：独立入口、来源状态、显式验证文案、未配置 Provider 启动门禁，以及 Composer 收起/扩展布局均可见；
 - Windows Setup 文件名、Linux `libsecret-tools` 依赖和两个平台的 Provider 合同均由 `0.11.1` 真源约束；
-- Tag Release 必须等待 Windows/Linux 原生作业同时成功，分别验证 SHA-256 后才一次性发布；
+- Tag Release 改为 Windows-only：必须通过生产依赖审计、全量测试、安装版合成灰度和 SHA-256 后才发布 Setup/ZIP；Linux 不再阻塞 Windows RC；
 - 两个平台的发布作业都强制通过生产依赖高危审计；开发期 Forge 打包链的上游 `extract-zip` 告警已登记，正式 Tag 前仍需复查稳定版修复或明确风险决策；
 - macOS 包已通过全新用户数据、无 Provider 凭据首次启动 smoke；[`windows-2025` PR run `31665000997`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31665000997) 还运行真实 Setup、从版本化安装目录在隔离用户数据与无 Provider 凭据条件下启动，并回下载核对截图与 JSON，最后调用 Squirrel 卸载；
-- draft PR #1 的 macOS、Windows/Linux 合同和 Windows/Linux 原生打包五项作业全部通过；Windows/Linux 临时 artifacts 已生成。本版本尚未合并、创建 Tag 或 Release，正式可下载版本仍为 `v0.11.0`。
+- 历史 draft PR #1 的五项原生作业已通过；当前分支正在加入 Windows 完整 PR 门禁、夜间/手动安装版合成灰度和 Windows-only Release。本版本尚未合并、创建 Tag 或 Release，正式可下载版本仍为 `v0.11.0`。
 
 M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批边界；它解决的是必要配置的可发现性、可判断性和安全生命周期。M11 仍未立项。
 
@@ -126,7 +126,7 @@ M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批
 - Composer 已收敛为紧凑输入与可换行工具栏，不再用大栅格承载少量设置；
 - 连接检查是用户触发的认证/网络探针，不等价于真实生成 Run；
 - 保持 Key 不进 Renderer 持久状态、不进 Run/事件/checkpoint/诊断的既有边界。
-- Windows/Linux 使用同一包版本与双平台发布门禁；Linux DEB 声明 Secret Service CLI 依赖。
+- Windows Setup/ZIP 使用 `package.json` 版本真源并进入 Windows-first 发布门禁；Linux DEB 仍声明 Secret Service CLI 依赖，但只做低频维护。
 - GitHub 托管 `windows-2025` Runner 已持续化验证“Setup 安装后、没有任何 Provider 配置也能正常打开 App”，不再依赖固定 Windows 测试机；终端用户设备上的 SmartScreen、系统凭据、真实 Run 与恢复仍属于独立外部门禁。
 
 规格与本机证据见 [`M10.3-SPEC.md`](M10.3-SPEC.md) 和 [`M10.3-VALIDATION.md`](M10.3-VALIDATION.md)。
@@ -135,11 +135,11 @@ M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批
 
 以下条件没有被本地测试或 CI 替代：
 
-1. Windows 真机端到端验收：等待可用 Windows 设备；
+1. Windows 11 真人灰度：托管 Runner 只能先关闭自动化边界，SmartScreen、Defender、UAC、DPI、输入法与真实网络仍需 3-10 名内部用户；
 2. 生产 MCP OAuth：等待指定真实服务与账户；
 3. 正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper：明确暂缓；
 4. Windows 代码签名与 SmartScreen 信誉：公开分发前再决策；
-5. Linux 图形桌面安装/启动验收：原生 Runner 当前只证明合同和产物构建。
+5. Linux 图形桌面安装/启动验收：当前降为非优先，不阻塞 Windows 灰度和 Release。
 
 ## 下一阶段候选，尚未立项
 

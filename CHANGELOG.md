@@ -4,11 +4,21 @@
 
 ## Unreleased
 
-暂无。
+### Changed
+
+- CI 调整为 Windows-first：Windows `pnpm check` 与安装级无 Provider 首启成为 PR 门禁，Linux 移至每周/手动的非阻塞维护；
+- 新增 `windows-synthetic-gray` 夜间、手动和 PR label 工作流，以本地确定性 Provider 驱动真实安装版完成 Credential Manager、连接故障、Research Run、双 Run 取消、硬退出、checkpoint 恢复和重启循环；
+- `v*` Tag Release 改为 Windows-only 门禁和资产发布；带预发布后缀的 Tag 自动创建 GitHub prerelease，Linux 不再阻塞 Windows RC；
+- PR 不再上传约 800 MB 的完整 Forge 目录；只在 `main` 保存 Setup/ZIP，并缩短普通 CI artifact 保留期。
+
+### Security
+
+- Windows 合成灰度只使用 loopback Mock Provider 和固定公开夹具凭据，不读取 Actions secrets；测试前拒绝覆盖现有系统凭据，结束时删除测试项；
+- 上传证据限定为脱敏 JSON 和固定夹具截图，不上传 Run Request、事件日志、工作区或凭据内容。
 
 ## 0.11.1 — 2026-08-13
 
-M10.3 Provider Setup 候选版。当前已完成本机源码、测试、macOS 打包与安装验收，并在 draft PR #1 通过 Windows/Linux 原生门禁；尚未合并、创建 Tag 或 GitHub Release。
+M10.3 Provider Setup 候选版。当前已完成本机源码、测试、macOS 打包与安装验收；历史 draft PR #1 已通过 Windows/Linux 原生门禁，后续发布策略已在 Unreleased 中转为 Windows-first。尚未合并、创建 Tag 或 GitHub Release。
 
 ### Added
 
@@ -24,8 +34,7 @@ M10.3 Provider Setup 候选版。当前已完成本机源码、测试、macOS �
 - Bootstrap 和凭据写入 IPC 返回有界状态对象，不再只返回布尔值；
 - 保存凭据不会自动联网，连接验证与真实 Run 分别需要独立用户动作。
 - Windows Setup 文件名从 `package.json` 派生版本；Linux DEB 显式依赖提供 `secret-tool` 的 `libsecret-tools`；
-- `v*` Tag Release 改为 Windows/Linux 原生构建双门禁，分别生成 SHA-256 清单，校验 Tag 与包版本一致后一次性发布两个平台资产。
-- Windows/Linux 发布作业新增生产依赖高危审计；开发期 Electron 打包链的上游 `extract-zip` 无修复版本告警已如实登记，不做静默忽略。
+- Windows 发布作业新增生产依赖高危审计；开发期 Electron 打包链的上游 `extract-zip` 无修复版本告警已如实登记，不做静默忽略。
 - 包级首次启动 smoke 会清空 Provider 环境变量、隔离用户数据并屏蔽系统凭据命令，断言 Guide、DeepSeek/OpenAI 未配置状态以及连接/运行禁用门禁；Windows 原生构建与 Release 还必须先运行 Setup、从安装目录首启并调用 Squirrel 卸载。
 - Electron Main 接入标准 Squirrel install/update/uninstall 生命周期处理，避免安装生命周期事件误开普通窗口。
 

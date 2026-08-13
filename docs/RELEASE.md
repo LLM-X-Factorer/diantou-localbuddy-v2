@@ -8,7 +8,8 @@
 - 版本历史：[`../CHANGELOG.md`](../CHANGELOG.md)；
 - 里程碑状态：[`ROADMAP.md`](ROADMAP.md)；
 - 证据：对应 `M*-VALIDATION.md`；
-- Windows/Linux 同步自动发布：`.github/workflows/release.yml`；
+- Windows-first 自动发布：`.github/workflows/release.yml`；
+- Windows 合成灰度合同：[`WINDOWS-GRAY.md`](WINDOWS-GRAY.md)；
 - 安装包配置：`forge.config.cjs`。
 
 同一动态状态只在上述 owner 文件维护；README 只提供摘要和入口。
@@ -42,7 +43,7 @@ pnpm verify:mac-package
 
 这只证明 ad-hoc 内部包，不证明公开签名和公证。
 
-## 3. Windows/Linux 同步 Tag Release
+## 3. Windows-first Tag Release
 
 在用户明确批准后，从已经通过 CI 的提交创建 annotated Tag：
 
@@ -52,15 +53,18 @@ git push origin main
 git push origin vX.Y.Z
 ```
 
-`v*` Tag 必须与 `package.json` 的 `vX.Y.Z` 完全一致，并启动两个原生构建作业：
+`v*` Tag 必须与 `package.json` 的 `vX.Y.Z` 完全一致，并启动 Windows 原生发布门禁：
 
-1. Windows：frozen install、生产依赖高危审计、typecheck、Core/Provider 合同、`pnpm make:win`，随后静默运行带版本号的 Setup，从真实安装目录以隔离用户数据和无 Provider 凭据条件启动 App，并在验收后调用 Squirrel 卸载；
-2. Linux：frozen install、生产依赖高危审计、typecheck、Core/Provider 合同、`pnpm make:linux`，收集 DEB；
-3. 分别生成 UTF-8、LF 行尾的 `SHA256SUMS-windows.txt` 与 `SHA256SUMS-linux.txt`；
-4. 发布作业下载两组 Actions artifact，复核 Tag/包版本和全部 SHA-256；
-5. 只有两个原生作业同时成功，才创建或更新同一个 GitHub Release。
+1. frozen install、生产依赖高危审计和完整 `pnpm check`；
+2. `pnpm make:win` 构建 Setup/ZIP；
+3. 安装真实 Setup，并执行 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 定义的 Credential Manager、Mock Provider、故障、Research Run、双 Run 取消、硬退出恢复与重启矩阵；
+4. 生成 UTF-8、LF 行尾的 `SHA256SUMS-windows.txt`；
+5. 发布作业复核 Tag/包版本和 Windows SHA-256 后创建或更新 GitHub Release；
+6. `vX.Y.Z-rc.N` 等带预发布后缀的 Tag 自动标记为 prerelease。
 
-Windows 安装后首次启动 smoke 的截图与结构化 JSON 作为 Actions artifact 上传；断言范围包括 Setup 退出码、版本化安装路径、Guide、DeepSeek/OpenAI 未配置状态、“验证连接”禁用和“开始任务”禁用。这样可以持续使用 GitHub 托管 Runner 验收静默安装与无凭据首次启动，不依赖固定 Windows 测试机；SmartScreen、真实凭据与 Provider Run 仍需终端用户设备。
+Windows 安装版的脱敏摘要和固定夹具截图作为 Actions artifact 上传；不上传 Run Request、事件日志、工作区或凭据内容。托管 Runner 不依赖固定 Windows 测试机，但仍不能验证 SmartScreen、Defender、标准用户/UAC、DPI、输入法和真实网络。
+
+Linux 不再进入 Tag Release。`.github/workflows/linux-maintenance.yml` 只保留每周/手动构建，既不发布资产也不阻塞 Windows 候选。
 
 当前 workflow 使用 `--clobber` 以允许故障恢复，但正常发布策略是 Tag 和二进制不可变：已经公开或交付的版本出现问题，应发布新的 patch 版本，不移动旧 Tag、不静默替换旧二进制。
 
@@ -70,10 +74,10 @@ Windows 安装后首次启动 smoke 的截图与结构化 JSON 作为 Actions ar
 2. 下载全部资产到新的临时目录；
 3. 用 Release 清单重新计算并验证 SHA-256；
 4. 核对 GitHub asset digest、文件字节数和清单；
-5. 分别在 Windows 真机和 Linux 图形桌面执行安装、启动、凭证、真实 Provider Run、恢复和卸载矩阵；
+5. 在真实 Windows 11 设备执行安装、启动、凭证、真实 Provider Run、恢复和卸载矩阵；
 6. 把真实结果写入 Validation 和 [`DOGFOOD.md`](DOGFOOD.md)。
 
-第 5 步当前在 Windows 与 Linux 上均未完成，不能由 Runner 构建替代。
+第 5 步当前未完成，不能由 Windows Server 2025 Runner 替代。Linux 图形桌面当前不属于 Windows-first 发布门禁。
 
 ## 5. 回滚与修复
 
@@ -83,4 +87,4 @@ Windows 安装后首次启动 smoke 的截图与结构化 JSON 作为 Actions ar
 - 集成代码回滚使用普通 revert commit，不 amend 已推送提交；
 - Release 事实变化后同步 Changelog、Known Limitations 和 Validation。
 
-`v0.11.0` 的原生 Windows Release 和回下载证据见 [`M10.2-VALIDATION.md`](M10.2-VALIDATION.md)；`v0.9.0` 的首次 Windows Release、CRLF 清单修复和回下载证据见 [`M10-VALIDATION.md`](M10-VALIDATION.md)。同步发布 Linux 资产从待发布的 `v0.11.1` 流程开始，不能回写或替换旧 Release。
+`v0.11.0` 的原生 Windows Release 和回下载证据见 [`M10.2-VALIDATION.md`](M10.2-VALIDATION.md)；`v0.9.0` 的首次 Windows Release、CRLF 清单修复和回下载证据见 [`M10-VALIDATION.md`](M10-VALIDATION.md)。旧 Release 不回写、不替换；Linux 资产不再计划进入 `v0.11.1`。

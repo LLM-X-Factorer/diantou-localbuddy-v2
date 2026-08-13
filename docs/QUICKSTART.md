@@ -1,6 +1,6 @@
 # LocalBuddy V2 Internal Quickstart
 
-> 适用版本：三平台源码候选 `0.11.1 / M10.3 Provider Setup`。macOS 本机包已验证；Windows/Linux 同版本已通过 PR 原生构建，Windows Setup 还通过安装后无凭据首启；最新私有 GitHub Release 仍为 `v0.11.0 / M10.2`。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
+> 适用版本：`0.11.1 / M10.3 Provider Setup` 候选。当前灰度与发布优先 Windows；macOS 保留回归，Linux 降为维护。最新私有 GitHub Release 仍为 `v0.11.0 / M10.2`。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
 
 ## 1. 选择可用入口
 
@@ -8,7 +8,7 @@
 |---|---|---|
 | macOS arm64 | 从仓库执行 `pnpm desktop`，或使用本机生成的 ad-hoc ZIP/DMG | 本机 Renderer、Fuse、ASAR、内置浏览器和包完整性烟测 |
 | Windows x64 | 私有 [`v0.11.0` Release](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.11.0) 的 Setup/ZIP | `0.11.1` PR Runner 已完成合同、Setup 构建、静默安装、无凭据首启和卸载；终端用户设备待验收 |
-| Linux x64 | `0.11.1` PR CI DEB artifact；正式 Release 仍待 Tag | Ubuntu Runner 合同与构建；真实图形桌面安装/启动待验收 |
+| Linux x64 | 当前不提供新 Release | 每周/手动构建维护；真实图形桌面验收暂不优先 |
 
 Windows 包未签名。只有明确获准参与内部测试时才下载；不要把 SmartScreen 提示解释为已完成发布信誉或代码签名。
 
@@ -86,4 +86,4 @@ Windows `0.11.x` 没有受支持的本地进程隔离宿主，涉及检查命令
 
 已登记的有限文本 Artifact 可以在校验路径、大小和 SHA-256 后内嵌预览。“基于此产物继续”只会把可审计引用预填到组合器，仍需用户检查并手工启动新 Run；不会自动发送 Artifact 正文。
 
-真实试用记录方式见 [`DOGFOOD.md`](DOGFOOD.md)。
+自动化 Windows 灰度见 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md)，真人试用记录方式见 [`DOGFOOD.md`](DOGFOOD.md)。
