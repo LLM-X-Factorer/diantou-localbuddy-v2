@@ -8,7 +8,7 @@
 
 ## 0.11.1 — 2026-08-13
 
-M10.3 Provider Setup 本机候选版。当前只进入本机源码、测试、macOS 打包与安装验收流程；尚未 commit、Tag、push 或创建 GitHub Release。
+M10.3 Provider Setup 候选版。当前已完成本机源码、测试、macOS 打包与安装验收，并在 draft PR #1 通过 Windows/Linux 原生门禁；尚未合并、创建 Tag 或 GitHub Release。
 
 ### Added
 
@@ -38,7 +38,7 @@ M10.3 Provider Setup 本机候选版。当前只进入本机源码、测试、ma
 - 规格：[`docs/M10.3-SPEC.md`](docs/M10.3-SPEC.md)；
 - 验收：[`docs/M10.3-VALIDATION.md`](docs/M10.3-VALIDATION.md)；
 - `pnpm check`：119/119 tests passed；
-- macOS 无 Provider 凭据包级首次启动 smoke 通过；Windows 同门禁等待 `windows-2025` 原生 PR 作业；
+- macOS 无 Provider 凭据包级首次启动 smoke 通过；[`windows-2025` PR run `31663327629`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31663327629) 也已通过，截图与 JSON artifact 已回下载核对；
 - macOS DMG：224,991,198 bytes，SHA-256 `0a533b7d2397f40e82073697e0b026f243518c98198ef10625a6eecbffb46437`，挂载后包验证通过。
 
 ## 0.11.0 — 2026-08-13

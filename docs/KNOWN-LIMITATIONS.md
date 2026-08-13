@@ -4,12 +4,12 @@
 
 ## Platform and distribution
 
-- Windows `v0.11.0` Setup/ZIP 已由 `windows-2025` Runner 原生构建并回下载校验；`0.11.1` 已加入包级无凭据首次启动 smoke，但当前提交前尚未取得原生 PR 结果，也未在 Windows 真机完成安装、凭证写入、真实 Provider Run、恢复、卸载验收；
+- Windows `v0.11.0` Setup/ZIP 已发布；`0.11.1` 已在 `windows-2025` PR Runner 原生打包，并以隔离用户数据、无 Provider 凭据启动真实打包 App，截图与结构化结果均已回下载核对。该门禁不覆盖终端用户 Windows 设备上的 Setup、凭据写入、真实 Provider Run、恢复与卸载；
 - Windows 没有受支持的本地进程隔离宿主，检查命令和本地进程型扩展 fail closed；
-- Linux 既有 DEB 基线已原生构建；`0.11.1` DEB 现声明 `libsecret-tools` 依赖并进入同步 Tag Release，但尚未获得该版本原生产物，也未在真实图形桌面与 Secret Service 会话完成安装/启动/凭据验收；
+- Linux `0.11.1` DEB 已由 `ubuntu-24.04` PR Runner 原生构建，并声明 `libsecret-tools` 依赖；尚未在真实图形桌面与 Secret Service 会话完成安装、启动和凭据验收；
 - macOS 包是 ad-hoc 签名，未启用生产 Hardened Runtime，未 notarize；
 - Windows 包未做代码签名，可能出现 SmartScreen 提示；
-- 新 Tag workflow 会同时发布 Windows x64 与 Linux x64 资产，但尚未通过一次 `0.11.1` 远端运行证明；macOS 仍不自动进入 GitHub Release；
+- 新 Tag workflow 会同时发布 Windows x64 与 Linux x64 资产；对应构建与首次启动逻辑已由 `0.11.1` PR workflow 证明，但尚未实际创建 `v0.11.1` Tag 或 Release；macOS 仍不自动进入 GitHub Release；
 - 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。仓库没有静默忽略该项，`0.11.1` Tag 前必须复查稳定版上游或做明确风险决策；
 - 更新协议只下载、验签并 staging，不会自动替换正在使用的应用。
 

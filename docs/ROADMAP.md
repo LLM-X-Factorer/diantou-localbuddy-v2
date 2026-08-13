@@ -1,10 +1,10 @@
 # LocalBuddy V2 Roadmap after M10.3
 
-> **状态真源**：2026-08-13。当前本机候选版为 `0.11.1 / M10.3 Provider Setup`；最新私有 GitHub Release 仍是 `v0.11.0 / M10.2`。本文件只记录跨里程碑状态和后续决策，阶段内证据以对应 `M*-VALIDATION.md` 为准。
+> **状态真源**：2026-08-13。当前候选版为 `0.11.1 / M10.3 Provider Setup`，已进入 draft PR #1 并通过原生 PR 门禁；最新私有 GitHub Release 仍是 `v0.11.0 / M10.2`。本文件只记录跨里程碑状态和后续决策，阶段内证据以对应 `M*-VALIDATION.md` 为准。
 
 ## 当前里程碑
 
-### 0.11.1 · M10.3 Provider Setup — completed locally; synchronized native release prepared
+### 0.11.1 · M10.3 Provider Setup — native PR verified; release pending
 
 - Provider 成为侧边栏一级设置，不再藏在 Skills/MCP/Browser 扩展折叠区；
 - DeepSeek/OpenAI 独立显示环境变量、系统安全存储或未配置状态，Renderer 不接收 secret；
@@ -18,8 +18,8 @@
 - Windows Setup 文件名、Linux `libsecret-tools` 依赖和两个平台的 Provider 合同均由 `0.11.1` 真源约束；
 - Tag Release 必须等待 Windows/Linux 原生作业同时成功，分别验证 SHA-256 后才一次性发布；
 - 两个平台的发布作业都强制通过生产依赖高危审计；开发期 Forge 打包链的上游 `extract-zip` 告警已登记，正式 Tag 前仍需复查稳定版修复或明确风险决策；
-- macOS 包已通过全新用户数据、无 Provider 凭据首次启动 smoke；同一门禁已进入 Windows PR/Release 原生作业，等待首次 `windows-2025` 结果；
-- 本版本尚未 commit、Tag、push 或创建 Release，Windows 可下载版本仍为 `v0.11.0`，Linux `0.11.1` DEB 也尚未由原生 Runner 生成。
+- macOS 包已通过全新用户数据、无 Provider 凭据首次启动 smoke；[`windows-2025` PR run `31663327629`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31663327629) 也已在隔离用户数据、无 Provider 凭据条件下启动真实打包 App，并回下载核对截图与 JSON；
+- draft PR #1 的 macOS、Windows/Linux 合同和 Windows/Linux 原生打包五项作业全部通过；Windows/Linux 临时 artifacts 已生成。本版本尚未合并、创建 Tag 或 Release，正式可下载版本仍为 `v0.11.0`。
 
 M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批边界；它解决的是必要配置的可发现性、可判断性和安全生命周期。M11 仍未立项。
 
@@ -118,7 +118,7 @@ M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批
 
 规格与本机证据见 [`M10.2-SPEC.md`](M10.2-SPEC.md) 和 [`M10.2-VALIDATION.md`](M10.2-VALIDATION.md)。
 
-### M10.3 · Provider Setup — completed locally; release pending
+### M10.3 · Provider Setup — native PR verified; release pending
 
 - Provider 从扩展概念中拆出，成为真实 Run 的显式必要前置；
 - 凭据管理覆盖状态、保存、替换、删除和按需连接验证；
@@ -127,6 +127,7 @@ M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批
 - 连接检查是用户触发的认证/网络探针，不等价于真实生成 Run；
 - 保持 Key 不进 Renderer 持久状态、不进 Run/事件/checkpoint/诊断的既有边界。
 - Windows/Linux 使用同一包版本与双平台发布门禁；Linux DEB 声明 Secret Service CLI 依赖。
+- GitHub 托管 `windows-2025` Runner 已持续化验证“没有任何 Provider 配置也能正常打开 App”的安装前置状态，不再依赖固定 Windows 测试机；终端用户设备上的 Setup、系统凭据、真实 Run 与卸载仍属于独立外部门禁。
 
 规格与本机证据见 [`M10.3-SPEC.md`](M10.3-SPEC.md) 和 [`M10.3-VALIDATION.md`](M10.3-VALIDATION.md)。
 
