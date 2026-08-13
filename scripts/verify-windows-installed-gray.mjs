@@ -96,6 +96,8 @@ try {
   }, (candidate) => candidate?.status === "succeeded", 60_000, "Interrupted Run did not resume from checkpoint");
   await assertRunFilesAreCredentialSafe(recoveredRun.runId);
   await waitForRendererActiveRuns(activeApp.page, 0);
+  await setProviderBaseUrl(activeApp.page, `${mockProvider.baseUrl}/v1`);
+  assert.equal(await activeApp.page.getByLabel("Provider").inputValue(), "openai");
 
   const cancelledRuns = await startConcurrentRunsAndCancel(activeApp.page);
   assert.ok(mockProvider.state.cancelledRequests >= 2);
