@@ -1,6 +1,6 @@
 # LocalBuddy V2 Release Runbook
 
-> 当前本机候选版：`0.11.1 / M10.3 Provider Setup`；当前私有发布线仍是 `v0.11.0 / M10.2 First Trusted Run Engineering Alpha`。Git push、Tag 和 Release 都是外部状态变更，必须获得用户明确授权。
+> 当前私有发布线：`v0.11.1 / M10.3 Provider Setup Engineering Alpha`。Git push、Tag 和 Release 都是外部状态变更，必须获得用户明确授权。
 
 ## 1. 发布真源
 

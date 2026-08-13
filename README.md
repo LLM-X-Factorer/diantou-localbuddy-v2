@@ -4,7 +4,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 
 这不是 Craft Agents 的分支，也不包含腾讯 WorkBuddy 的私有实现。仓库只参考公开产品行为、通用 Agent 架构模式，以及我们自行定义的验收契约。
 
-> **产品判断（2026-08-13）**：`0.11.1 / M10.3 Provider Setup` 是当前候选版，最新私有 GitHub Release 仍是 `v0.11.0`。Provider 配置与紧凑 Composer 已形成闭环；当前灰度与发布转为 Windows-first：PR 验证完整 Windows 合同与 Setup 无凭据首启，夜间/手动合成灰度进一步覆盖 Credential Manager、本地 Mock Provider、真实 Research Run、双 Run 取消、硬退出恢复和重启。Linux 降为每周/手动维护。Windows 11 真人灰度仍开放；它不是公开分发版，也不是与 WorkBuddy 功能对等的商业产品。
+> **产品判断（2026-08-13）**：`v0.11.1 / M10.3 Provider Setup` 是当前私有 Engineering Alpha。Provider 配置与紧凑 Composer 已形成闭环；当前灰度与发布转为 Windows-first：PR 验证完整 Windows 合同与 Setup 无凭据首启，夜间/手动合成灰度进一步覆盖 Credential Manager、本地 Mock Provider、真实 Research Run、双 Run 取消、硬退出恢复和重启。Linux 降为每周/手动维护。Windows 11 真人灰度仍开放；它不是公开分发版，也不是与 WorkBuddy 功能对等的商业产品。
 
 ## 一页状态
 
@@ -18,7 +18,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 | 代码写回 | 独立 worktree、组合预检、人工 Gate、apply/commit/revert commit |
 | 恢复 | Research/Coding 同 Run checkpoint resume；失败 Run 可恢复未完成 Task 链，并保留 replay 兜底 |
 | 扩展 | 本地/签名 Skill、MCP stdio/HTTP/OAuth、受限 Playwright Browser |
-| 分发 | macOS `0.11.1` ad-hoc DMG/ZIP 已完成本机验收；Windows Setup/ZIP 是当前自动化灰度与新 Release 主线；Linux 仅维护；正式可下载版本仍为私有 `v0.11.0` |
+| 分发 | macOS `0.11.1` ad-hoc DMG/ZIP 已完成本机验收；私有 `v0.11.1` Release 提供 Windows Setup/ZIP；Linux 仅维护 |
 | 当前主动暂缓 | Developer ID、生产 Hardened Runtime、notarization、公开 Gatekeeper |
 
 M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M10.3 继续补齐它的必要前置条件：Provider 不再藏在扩展折叠区，凭据状态、管理动作、显式连接检查和启动门禁形成单一纵向闭环。保存不会自动联网；验证连接会明确把凭据发送到所示 Provider/Base URL 并只请求模型列表；真实 Run 仍必须由用户点击开始。连续真实 dogfooding 仍是开放验证门。
@@ -26,7 +26,7 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 ## 文档入口
 
 - [`docs/QUICKSTART.md`](docs/QUICKSTART.md)：内部试用者从安装、凭证到第一个 Run 的最短路径；
-- [`docs/KNOWN-LIMITATIONS.md`](docs/KNOWN-LIMITATIONS.md)：`0.11.1` 本机候选版的已知限制和不能宣称的能力；
+- [`docs/KNOWN-LIMITATIONS.md`](docs/KNOWN-LIMITATIONS.md)：`v0.11.1` 私有 Engineering Alpha 的已知限制和不能宣称的能力；
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)：当前 M10.3 架构事实；
 - [`docs/ROADMAP.md`](docs/ROADMAP.md)：已完成里程碑、外部门禁和待确认的下一阶段；
 - [`docs/RELEASE.md`](docs/RELEASE.md)：版本、Tag、CI、Release 与校验流程；
@@ -239,7 +239,7 @@ pnpm make:win
 
 它们应分别在 Linux/Windows Runner 上执行；仓库不会把交叉编译配置冒充成目标平台运行验收。
 
-推送 `v*` Tag 会在 `windows-2025` Runner 上执行生产依赖审计、完整测试、Squirrel Setup/ZIP 构建和安装版合成灰度，并生成 LF 格式的 `SHA256SUMS-windows.txt`。发布作业确认 Tag 与 `package.json` 完全一致并复核清单后发布 Windows 资产；预发布 Tag 自动标记 prerelease。Linux 仅在每周/手动维护工作流中构建，不进入 Tag Release。当前内部发布见 [`v0.11.0`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.11.0)；`v0.11.1` 尚未发布。
+推送 `v*` Tag 会在 `windows-2025` Runner 上执行生产依赖审计、完整测试、Squirrel Setup/ZIP 构建和安装版合成灰度，并生成 LF 格式的 `SHA256SUMS-windows.txt`。发布作业确认 Tag 与 `package.json` 完全一致并复核清单后发布 Windows 资产；预发布 Tag 自动标记 prerelease。Linux 仅在每周/手动维护工作流中构建，不进入 Tag Release。当前内部发布见 [`v0.11.1`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.11.1)。
 
 ## Headless 真实运行
 

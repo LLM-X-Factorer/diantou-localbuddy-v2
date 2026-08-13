@@ -4,23 +4,11 @@
 
 ## Unreleased
 
-### Changed
-
-- CI 调整为 Windows-first：Windows `pnpm check` 与安装级无 Provider 首启成为 PR 门禁，Linux 移至每周/手动的非阻塞维护；
-- 新增 `windows-synthetic-gray` 夜间、手动和 PR label 工作流，以本地确定性 Provider 驱动真实安装版完成 Credential Manager、连接故障、Research Run、双 Run 取消、硬退出、checkpoint 恢复和重启循环；
-- `v*` Tag Release 改为 Windows-only 门禁和资产发布；带预发布后缀的 Tag 自动创建 GitHub prerelease，Linux 不再阻塞 Windows RC；
-- PR 不再上传约 800 MB 的完整 Forge 目录；只在 `main` 保存 Setup/ZIP，并缩短普通 CI artifact 保留期。
-- Windows 全量测试先安装 Chromium；macOS-only/隔离宿主依赖用例逐项标记平台边界，同时新增 Windows 本地进程与 stdio MCP fail-closed 反向合同，并修复最近工作区测试的 Windows 路径兼容性。
-- 取消测试在删除临时工作区前等待 `DesktopRunManager.waitForIdle()`，避免 Windows 在终态事件已发布但 `runtime-lock` 仍释放中时触发 `EPERM`；这不改变取消语义。
-
-### Security
-
-- Windows 合成灰度只使用 loopback Mock Provider 和固定公开夹具凭据，不读取 Actions secrets；测试前拒绝覆盖现有系统凭据，结束时删除测试项；
-- 上传证据限定为脱敏 JSON 和固定夹具截图，不上传 Run Request、事件日志、工作区或凭据内容。
+暂无。
 
 ## 0.11.1 — 2026-08-13
 
-M10.3 Provider Setup 候选版。当前已完成本机源码、测试、macOS 打包与安装验收；历史 draft PR #1 已通过 Windows/Linux 原生门禁，后续发布策略已在 Unreleased 中转为 Windows-first。尚未合并、创建 Tag 或 GitHub Release。
+M10.3 Provider Setup 私有 Engineering Alpha。完成本机源码、测试、macOS 打包与安装验收，并将后续灰度与发布转为 Windows-first；Windows 11 真人灰度仍开放，不属于公开稳定版。
 
 ### Added
 
@@ -39,11 +27,22 @@ M10.3 Provider Setup 候选版。当前已完成本机源码、测试、macOS �
 - Windows 发布作业新增生产依赖高危审计；开发期 Electron 打包链的上游 `extract-zip` 无修复版本告警已如实登记，不做静默忽略。
 - 包级首次启动 smoke 会清空 Provider 环境变量、隔离用户数据并屏蔽系统凭据命令，断言 Guide、DeepSeek/OpenAI 未配置状态以及连接/运行禁用门禁；Windows 原生构建与 Release 还必须先运行 Setup、从安装目录首启并调用 Squirrel 卸载。
 - Electron Main 接入标准 Squirrel install/update/uninstall 生命周期处理，避免安装生命周期事件误开普通窗口。
+- CI 调整为 Windows-first：Windows `pnpm check` 与安装级无 Provider 首启成为 PR 门禁，Linux 移至每周/手动的非阻塞维护；
+- 新增 `windows-synthetic-gray` 夜间、手动和 PR label 工作流，以本地确定性 Provider 驱动真实安装版完成 Credential Manager、连接故障、Research Run、双 Run 取消、硬退出、checkpoint 恢复和重启循环；
+- `v*` Tag Release 改为 Windows-only 门禁和资产发布；带预发布后缀的 Tag 自动创建 GitHub prerelease，Linux 不再阻塞 Windows RC；
+- PR 不再上传约 800 MB 的完整 Forge 目录；只在 `main` 保存 Setup/ZIP，并缩短普通 CI artifact 保留期；
+- Windows 全量测试先安装 Chromium；macOS-only/隔离宿主依赖用例逐项标记平台边界，同时新增 Windows 本地进程与 stdio MCP fail-closed 反向合同，并修复最近工作区测试的 Windows 路径兼容性；
+- 取消测试在删除临时工作区前等待 `DesktopRunManager.waitForIdle()`，避免 Windows 在终态事件已发布但 `runtime-lock` 仍释放中时触发 `EPERM`；这不改变取消语义。
 
 ### Fixed
 
 - macOS DMG 制作和验证脚本不再硬编码旧版本文件名，改为读取、校验 `package.json` 版本，并复核 App Bundle 版本一致。
 - Composer 控制台改为紧凑的“任务输入 + 控制工具栏”：移除占高的字段标题与 16 列空栅格，Provider、信任、模式和并发只展示当前值，凭据与扩展入口使用短状态，执行按钮固定在右侧；窄窗口仅让工具项自然换行。
+
+### Security
+
+- Windows 合成灰度只使用 loopback Mock Provider 和固定公开夹具凭据，不读取 Actions secrets；测试前拒绝覆盖现有系统凭据，结束时删除测试项；
+- 上传证据限定为脱敏 JSON 和固定夹具截图，不上传 Run Request、事件日志、工作区或凭据内容。
 
 ### Evidence
 

@@ -1,15 +1,15 @@
 # LocalBuddy V2 0.11.1 Known Limitations
 
-> 本文是 `0.11.1 / M10.3 Provider Setup` 候选的负面能力清单；当前灰度与发布优先 Windows，macOS 保留本机回归，Linux 降为维护。最新私有 GitHub Release 仍为 `v0.11.0`。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
+> 本文是 `v0.11.1 / M10.3 Provider Setup` 私有 Engineering Alpha 的负面能力清单；当前灰度与发布优先 Windows，macOS 保留本机回归，Linux 降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
 
 ## Platform and distribution
 
-- Windows `v0.11.0` Setup/ZIP 已发布；`0.11.1` 已在 `windows-2025` PR Runner 原生打包，静默运行 Setup，从版本化安装目录覆盖无 Provider 首启、Credential Manager、loopback Provider、安装版 Research Run、双 Run 取消、硬退出恢复与重启，并调用 Squirrel 卸载；脱敏截图与摘要均已回下载核对。该门禁不覆盖终端用户设备上的 SmartScreen、标准用户/UAC、真实 Provider 与真实网络；
+- Windows `v0.11.1` Setup/ZIP 已发布；它在 `windows-2025` Runner 原生打包，静默运行 Setup，从版本化安装目录覆盖无 Provider 首启、Credential Manager、loopback Provider、安装版 Research Run、双 Run 取消、硬退出恢复与重启，并调用 Squirrel 卸载；脱敏截图与摘要均已回下载核对。该门禁不覆盖终端用户设备上的 SmartScreen、标准用户/UAC、真实 Provider 与真实网络；
 - Windows 没有受支持的本地进程隔离宿主，检查命令和本地进程型扩展 fail closed；
 - Linux `0.11.1` DEB 历史上已由 `ubuntu-24.04` PR Runner 原生构建；当前 Linux 只保留每周/手动维护，不进入 PR 或 Release 门禁，真实图形桌面与 Secret Service 验收暂不优先；
 - macOS 包是 ad-hoc 签名，未启用生产 Hardened Runtime，未 notarize；
 - Windows 包未做代码签名，可能出现 SmartScreen 提示；
-- 新 Tag workflow 只发布 Windows x64 Setup/ZIP；Linux 与 macOS 不自动进入 GitHub Release。Windows Release 前会运行安装版合成灰度，但尚未实际创建 `v0.11.1` Tag 或 Release；
+- Tag workflow 只发布 Windows x64 Setup/ZIP；Linux 与 macOS 不自动进入 GitHub Release。Windows Release 前运行安装版合成灰度；
 - `windows-2025` 是 Windows Server 2025 管理员 Runner，不能覆盖 Windows 11 的 SmartScreen、Defender、标准用户/UAC、DPI、输入法、睡眠或企业代理；
 - 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。仓库没有静默忽略该项，`0.11.1` Tag 前必须复查稳定版上游或做明确风险决策；
 - 更新协议只下载、验签并 staging，不会自动替换正在使用的应用。

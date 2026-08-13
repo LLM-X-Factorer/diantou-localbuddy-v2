@@ -1,13 +1,13 @@
 # LocalBuddy V2 Internal Quickstart
 
-> 适用版本：`0.11.1 / M10.3 Provider Setup` 候选。当前灰度与发布优先 Windows；macOS 保留回归，Linux 降为维护。最新私有 GitHub Release 仍为 `v0.11.0 / M10.2`。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
+> 适用版本：`v0.11.1 / M10.3 Provider Setup` 私有 Engineering Alpha。当前灰度与发布优先 Windows；macOS 保留回归，Linux 降为维护。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
 
 ## 1. 选择可用入口
 
 | 平台 | 当前可用入口 | 已证明范围 |
 |---|---|---|
 | macOS arm64 | 从仓库执行 `pnpm desktop`，或使用本机生成的 ad-hoc ZIP/DMG | 本机 Renderer、Fuse、ASAR、内置浏览器和包完整性烟测 |
-| Windows x64 | 私有 [`v0.11.0` Release](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.11.0) 的 Setup/ZIP | `0.11.1` PR Runner 已完成合同、Setup 构建、静默安装、无凭据首启和卸载；终端用户设备待验收 |
+| Windows x64 | 私有 [`v0.11.1` Release](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.11.1) 的 Setup/ZIP | Release Runner 已完成合同、Setup 构建、静默安装、无凭据首启、合成灰度和卸载；终端用户设备待验收 |
 | Linux x64 | 当前不提供新 Release | 每周/手动构建维护；真实图形桌面验收暂不优先 |
 
 Windows 包未签名。只有明确获准参与内部测试时才下载；不要把 SmartScreen 提示解释为已完成发布信誉或代码签名。

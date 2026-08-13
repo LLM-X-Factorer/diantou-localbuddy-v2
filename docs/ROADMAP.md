@@ -1,10 +1,10 @@
 # LocalBuddy V2 Roadmap after M10.3
 
-> **状态真源**：2026-08-13。当前候选版为 `0.11.1 / M10.3 Provider Setup`，已进入 draft PR #1；最新私有 GitHub Release 仍是 `v0.11.0 / M10.2`。后续灰度与发布已转为 Windows-first，Linux 降为每周/手动维护。阶段内证据以对应 Validation 和 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 为准。
+> **状态真源**：2026-08-13。当前私有发布版为 `v0.11.1 / M10.3 Provider Setup Engineering Alpha`。后续灰度与发布已转为 Windows-first，Linux 降为每周/手动维护。阶段内证据以对应 Validation 和 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 为准。
 
 ## 当前里程碑
 
-### 0.11.1 · M10.3 Provider Setup — hosted Windows gray verified; release pending
+### v0.11.1 · M10.3 Provider Setup — private Engineering Alpha
 
 - Provider 成为侧边栏一级设置，不再藏在 Skills/MCP/Browser 扩展折叠区；
 - DeepSeek/OpenAI 独立显示环境变量、系统安全存储或未配置状态，Renderer 不接收 secret；
@@ -17,9 +17,9 @@
 - 已安装应用通过真实 GUI 验收：独立入口、来源状态、显式验证文案、未配置 Provider 启动门禁，以及 Composer 收起/扩展布局均可见；
 - Windows Setup 文件名、Linux `libsecret-tools` 依赖和两个平台的 Provider 合同均由 `0.11.1` 真源约束；
 - Tag Release 改为 Windows-only：必须通过生产依赖审计、全量测试、安装版合成灰度和 SHA-256 后才发布 Setup/ZIP；Linux 不再阻塞 Windows RC；
-- Windows 发布作业强制通过生产依赖高危审计；开发期 Forge 打包链的上游 `extract-zip` 告警已登记，正式 Tag 前仍需复查稳定版修复或明确风险决策；
+- Windows 发布作业强制通过生产依赖高危审计；开发期 Forge 打包链的上游 `extract-zip` 告警已在 Tag 前复查，当前稳定 Forge 仍无修复，本次 private Engineering Alpha 已记录接受该打包期风险；
 - macOS 包已通过全新用户数据、无 Provider 凭据首次启动 smoke；[`windows-2025` PR run `31665000997`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31665000997) 还运行真实 Setup、从版本化安装目录在隔离用户数据与无 Provider 凭据条件下启动，并回下载核对截图与 JSON，最后调用 Squirrel 卸载；
-- draft PR #1 的提交 `d686cd6` 已通过 [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 和 [`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610)：Windows 完整合同、Setup 无凭据首启、Credential Manager、故障矩阵、安装版 Research Run、双 Run 取消、硬退出恢复和 5 次额外重启均为绿色。本版本尚未合并、创建 Tag 或 Release，正式可下载版本仍为 `v0.11.0`。
+- draft PR #1 的提交 `d686cd6` 已通过 [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 和 [`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610)：Windows 完整合同、Setup 无凭据首启、Credential Manager、故障矩阵、安装版 Research Run、双 Run 取消、硬退出恢复和 5 次额外重启均为绿色；`v0.11.1` Tag/Release 固定该已验证范围并发布 Windows Setup/ZIP。
 
 M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批边界；它解决的是必要配置的可发现性、可判断性和安全生命周期。M11 仍未立项。
 
@@ -118,7 +118,7 @@ M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批
 
 规格与本机证据见 [`M10.2-SPEC.md`](M10.2-SPEC.md) 和 [`M10.2-VALIDATION.md`](M10.2-VALIDATION.md)。
 
-### M10.3 · Provider Setup — hosted Windows gray verified; release pending
+### M10.3 · Provider Setup — private Engineering Alpha released
 
 - Provider 从扩展概念中拆出，成为真实 Run 的显式必要前置；
 - 凭据管理覆盖状态、保存、替换、删除和按需连接验证；
