@@ -1,8 +1,21 @@
-# LocalBuddy V2 Roadmap after M10.3
+# LocalBuddy V2 Roadmap after M10.4
 
-> **状态真源**：2026-08-13。当前私有发布版为 `v0.11.1 / M10.3 Provider Setup Engineering Alpha`。后续灰度与发布已转为 Windows-first，Linux 降为每周/手动维护。阶段内证据以对应 Validation 和 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 为准。
+> **状态真源**：2026-08-14。当前候选为 `v0.11.2 / M10.4 Explicit Research Sources Engineering Alpha`。后续灰度与发布保持 Windows-first，Linux 只做每周/手动维护。阶段内证据以对应 Validation 和 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 为准。
 
 ## 当前里程碑
+
+### v0.11.2 · M10.4 Explicit Research Sources — private Engineering Alpha candidate
+
+- Research 的运行记录位置不再自动成为模型资料库；
+- 用户按 Run 明确添加文件或资料目录，Planner/Worker 只看到逻辑 source ID，不看到绝对路径或整个运行目录清单；
+- 未选资料时不注册本地搜索/读取工具；选中资料目录后只在非空文件名查询时按需搜索，并使用有界结果/遍历预算；
+- checkpoint 保存明确 source identity，只复核成功读取过的文件 SHA-256；无关文件和缓存不再阻断恢复；
+- v1-v3 whole-workspace Research checkpoint 和 replay fail closed，不在新语义下静默继续；
+- 自动门禁为 138 项，本机 136 passed、2 项 Windows-only 合同按平台跳过、0 failed；1,050 个无关文件的失败 Run resume 回归通过；
+- macOS `0.11.2` DMG/ZIP 已通过版本、DMG 完整性、ad-hoc 签名、14 个相对 symlink、Fuse、ASAR、内置浏览器和 Renderer smoke；最终打包 App 的资料选择 UI 与原生文件面板已完成实际 GUI 读回；
+- Windows `v0.11.2` Tag Release、Windows 11 真人灰度、真实 Provider v4 Run 和连续 dogfood 仍是独立门禁，不能由 macOS unit/package 证据替代。
+
+规格与本机证据见 [`M3.4-SPEC.md`](M3.4-SPEC.md) 和 [`M10.4-VALIDATION.md`](M10.4-VALIDATION.md)。
 
 ### v0.11.1 · M10.3 Provider Setup — private Engineering Alpha
 
@@ -130,6 +143,16 @@ M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批
 - GitHub 托管 `windows-2025` Runner 已持续化验证无 Provider 首启，并用公开 loopback 夹具覆盖 Windows Credential Manager、安装版 Research Run、双 Run 取消、硬退出恢复和重启持久化，不再依赖固定 Windows 测试机；终端用户 Windows 11、SmartScreen、标准用户/UAC、真实 Provider 与真实网络仍属于独立外部门禁。
 
 规格与本机证据见 [`M10.3-SPEC.md`](M10.3-SPEC.md) 和 [`M10.3-VALIDATION.md`](M10.3-VALIDATION.md)。
+
+### M10.4 · Explicit Research Sources — candidate
+
+- 运行位置与资料输入成为两个明确产品对象；
+- Research 资料读取使用逻辑引用、路径约束和按需发现，不把整个目录树塞给 Planner；
+- checkpoint 从“复制工作区身份”改为“复核真正使用过的证据”；
+- 历史旧合同 fail closed，避免在用户不知情时改变证据语义；
+- 保留所有模型和工具动作的可审计事件，不把本地隐私路径暴露给模型。
+
+本机可证明范围已完成；Windows-first Release 和持续真实任务验证以 [`M10.4-VALIDATION.md`](M10.4-VALIDATION.md) 为准。
 
 ## 外部门禁与明确暂缓
 

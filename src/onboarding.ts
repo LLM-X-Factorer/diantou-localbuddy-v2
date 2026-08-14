@@ -11,6 +11,7 @@ import {
 } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 
+
 export const ONBOARDING_VERSION = 1 as const;
 
 export interface OnboardingState {
@@ -166,14 +167,22 @@ export async function ensureTutorialWorkspace(
 
 export async function inspectWorkspaceReadiness(workspace: string): Promise<WorkspaceReadiness> {
   if (workspace.length === 0) {
-    return { selected: false, isGitRepository: false, isTutorialWorkspace: false };
+    return {
+      selected: false,
+      isGitRepository: false,
+      isTutorialWorkspace: false,
+    };
   }
   const canonical = await realpath(resolve(workspace));
   if (!(await stat(canonical)).isDirectory()) throw new Error("workspace must be a directory");
+  const [isGitRepository, isTutorialWorkspace] = await Promise.all([
+    pathExists(join(canonical, ".git")),
+    validTutorialMarker(canonical),
+  ]);
   return {
     selected: true,
-    isGitRepository: await pathExists(join(canonical, ".git")),
-    isTutorialWorkspace: await validTutorialMarker(canonical),
+    isGitRepository,
+    isTutorialWorkspace,
   };
 }
 

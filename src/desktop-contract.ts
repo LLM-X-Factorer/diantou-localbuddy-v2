@@ -1,6 +1,7 @@
 export const DESKTOP_CHANNELS = {
   bootstrap: "localbuddy:bootstrap",
   selectWorkspace: "localbuddy:select-workspace",
+  selectResearchSources: "localbuddy:select-research-sources",
   inspectWorkspace: "localbuddy:inspect-workspace",
   createTutorialWorkspace: "localbuddy:create-tutorial-workspace",
   updateOnboarding: "localbuddy:update-onboarding",
@@ -200,6 +201,7 @@ export interface UpdateDesktopOnboardingRequest {
 
 export interface DesktopTutorialWorkspaceResult {
   workspace: string;
+  files: readonly string[];
   runs: readonly DesktopRunView[];
   recentWorkspaces: readonly string[];
   readiness: DesktopWorkspaceReadiness;
@@ -212,6 +214,7 @@ export interface StartDesktopRunRequest {
   goal: string;
   concurrency: number;
   mode?: DesktopRunMode;
+  sourcePaths?: readonly string[];
   provider?: ProviderSelection;
   trustProfile?: DesktopTrustProfile;
   extensions?: RunExtensionSelection;
@@ -291,6 +294,7 @@ export interface ResolveDesktopToolApprovalRequest extends DesktopRunActionReque
 export interface DesktopApi {
   bootstrap(): Promise<DesktopBootstrap>;
   selectWorkspace(): Promise<string | null>;
+  selectResearchSources(kind: "files" | "folders"): Promise<readonly string[]>;
   inspectWorkspace(workspace: string): Promise<DesktopWorkspaceReadiness>;
   createTutorialWorkspace(): Promise<DesktopTutorialWorkspaceResult>;
   updateOnboarding(request: UpdateDesktopOnboardingRequest): Promise<DesktopOnboardingState>;

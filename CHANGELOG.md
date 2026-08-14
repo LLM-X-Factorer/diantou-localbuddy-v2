@@ -6,6 +6,38 @@
 
 暂无。
 
+## 0.11.2 — 2026-08-14
+
+M10.4 Explicit Research Sources 私有 Engineering Alpha 候选。修复 Research 把运行目录误当资料库和恢复快照的根因；Windows-first Tag Release 仍需通过原生安装版合成灰度后才能发布资产。
+
+### Changed
+
+- Research 的“运行位置”和“本次资料”拆为两个边界：运行位置只保存 `.localbuddy/runs` 与 Artifact，不再自动成为模型证据集；
+- Desktop 新增按 Run 添加文件或资料目录的入口。未添加资料时不注册本地搜索/读取工具；资料目录只在 Agent 明确调用非空查询的 `search_files` 后按需搜索文件名；
+- Planner 和 Worker 只接收 `source-1` 等逻辑资料引用，不接收绝对路径或运行目录清单；本地读取只允许落在明确选择的文件或资料目录内；
+- Research checkpoint 保存明确资料身份，并只复核成功读取过的文件 SHA-256；运行目录中的无关文件、缓存和新增条目不再阻断恢复；
+- 旧版 whole-workspace Research checkpoint fail closed，要求新建 Run 并明确添加资料，不继续旧的整目录扫描语义。
+
+### Fixed
+
+- 从根因上消除 `workspace snapshot exceeded the safe checkpoint entry limit`：启动、历史列表、应用重启对账和 resume 都不再扫描或哈希整个 Research 运行目录；
+- 教程 Run 显式选择三份合成教程资料；切换运行位置或成功启动后清空本次资料，避免跨 Run 隐式继承；
+- 修复并发 `start()` 可在容量检查与异步路径解析之间穿透全局 Run 上限的竞态；
+- 被拒绝的恢复尝试写入脱敏的 `checkpoint.resume_blocked` 审计事件，不读取或记录资料正文；
+- Artifact 数字闸门不再把 URL 和日期误判为未登记的派生计算。
+
+### Security
+
+- 将开发构建链中的 `nanoid` 约束到已修复的 `3.3.18`；生产依赖高危审计通过，完整审计只剩 Electron Forge 上游尚无修复版本的既有 `extract-zip` 告警。
+
+### Evidence
+
+- `pnpm check`：138 项；macOS 本机 136 passed、2 项 Windows-only 合同按平台跳过、0 failed；生产依赖高危审计通过；
+- 1,050 个无关文件的失败 Research Run 可从同一 checkpoint 恢复成功；修改真正读取过的资料会阻断恢复，修改未读取资料或运行目录文件不会；
+- macOS DMG：222,390,401 bytes，SHA-256 `f48c7c752a898700dab8379b4475f1ae67dc5fe2831c35f03b720678a5032488`；ZIP：221,174,198 bytes，SHA-256 `a77246a16a525685331d0e4f22703cd59f54d35c55c2a5046f765afa83a21444`；
+- `pnpm verify:mac-package` 证明版本、DMG 完整性、strict-deep ad-hoc 签名、14 个相对 symlink、Fuse、ASAR、内置浏览器和 Renderer smoke；最终 `app.asar` SHA-256 为 `fcdef5c6ef210f20a4dc05181a4a232a38528b367140df4620d664bab423f194`；
+- 最终打包 App 已在 macOS 实际重启，显式显示“运行位置”“本次资料”和“不扫描运行位置”，原生文件选择器可打开和取消。没有把既有 v3 whole-workspace Provider Run 冒充为 v4 explicit-sources 验收。
+
 ## 0.11.1 — 2026-08-13
 
 M10.3 Provider Setup 私有 Engineering Alpha。完成本机源码、测试、macOS 打包与安装验收，并将后续灰度与发布转为 Windows-first；Windows 11 真人灰度仍开放，不属于公开稳定版。

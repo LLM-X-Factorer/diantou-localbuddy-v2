@@ -197,6 +197,26 @@ test("projects a safe checkpoint resume on the original research Run", () => {
   assert.equal(view.eventCount, 9);
 });
 
+test("projects a blocked checkpoint without hiding the failed Run state", () => {
+  const workspace = "/tmp/localbuddy-failed-checkpoint-projection";
+  const events: RuntimeEvent[] = [
+    event(1, "run.started", { data: { mode: "research" } }),
+    event(2, "run.failed", { data: { error: "worker exceeded its turn budget" } }),
+    event(3, "checkpoint.resume_blocked", {
+      data: {
+        reason: "workspace snapshot exceeded the safe checkpoint entry limit",
+        completedTasks: 0,
+        resumableTasks: 0,
+      },
+    }),
+  ];
+
+  const view = projectRun("run-1", workspace, events);
+  assert.equal(view.status, "failed");
+  assert.equal(view.checkpoint?.status, "blocked");
+  assert.match(view.checkpoint?.reason ?? "", /entry limit/);
+});
+
 function event(
   sequence: number,
   type: RuntimeEvent["type"],

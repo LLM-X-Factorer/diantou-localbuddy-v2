@@ -1,13 +1,13 @@
 # LocalBuddy V2 Internal Quickstart
 
-> 适用版本：`v0.11.1 / M10.3 Provider Setup` 私有 Engineering Alpha。当前灰度与发布优先 Windows；macOS 保留回归，Linux 降为维护。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
+> 适用版本：`v0.11.2 / M10.4 Explicit Research Sources` 私有 Engineering Alpha 候选。当前灰度与发布优先 Windows；macOS 保留回归，Linux 降为维护。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
 
 ## 1. 选择可用入口
 
 | 平台 | 当前可用入口 | 已证明范围 |
 |---|---|---|
 | macOS arm64 | 从仓库执行 `pnpm desktop`，或使用本机生成的 ad-hoc ZIP/DMG | 本机 Renderer、Fuse、ASAR、内置浏览器和包完整性烟测 |
-| Windows x64 | 私有 [`v0.11.1` Release](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.11.1) 的 Setup/ZIP | Release Runner 已完成合同、Setup 构建、静默安装、无凭据首启、合成灰度和卸载；终端用户设备待验收 |
+| Windows x64 | `v0.11.2` Tag Gate 通过后使用私有 Release 的 Setup/ZIP | Release Runner 必须重新完成合同、Setup 构建、静默安装、无凭据首启、合成灰度和卸载；终端用户设备仍待验收 |
 | Linux x64 | 当前不提供新 Release | 每周/手动构建维护；真实图形桌面验收暂不优先 |
 
 Windows 包未签名。只有明确获准参与内部测试时才下载；不要把 SmartScreen 提示解释为已完成发布信誉或代码签名。
@@ -54,12 +54,13 @@ Linux DEB 声明 `libsecret-tools` 依赖以提供 `secret-tool`；系统仍必�
 
 ## 4. 完成第一个 Research Run
 
-1. 选择一个不含敏感外发限制的本地工作区；
+1. 选择“运行位置”，它只用于保存本次 Run 的本地事件、checkpoint 和 Artifact；
 2. 模式选择“研究”；
 3. 信任档先使用“平衡（推荐）”；
 4. 并发选择 2 或 3；
-5. 输入明确目标，例如“读取当前目录中的会议记录，生成一份标注来源文件的行动清单”；
-6. 启动后观察 Task Graph、事件轨迹、审批请求和最终 Artifact。
+5. 在“本次资料”中明确添加允许 Agent 读取的文件或资料文件夹；不添加时运行位置不会自动成为资料库；
+6. 输入明确目标，例如“读取本次添加的会议记录，生成一份标注来源文件的行动清单”；
+7. 启动后观察 Task Graph、事件轨迹、审批请求和最终 Artifact。
 
 默认不会让 Browser/MCP 执行外部副作用。启用扩展时必须填写精确 Skill ID、MCP Server ID 或 Browser Origin；允许动作只代表调用可以进入逐次审批，不代表预先批准。
 
@@ -80,7 +81,8 @@ Windows `0.11.x` 没有受支持的本地进程隔离宿主，涉及检查命令
 
 - 有可验证 checkpoint 时使用“恢复执行”，继续原 Run；
 - 失败 Run 只在安全 checkpoint 可验证时恢复未完成 Task 链；已经完成的 Task 不会重跑；
-- checkpoint 不可用或工作区漂移时使用“重新运行”，创建新 Run 并保留旧历史；
+- 已读取资料发生变化时 checkpoint 会阻止恢复；运行位置中的无关文件不会影响恢复；
+- v1-v3 whole-workspace 历史 Run 必须新建 Run 并重新选择资料，不能按 v4 语义静默继续；
 - 不要手动删除受保护的 worktree；在 Run 终态后使用界面的显式清理；
 - 需要反馈问题时导出脱敏诊断包，并另行描述复现步骤；诊断包不包含目标正文、模型内容、工具参数、凭证或绝对工作区路径。
 

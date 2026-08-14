@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -10,6 +10,9 @@ import {
   OnboardingStateStore,
 } from "../src/onboarding.js";
 import { GUIDE_TEMPLATES } from "../src/onboarding-content.js";
+
+const LARGE_DIRECTORY_ENTRY_COUNT = 1_001;
+const LARGE_SPARSE_FILE_BYTES = 64 * 1024 * 1024 + 1;
 
 test("persists versioned onboarding preferences privately and fails safe on corrupt state", async (context) => {
   const root = await mkdtemp(join(tmpdir(), "localbuddy-onboarding-"));
@@ -81,6 +84,38 @@ test("detects Git readiness without reading repository contents", async (context
   });
   assert.deepEqual(await inspectWorkspaceReadiness(""), {
     selected: false,
+    isGitRepository: false,
+    isTutorialWorkspace: false,
+  });
+});
+
+test("does not enumerate a large workspace during readiness inspection", async (context) => {
+  const workspace = await mkdtemp(join(tmpdir(), "localbuddy-guide-oversized-"));
+  context.after(async () => rm(workspace, { recursive: true, force: true }));
+  const paths = Array.from(
+    { length: LARGE_DIRECTORY_ENTRY_COUNT },
+    (_, index) => join(workspace, `entry-${String(index).padStart(4, "0")}`),
+  );
+  for (let index = 0; index < paths.length; index += 100) {
+    await Promise.all(paths.slice(index, index + 100).map((path) => mkdir(path)));
+  }
+
+  assert.deepEqual(await inspectWorkspaceReadiness(workspace), {
+    selected: true,
+    isGitRepository: false,
+    isTutorialWorkspace: false,
+  });
+});
+
+test("does not measure file bytes during readiness inspection", async (context) => {
+  const workspace = await mkdtemp(join(tmpdir(), "localbuddy-guide-large-workspace-"));
+  context.after(async () => rm(workspace, { recursive: true, force: true }));
+  const largeFile = join(workspace, "large-sparse.bin");
+  await writeFile(largeFile, "", "utf8");
+  await truncate(largeFile, LARGE_SPARSE_FILE_BYTES);
+
+  assert.deepEqual(await inspectWorkspaceReadiness(workspace), {
+    selected: true,
     isGitRepository: false,
     isTutorialWorkspace: false,
   });

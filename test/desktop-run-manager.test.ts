@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test, { type TestContext } from "node:test";
@@ -9,6 +9,7 @@ import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
 import { InMemoryArtifactRegistry } from "../src/artifacts.js";
+import { ResearchCheckpointStore } from "../src/checkpoint-store.js";
 import { DesktopRunManager } from "../src/desktop-run-manager.js";
 import type { DesktopRunView } from "../src/desktop-contract.js";
 import type {
@@ -46,6 +47,7 @@ test("runs a workflow, publishes projections, and recovers it from history", asy
 
   const initial = await manager.start({
     workspace,
+    sourcePaths: [join(workspace, "notes.md")],
     goal: "Create a short grounded note",
     concurrency: 2,
   });
@@ -88,6 +90,88 @@ test("runs a workflow, publishes projections, and recovers it from history", asy
     manager.loadArtifactPreview({ workspace, runId: initial.runId, fileName: "result.md" }),
     /no longer matches its registered size and SHA-256/,
   );
+});
+
+test("does not inspect an unreadable unrelated file before planning", {
+  skip: process.platform === "win32" ? "Windows file ACLs do not use POSIX read bits" : false,
+}, async (context) => {
+  const workspace = await mkdtemp(join(tmpdir(), "localbuddy-desktop-snapshot-read-failure-"));
+  const unreadable = join(workspace, "unreadable.txt");
+  context.after(async () => {
+    await chmod(unreadable, 0o600).catch(() => undefined);
+    await rm(workspace, { recursive: true, force: true });
+  });
+  await writeFile(unreadable, "snapshot must fail before any model call", "utf8");
+  await chmod(unreadable, 0o000);
+  let modelCalls = 0;
+  const manager = new DesktopRunManager({
+    async createProvider() {
+      return {
+        async complete() {
+          modelCalls += 1;
+          throw new Error("model must not be called");
+        },
+      };
+    },
+  });
+
+  const started = await manager.start({
+    workspace,
+    goal: "Inspect the workspace",
+    concurrency: 1,
+  });
+  await manager.waitForIdle();
+  const recovered = (await manager.list(workspace)).find((run) => run.runId === started.runId);
+  const events = await new JsonlEventStore(
+    join(workspace, ".localbuddy", "runs", started.runId, "events.jsonl"),
+  ).list(started.runId);
+
+  assert.equal(modelCalls, 1);
+  assert.equal(recovered?.status, "failed");
+  assert.ok(events.some((event) => event.type === "run.started"));
+  assert.ok(events.some((event) => event.type === "run.failed"));
+  assert.equal(events.some((event) => event.type === "run.interrupted"), false);
+});
+
+test("inspects failed research Runs without building a shared workspace snapshot", async (context) => {
+  const workspace = await mkdtemp(join(tmpdir(), "localbuddy-desktop-shared-snapshot-"));
+  context.after(async () => rm(workspace, { recursive: true, force: true }));
+  const notesPath = join(workspace, "notes.md");
+  await writeFile(notesPath, "stable evidence", "utf8");
+  const goal = "Inspect stable evidence";
+  for (const runId of ["run-shared-snapshot-one", "run-shared-snapshot-two"]) {
+    const runRoot = join(workspace, ".localbuddy", "runs", runId);
+    await new RunRequestStore().save(runRoot, {
+      runId,
+      workspace,
+      goal,
+      concurrency: 1,
+      mode: "research",
+      sourcePaths: [notesPath],
+      runtimeOwner: "desktop",
+    });
+    await new ResearchCheckpointStore(join(runRoot, "checkpoint")).initialize({
+      runId,
+      workspace,
+      goal,
+      sourcePaths: [notesPath],
+      plan: {
+        tasks: [{ id: "read-note", title: "Read note", instructions: "Read notes.md." }],
+        integration: { instructions: "Summarize evidence.", fileName: "result.md" },
+      },
+    });
+    const eventStore = new JsonlEventStore(join(runRoot, "events.jsonl"));
+    await eventStore.append({ type: "run.started", runId, data: { mode: "research" } });
+    await eventStore.append({ type: "run.failed", runId, data: { error: "simulated failure" } });
+  }
+  const manager = new DesktopRunManager({
+    async createProvider() { return new DesktopWorkflowProvider(); },
+  });
+
+  const history = await manager.list(workspace);
+
+  assert.equal(history.filter((run) => run.status === "failed").length, 2);
+  assert.ok(history.every((run) => run.checkpoint?.status === "available"));
 });
 
 test("cancels an active desktop run through the shared abort signal", async (context) => {
@@ -157,6 +241,42 @@ test("allows two active runs and rejects a third", async (context) => {
   manager.cancel(first.runId);
   manager.cancel(second.runId);
   await manager.waitForIdle();
+});
+
+test("reserves Run capacity atomically across concurrent start requests", async (context) => {
+  const firstWorkspace = await mkdtemp(join(tmpdir(), "localbuddy-desktop-capacity-first-"));
+  const secondWorkspace = await mkdtemp(join(tmpdir(), "localbuddy-desktop-capacity-second-"));
+  context.after(async () => {
+    await Promise.all([
+      rm(firstWorkspace, { recursive: true, force: true }),
+      rm(secondWorkspace, { recursive: true, force: true }),
+    ]);
+  });
+  await Promise.all([
+    writeFile(join(firstWorkspace, "notes.md"), "wait", "utf8"),
+    writeFile(join(secondWorkspace, "notes.md"), "wait", "utf8"),
+  ]);
+  const manager = new DesktopRunManager({
+    maxActiveRuns: 1,
+    async createProvider() { return new CancellableProvider(); },
+  });
+
+  const results = await Promise.allSettled([
+    manager.start({ workspace: firstWorkspace, goal: "First", concurrency: 1 }),
+    manager.start({ workspace: secondWorkspace, goal: "Second", concurrency: 1 }),
+  ]);
+  const fulfilled = results.filter(
+    (result): result is PromiseFulfilledResult<DesktopRunView> => result.status === "fulfilled",
+  );
+  const rejected = results.filter(
+    (result): result is PromiseRejectedResult => result.status === "rejected",
+  );
+
+  for (const result of fulfilled) manager.cancel(result.value.runId);
+  await manager.waitForIdle();
+  assert.equal(fulfilled.length, 1);
+  assert.equal(rejected.length, 1);
+  assert.match(String(rejected[0]?.reason), /At most 1 runs/);
 });
 
 test("applies and reverts a persisted proposal through DesktopRunManager", {
@@ -279,6 +399,7 @@ test("marks a nonterminal persisted Run interrupted once and replays it as a new
     goal: "Create a short grounded note",
     concurrency: 2,
     mode: "research",
+    sourcePaths: [join(workspace, "notes.md")],
   });
   const sourceStore = new JsonlEventStore(join(runRoot, "events.jsonl"));
   await sourceStore.append({ type: "run.started", runId: sourceRunId, data: { mode: "research" } });
@@ -343,6 +464,37 @@ test("does not claim a nonterminal CLI-owned Run was interrupted by Desktop", as
   assert.equal((await store.list(runId)).length, 1);
 });
 
+test("does not replay a legacy Research request with implicit whole-workspace evidence", async (context) => {
+  const workspace = await mkdtemp(join(tmpdir(), "localbuddy-desktop-legacy-research-"));
+  context.after(async () => rm(workspace, { recursive: true, force: true }));
+  const runId = "run-legacy-research";
+  const runRoot = join(workspace, ".localbuddy", "runs", runId);
+  await mkdir(runRoot, { recursive: true });
+  await writeFile(join(runRoot, "run-request.json"), `${JSON.stringify({
+    version: 2,
+    runId,
+    workspace,
+    goal: "Legacy implicit workspace research",
+    concurrency: 1,
+    mode: "research",
+    createdAt: "2026-08-08T10:00:00.000Z",
+    runtimeOwner: "desktop",
+    provider: { id: "deepseek" },
+    extensions: {},
+  }, null, 2)}\n`, "utf8");
+  const store = new JsonlEventStore(join(runRoot, "events.jsonl"));
+  await store.append({ type: "run.started", runId, data: { mode: "research" } });
+  await store.append({ type: "run.failed", runId, data: { error: "legacy failure" } });
+  const manager = new DesktopRunManager({
+    async createProvider() { return new DesktopWorkflowProvider(); },
+  });
+
+  await assert.rejects(
+    manager.restartRun({ workspace, runId }),
+    /used the project directory as implicit evidence/,
+  );
+});
+
 test("resumes the same research Run from a child-process checkpoint after a hard exit", async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "localbuddy-desktop-checkpoint-resume-"));
   context.after(async () => rm(workspace, { recursive: true, force: true }));
@@ -356,6 +508,7 @@ test("resumes the same research Run from a child-process checkpoint after a hard
     goal,
     concurrency: 1,
     mode: "research",
+    sourcePaths: [join(workspace, "notes.md")],
     runtimeOwner: "desktop",
   });
   const fixturePath = resolve(
@@ -416,6 +569,7 @@ test("retries unfinished Tasks on a failed Run from its safe checkpoint", async 
     goal,
     concurrency: 1,
     mode: "research",
+    sourcePaths: [join(workspace, "notes.md")],
     runtimeOwner: "desktop",
   });
   const fixturePath = resolve(
@@ -436,7 +590,9 @@ test("retries unfinished Tasks on a failed Run from its safe checkpoint", async 
   const manager = new DesktopRunManager({
     async createProvider() { return new DesktopWorkflowProvider(); },
   });
-  assert.equal((await manager.list(workspace)).find((run) => run.runId === runId)?.status, "failed");
+  const failed = (await manager.list(workspace)).find((run) => run.runId === runId);
+  assert.equal(failed?.status, "failed");
+  assert.equal(failed?.checkpoint?.status, "available");
   const terminal = new Promise<DesktopRunView>((resolvePromise) => {
     manager.subscribe((run) => {
       if (run.runId === runId && run.status === "succeeded") resolvePromise(run);
@@ -451,6 +607,59 @@ test("retries unfinished Tasks on a failed Run from its safe checkpoint", async 
   assert.ok(events.some((event) => event.type === "run.resumed"));
   assert.equal(events.filter((event) =>
     event.type === "tool.completed" && event.data?.toolCallId === "read-note-tool").length, 1);
+});
+
+test("resumes a failed research Run even when its run directory has over one thousand unrelated files", async (context) => {
+  const workspace = await mkdtemp(join(tmpdir(), "localbuddy-desktop-failed-replay-"));
+  context.after(async () => rm(workspace, { recursive: true, force: true }));
+  const notesPath = join(workspace, "notes.md");
+  await writeFile(notesPath, "verified local note", "utf8");
+  const unrelatedDirectory = join(workspace, "unrelated-cache");
+  await mkdir(unrelatedDirectory);
+  await Promise.all(Array.from({ length: 1_050 }, (_, index) =>
+    writeFile(join(unrelatedDirectory, `cache-${index}.tmp`), "x", "utf8")));
+  const runId = "run-failed-large-workspace";
+  const goal = "Create a short grounded note";
+  const runRoot = join(workspace, ".localbuddy", "runs", runId);
+  await new RunRequestStore().save(runRoot, {
+    runId,
+    workspace,
+    goal,
+    concurrency: 1,
+    mode: "research",
+    sourcePaths: [notesPath],
+    runtimeOwner: "desktop",
+  });
+  await new ResearchCheckpointStore(join(runRoot, "checkpoint")).initialize({
+    runId,
+    workspace,
+    goal,
+    sourcePaths: [notesPath],
+    plan: {
+      tasks: [{ id: "read-note", title: "Read note", instructions: "Read notes.md." }],
+      integration: { instructions: "Write a grounded result.", fileName: "result.md" },
+    },
+  });
+  const store = new JsonlEventStore(join(runRoot, "events.jsonl"));
+  await store.append({ type: "run.started", runId, data: { mode: "research", runtimeOwner: "desktop" } });
+  await store.append({ type: "run.failed", runId, data: { error: "worker exceeded its turn budget" } });
+
+  const manager = new DesktopRunManager({
+    async createProvider() { return new DesktopWorkflowProvider(); },
+  });
+  const failed = (await manager.list(workspace)).find((run) => run.runId === runId);
+  assert.equal(failed?.checkpoint?.status, "available");
+  const diagnostics = await manager.buildDiagnostics({ workspace, runId }, "checkpoint-test");
+  assert.equal((diagnostics.checkpoint as { status?: string } | undefined)?.status, "available");
+
+  const terminal = new Promise<DesktopRunView>((resolvePromise) => {
+    manager.subscribe((run) => {
+      if (run.runId === runId && run.status === "succeeded") resolvePromise(run);
+    });
+  });
+  const resumed = await manager.resumeRun({ workspace, runId });
+  assert.equal(resumed.runId, runId);
+  assert.equal((await terminal).status, "succeeded");
 });
 
 test("resumes a Coding Run after an isolated write completed before its message cursor", {
@@ -585,7 +794,7 @@ class DesktopWorkflowProvider implements ModelProvider {
     if (prompt.includes("Task ID: read-note")) {
       return toolIds.has("read-note-tool")
         ? response("verified local note")
-        : toolResponse("read-note-tool", "read_file", { path: "notes.md" });
+        : toolResponse("read-note-tool", "read_file", { path: "source-1" });
     }
     if (prompt.includes("Task ID: integrate")) {
       return toolIds.has("write-result-tool")

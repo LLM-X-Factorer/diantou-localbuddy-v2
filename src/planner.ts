@@ -33,9 +33,10 @@ export class WorkflowPlanner {
   async plan(
     runId: string,
     goal: string,
-    workspaceManifest: readonly string[],
+    researchSources: readonly string[],
     signal?: AbortSignal,
     extensionContext = "No optional extensions are enabled.",
+    hasLocalSources = true,
   ): Promise<HeadlessPlan> {
     const response = await this.#modelClient.complete(
       { runId, taskId: "orchestrate", agentId: "orchestrator" },
@@ -46,7 +47,10 @@ export class WorkflowPlanner {
             content: [
               "You are the LocalBuddy task orchestrator.",
               `Split the goal into 1-${this.#maxWorkerTasks} independent read-only worker tasks that can run in parallel.`,
-              "Workers can list and read local files and use a deterministic ratio comparison tool. They may also use only the explicitly enabled extensions described below.",
+              hasLocalSources
+                ? "Workers can search filenames and read files only within the explicitly selected local sources. The project directory itself is not evidence."
+                : "No local sources were selected. Workers cannot search or read the project directory; they may use only the task description and explicitly enabled extensions.",
+              "Workers can use a deterministic ratio comparison tool and only the explicitly enabled extensions described below.",
               extensionContext,
               "Workers cannot write workspace files. Extension tool policy may deny externally effectful actions.",
               "Any multi-step arithmetic or ratio comparison must be assigned to the deterministic tool, never mental arithmetic.",
@@ -58,7 +62,7 @@ export class WorkflowPlanner {
           },
           {
             role: "user",
-            content: `Goal:\n${goal}\n\nAvailable workspace paths:\n${workspaceManifest.join("\n")}`,
+            content: `Goal:\n${goal}\n\nExplicit local research sources:\n${researchSources.join("\n")}`,
           },
         ],
         responseFormat: "json_object",

@@ -230,6 +230,24 @@ function registerIpcHandlers(): void {
     return workspace;
   });
 
+  ipcMain.handle(DESKTOP_CHANNELS.selectResearchSources, async (event, kind: unknown) => {
+    assertTrustedSender(event);
+    if (kind !== "files" && kind !== "folders") {
+      throw new Error("research source kind must be files or folders");
+    }
+    const options: OpenDialogOptions = {
+      title: kind === "files" ? "选择本次研究要读取的文件" : "选择本次研究要查找的资料文件夹",
+      properties: kind === "files"
+        ? ["openFile", "multiSelections"]
+        : ["openDirectory", "multiSelections"],
+    };
+    const result = mainWindow === null
+      ? await dialog.showOpenDialog(options)
+      : await dialog.showOpenDialog(mainWindow, options);
+    if (result.canceled) return [];
+    return Promise.all(result.filePaths.map((path) => realpath(path)));
+  });
+
   ipcMain.handle(DESKTOP_CHANNELS.inspectWorkspace, async (event, workspace: unknown) => {
     assertTrustedSender(event);
     return inspectWorkspaceReadiness(expectString(workspace, "workspace"));
@@ -248,6 +266,7 @@ function registerIpcHandlers(): void {
     const recentWorkspaces = await loadExistingRecentWorkspaces();
     return {
       workspace,
+      files: tutorial.files,
       runs: await runManager.list(workspace),
       recentWorkspaces: promoteRecentWorkspace(recentWorkspaces, workspace),
       readiness: await inspectWorkspaceReadiness(workspace),
@@ -465,6 +484,9 @@ function parseStartRequest(value: unknown): StartDesktopRunRequest {
     goal: expectString(record.goal, "goal"),
     concurrency: expectNumber(record.concurrency, "concurrency"),
     mode: expectMode(record.mode),
+    sourcePaths: record.sourcePaths === undefined
+      ? []
+      : expectStringArray(record.sourcePaths, "sourcePaths"),
     provider: parseProviderSelection(record.provider),
     trustProfile: normalizeTrustProfile(record.trustProfile),
     extensions: parseRunExtensions(record.extensions),

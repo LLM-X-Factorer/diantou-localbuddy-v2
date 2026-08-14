@@ -14,6 +14,12 @@ import { basename, dirname, extname, isAbsolute, relative, resolve, sep } from "
 import type { ArtifactRegistry } from "./artifacts.js";
 import type { CalculationRegistry } from "./calculations.js";
 import type { EventStore } from "./event-store.js";
+import {
+  researchSourceCatalog,
+  resolveResearchSourceReference,
+  searchResearchSources,
+  type ResearchSource,
+} from "./research-sources.js";
 import type { ToolDefinition } from "./tool-runtime.js";
 
 const MAX_READ_BYTES = 200_000;
@@ -21,7 +27,8 @@ const MAX_LIST_ENTRIES = 200;
 const SKIPPED_DIRECTORIES = new Set([".git", ".localbuddy", "node_modules"]);
 
 export interface WorkspaceToolsOptions {
-  workspaceRoot: string;
+  workspaceRoot?: string;
+  sourcePaths?: readonly string[];
   artifactRoot: string;
   artifactRegistry: ArtifactRegistry;
   calculationRegistry: CalculationRegistry;
@@ -31,13 +38,23 @@ export interface WorkspaceToolsOptions {
 export async function createWorkspaceTools(
   options: WorkspaceToolsOptions,
 ): Promise<readonly ToolDefinition[]> {
-  const workspaceRoot = await realpath(options.workspaceRoot);
+  const sources = options.sourcePaths === undefined
+    ? undefined
+    : await researchSourceCatalog(options.sourcePaths);
+  const workspaceRoot = options.sourcePaths === undefined
+    ? await realpath(requiredWorkspaceRoot(options.workspaceRoot))
+    : undefined;
   await mkdir(options.artifactRoot, { recursive: true });
   const artifactRoot = await realpath(options.artifactRoot);
 
   return [
-    createListFilesTool(workspaceRoot),
-    createReadFileTool(workspaceRoot),
+    ...(sources === undefined ? [
+      createListFilesTool(workspaceRoot as string),
+      createLegacyReadFileTool(workspaceRoot as string),
+    ] : sources.length === 0 ? [] : [
+      createSearchFilesTool(sources),
+      createReadFileTool(sources),
+    ]),
     createWriteArtifactTool(
       artifactRoot,
       options.artifactRegistry,
@@ -50,7 +67,7 @@ export async function createWorkspaceTools(
 function createListFilesTool(workspaceRoot: string): ToolDefinition<{ path: string }> {
   return {
     name: "list_files",
-    description: "List files inside the local workspace. Paths must stay inside the workspace.",
+    description: "List files inside the local coding workspace. Paths must stay inside the workspace.",
     parameters: {
       type: "object",
       properties: { path: { type: "string", description: "Relative directory path; use . for root" } },
@@ -65,10 +82,7 @@ function createListFilesTool(workspaceRoot: string): ToolDefinition<{ path: stri
     },
     async execute(input) {
       const start = await resolveExistingPath(workspaceRoot, input.path);
-      const metadata = await stat(start);
-      if (!metadata.isDirectory()) {
-        throw new Error("list_files path must be a directory");
-      }
+      if (!(await stat(start)).isDirectory()) throw new Error("list_files path must be a directory");
       const results: string[] = [];
       await walk(start, workspaceRoot, results);
       return { entries: results, truncated: results.length >= MAX_LIST_ENTRIES };
@@ -76,10 +90,10 @@ function createListFilesTool(workspaceRoot: string): ToolDefinition<{ path: stri
   };
 }
 
-function createReadFileTool(workspaceRoot: string): ToolDefinition<{ path: string }> {
+function createLegacyReadFileTool(workspaceRoot: string): ToolDefinition<{ path: string }> {
   return {
     name: "read_file",
-    description: "Read a UTF-8 text file inside the local workspace.",
+    description: "Read a UTF-8 text file inside the local coding workspace.",
     parameters: {
       type: "object",
       properties: { path: { type: "string", description: "Relative file path" } },
@@ -95,13 +109,76 @@ function createReadFileTool(workspaceRoot: string): ToolDefinition<{ path: strin
     async execute(input) {
       const filePath = await resolveExistingPath(workspaceRoot, input.path);
       const metadata = await stat(filePath);
-      if (!metadata.isFile()) {
-        throw new Error("read_file path must be a regular file");
-      }
-      if (metadata.size > MAX_READ_BYTES) {
+      if (!metadata.isFile()) throw new Error("read_file path must be a regular file");
+      if (metadata.size > MAX_READ_BYTES) throw new Error(`file exceeds ${MAX_READ_BYTES} byte read limit`);
+      return { path: relative(workspaceRoot, filePath), content: await readFile(filePath, "utf8") };
+    },
+  };
+}
+
+function createSearchFilesTool(
+  sources: readonly ResearchSource[],
+): ToolDefinition<{ query: string }> {
+  return {
+    name: "search_files",
+    description: [
+      "Search file names only inside the local files or folders explicitly selected for this Run.",
+      "This is on-demand discovery, not an automatic project-directory scan.",
+      "Returned paths use logical source ids such as source-1/report.md.",
+    ].join(" "),
+    parameters: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Non-empty case-insensitive filename substring" },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+    risk: "read",
+    permission: "workspace.read",
+    parse(input) {
+      const record = expectObject(input);
+      return { query: expectString(record.query, "query") };
+    },
+    async execute(input) {
+      return searchResearchSources(sources, input.query);
+    },
+  };
+}
+
+function createReadFileTool(
+  sources: readonly ResearchSource[],
+): ToolDefinition<{ path: string }> {
+  return {
+    name: "read_file",
+    description: [
+      "Read a UTF-8 text file from the local sources explicitly selected for this Run.",
+      "Use a logical path returned by search_files, or a selected file id such as source-1.",
+    ].join(" "),
+    parameters: {
+      type: "object",
+      properties: { path: { type: "string", description: "Relative file path" } },
+      required: ["path"],
+      additionalProperties: false,
+    },
+    risk: "read",
+    permission: "workspace.read",
+    parse(input) {
+      const record = expectObject(input);
+      return { path: expectString(record.path, "path") };
+    },
+    async execute(input) {
+      const resolved = await resolveResearchSourceReference(sources, input.path);
+      const content = await readFile(resolved.path);
+      if (content.length > MAX_READ_BYTES) {
         throw new Error(`file exceeds ${MAX_READ_BYTES} byte read limit`);
       }
-      return { path: relative(workspaceRoot, filePath), content: await readFile(filePath, "utf8") };
+      return {
+        path: resolved.reference,
+        sha256: createHash("sha256").update(content).digest("hex"),
+        bytes: content.length,
+        content: content.toString("utf8"),
+      };
     },
   };
 }
@@ -244,13 +321,11 @@ async function validateCalculationLedger(
     }
   }
 
-  const suspiciousLines = content.split("\n").filter((line) =>
-    /(?:\d+\s*\/\s*\d+|%|≈|(?:转化率|增长率).*(?:高于|低于|微降|上升|下降))/u.test(line),
-  );
+  const suspiciousLines = content.split("\n").filter(hasUnregisteredDerivedCalculation);
   for (const line of suspiciousLines) {
     if (![...expectedIds].some((id) => line.includes(`[${id}]`))) {
       throw new Error(
-        "Artifact Gate rejected the write: a numeric claim lacks a registered calculation ID. "
+        "Artifact Gate rejected the write: a derived numeric calculation lacks a registered calculation ID. "
         + `Claim: ${line.slice(0, 120)}. Run a deterministic calculation tool, preserve its calculationId, `
         + "cite [calculationId] on this line, then retry write_artifact.",
       );
@@ -258,32 +333,32 @@ async function validateCalculationLedger(
   }
 }
 
+function hasUnregisteredDerivedCalculation(line: string): boolean {
+  const withoutUrls = line.replace(/https?:\/\/[^\s<>)\]}]+/giu, "");
+  const withoutSlashDates = withoutUrls.replace(
+    /\b(?:19|20)\d{2}\s*\/\s*(?:0?[1-9]|1[0-2])(?:\s*\/\s*(?:0?[1-9]|[12]\d|3[01]))?\b/gu,
+    "",
+  );
+  return /(?:\d+\s*\/\s*\d+|%|≈|(?:转化率|增长率).*(?:高于|低于|微降|上升|下降))/u
+    .test(withoutSlashDates);
+}
+
 async function walk(directory: string, root: string, results: string[]): Promise<void> {
-  if (results.length >= MAX_LIST_ENTRIES) {
-    return;
-  }
+  if (results.length >= MAX_LIST_ENTRIES) return;
   const entries = await readdir(directory, { withFileTypes: true });
   for (const entry of entries.toSorted((left, right) => left.name.localeCompare(right.name))) {
-    if (results.length >= MAX_LIST_ENTRIES) {
-      return;
-    }
-    if (entry.isSymbolicLink() || (entry.isDirectory() && SKIPPED_DIRECTORIES.has(entry.name))) {
-      continue;
-    }
+    if (results.length >= MAX_LIST_ENTRIES) return;
+    if (entry.isSymbolicLink() || (entry.isDirectory() && SKIPPED_DIRECTORIES.has(entry.name))) continue;
     const absolutePath = resolve(directory, entry.name);
     assertInside(root, absolutePath);
     const relativePath = relative(root, absolutePath);
     results.push(entry.isDirectory() ? `${relativePath}/` : relativePath);
-    if (entry.isDirectory()) {
-      await walk(absolutePath, root, results);
-    }
+    if (entry.isDirectory()) await walk(absolutePath, root, results);
   }
 }
 
 async function resolveExistingPath(root: string, requestedPath: string): Promise<string> {
-  if (isAbsolute(requestedPath)) {
-    throw new Error("absolute paths are not allowed");
-  }
+  if (isAbsolute(requestedPath)) throw new Error("absolute paths are not allowed");
   const lexicalPath = resolve(root, requestedPath);
   assertInside(root, lexicalPath);
   const canonicalPath = await realpath(lexicalPath);
@@ -295,6 +370,11 @@ function assertInside(root: string, target: string): void {
   if (target !== root && !target.startsWith(`${root}${sep}`)) {
     throw new Error("path escapes the allowed root");
   }
+}
+
+function requiredWorkspaceRoot(value: string | undefined): string {
+  if (value === undefined) throw new Error("workspaceRoot is required for coding workspace tools");
+  return value;
 }
 
 function expectObject(input: unknown): Record<string, unknown> {

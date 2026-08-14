@@ -6,6 +6,7 @@ import type {
   ApproveDesktopIntegrationRequest,
   DesktopArtifactActionRequest,
   DesktopArtifactPreviewView,
+  DesktopCheckpointView,
   DesktopRunActionRequest,
   DesktopRunView,
   RevertDesktopIntegrationRequest,
@@ -33,7 +34,6 @@ import {
   validateRunId,
 } from "./run-request-store.js";
 import { WorktreeLifecycleManager } from "./worktree-lifecycle.js";
-import { buildWorkspaceSnapshot } from "./workspace-manifest.js";
 import {
   WorkspaceProcessLockManager,
   type WorkspaceProcessLease,
@@ -110,19 +110,25 @@ export class DesktopRunManager {
       const eventStore = new JsonlEventStore(resolve(runRoot, "events.jsonl"));
       const events = await eventStore.list(request.runId);
       const source = projectRun(request.runId, workspace, events);
-      if (source.status !== "interrupted") {
-        throw new Error(`only interrupted Runs can be replayed: ${source.status}`);
+      if (source.status !== "interrupted" && source.status !== "failed") {
+        throw new Error(`only interrupted or failed Runs can be replayed: ${source.status}`);
       }
       if (source.restartedAs !== undefined) {
-        throw new Error(`interrupted Run was already replayed as ${source.restartedAs}`);
+        throw new Error(`Run was already replayed as ${source.restartedAs}`);
       }
       const persisted = await this.#requestStore.load(runRoot, workspace, request.runId);
+      if (persisted.mode === "research" && persisted.sourceContract === "legacy-workspace") {
+        throw new Error(
+          "this legacy Research Run used the project directory as implicit evidence; start a new Run and explicitly add the required sources",
+        );
+      }
       return await this.#start(
         {
           workspace,
           goal: persisted.goal,
           concurrency: persisted.concurrency,
           mode: persisted.mode,
+          sourcePaths: persisted.sourcePaths,
           provider: persisted.provider,
           trustProfile: persisted.trustProfile,
           extensions: persisted.extensions,
@@ -173,7 +179,19 @@ export class DesktopRunManager {
         persisted,
       );
       if (!inspection.available) {
-        throw new Error(inspection.reason ?? "checkpoint is not safely resumable");
+        const reason = inspection.reason ?? "checkpoint is not safely resumable";
+        const blocked = await persistentStore.append({
+          type: "checkpoint.resume_blocked",
+          runId: request.runId,
+          data: {
+            reason,
+            completedTasks: inspection.completedTasks,
+            resumableTasks: inspection.resumableTasks,
+          },
+        });
+        events.push(blocked);
+        this.#emit(projectRun(request.runId, workspace, events));
+        throw new Error(reason);
       }
       const eventStore = new NotifyingEventStore(persistentStore, (event) => {
         events.push(event);
@@ -225,6 +243,7 @@ export class DesktopRunManager {
               provider,
               eventStore,
               workspaceRoot: workspace,
+              sourcePaths: persisted.sourcePaths,
               artifactRoot: resolve(runRoot, "artifacts"),
               checkpointRoot: resolve(runRoot, "checkpoint"),
               globalConcurrency: persisted.concurrency,
@@ -245,6 +264,7 @@ export class DesktopRunManager {
             await lease.release();
             const current = this.#active.get(request.runId);
             if (current !== undefined) {
+              current.view = await this.#withRecoveryInspection(current.view);
               this.#emit(current.view);
               this.#active.delete(request.runId);
             }
@@ -265,6 +285,11 @@ export class DesktopRunManager {
           runId: request.runId,
           data: { error: error instanceof Error ? error.message : String(error) },
         });
+        const current = this.#active.get(request.runId);
+        if (current !== undefined) {
+          current.view = await this.#withRecoveryInspection(current.view);
+          this.#emit(current.view);
+        }
         this.#active.delete(request.runId);
         await lease.release();
         throw error;
@@ -311,10 +336,17 @@ export class DesktopRunManager {
       throw new Error(`At most ${this.#maxActiveRuns} runs can be active at once.`);
     }
 
-    const workspace = await realpath(request.workspace);
-    const lease = await this.#workspaceLocks.acquire(workspace, "desktop-run");
     const runId = `run-${randomUUID()}`;
     this.#launching.add(runId);
+    let workspace: string;
+    let lease: WorkspaceProcessLease;
+    try {
+      workspace = await realpath(request.workspace);
+      lease = await this.#workspaceLocks.acquire(workspace, "desktop-run");
+    } catch (error) {
+      this.#launching.delete(runId);
+      throw error;
+    }
     const runRoot = resolve(workspace, ".localbuddy", "runs", runId);
     const artifactRoot = resolve(runRoot, "artifacts");
     try {
@@ -393,6 +425,7 @@ export class DesktopRunManager {
             provider,
             eventStore,
             workspaceRoot: workspace,
+            sourcePaths: request.sourcePaths ?? [],
             artifactRoot,
             globalConcurrency: request.concurrency,
             executionCoordinator: this.#executionCoordinator,
@@ -413,6 +446,7 @@ export class DesktopRunManager {
           await lease.release();
           const current = this.#active.get(runId);
           if (current !== undefined) {
+            current.view = await this.#withRecoveryInspection(current.view);
             this.#emit(current.view);
             this.#active.delete(runId);
           }
@@ -435,6 +469,11 @@ export class DesktopRunManager {
         runId,
         data: { error: error instanceof Error ? error.message : String(error) },
       });
+      const current = this.#active.get(runId);
+      if (current !== undefined) {
+        current.view = await this.#withRecoveryInspection(current.view);
+        this.#emit(current.view);
+      }
       this.#active.delete(runId);
       await lease.release();
       throw error;
@@ -532,7 +571,9 @@ export class DesktopRunManager {
       this.#requestStore.load(runRoot, workspace, request.runId),
       new JsonlEventStore(resolve(runRoot, "events.jsonl")).list(request.runId),
     ]);
-    const view = projectRun(request.runId, workspace, events);
+    const view = await this.#withRecoveryInspection(
+      projectRun(request.runId, workspace, events),
+    );
     const eventCounts: Record<string, number> = {};
     for (const event of events) {
       eventCounts[event.type] = (eventCounts[event.type] ?? 0) + 1;
@@ -663,7 +704,10 @@ export class DesktopRunManager {
       .map((run) => run.view)
       .filter((run) => run.workspace === canonicalWorkspace);
     const activeIds = new Set(active.map((run) => run.runId));
-    return [...active, ...persisted.filter((run) => !activeIds.has(run.runId))];
+    return Promise.all(
+      [...active, ...persisted.filter((run) => !activeIds.has(run.runId))]
+        .map((run) => this.#withRecoveryInspection(run)),
+    );
   }
 
   async waitForIdle(): Promise<void> {
@@ -760,7 +804,8 @@ export class DesktopRunManager {
           reason: "LocalBuddy restarted before the Run reached a terminal state",
           mode: persisted?.mode ?? (started?.data?.mode === "code" ? "code" : "research"),
           createdAt: persisted?.createdAt ?? started?.timestamp,
-          replayAvailable: persisted !== undefined,
+          replayAvailable: persisted !== undefined
+            && !(persisted.mode === "research" && persisted.sourceContract === "legacy-workspace"),
           runtimeOwner: "desktop",
           resumeAvailable: checkpointInspection.available,
           checkpointCompletedTasks: checkpointInspection.completedTasks,
@@ -789,7 +834,7 @@ export class DesktopRunManager {
         runId,
         workspace,
         goal: request.goal,
-        snapshot: await buildWorkspaceSnapshot(workspace),
+        sourcePaths: request.sourcePaths,
       });
     } catch (error) {
       return {
@@ -799,6 +844,43 @@ export class DesktopRunManager {
         reason: error instanceof Error ? error.message : String(error),
       };
     }
+  }
+
+  async #withRecoveryInspection(
+    view: DesktopRunView,
+  ): Promise<DesktopRunView> {
+    if (view.status !== "failed" && view.status !== "interrupted") return view;
+    const runRoot = resolve(view.workspace, ".localbuddy", "runs", view.runId);
+    let inspection: DesktopResumeInspection;
+    try {
+      const persisted = await this.#requestStore.load(runRoot, view.workspace, view.runId);
+      inspection = await this.#inspectCheckpoint(
+        runRoot,
+        view.workspace,
+        view.runId,
+        persisted,
+      );
+    } catch (error) {
+      inspection = {
+        available: false,
+        completedTasks: 0,
+        resumableTasks: 0,
+        reason: error instanceof Error ? error.message : String(error),
+      };
+    }
+    const checkpoint: DesktopCheckpointView = inspection.available
+      ? {
+          status: "available",
+          completedTasks: inspection.completedTasks,
+          resumableTasks: inspection.resumableTasks,
+        }
+      : {
+          status: "blocked",
+          completedTasks: inspection.completedTasks,
+          resumableTasks: inspection.resumableTasks,
+          reason: inspection.reason ?? "No safe checkpoint is available",
+        };
+    return { ...view, checkpoint };
   }
 
   async #reconcileApplyingIntegrations(workspace: string): Promise<void> {
@@ -932,6 +1014,12 @@ function validateStartRequest(request: StartDesktopRunRequest): void {
   normalizeProviderSelection(request.provider);
   normalizeTrustProfile(request.trustProfile);
   normalizeRunExtensions(request.extensions);
+  if (request.sourcePaths !== undefined) {
+    if (request.sourcePaths.length > 50
+      || !request.sourcePaths.every((path) => typeof path === "string" && path.trim().length > 0)) {
+      throw new Error("Research sources must contain at most 50 non-empty paths");
+    }
+  }
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

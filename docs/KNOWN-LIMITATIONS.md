@@ -1,17 +1,17 @@
-# LocalBuddy V2 0.11.1 Known Limitations
+# LocalBuddy V2 0.11.2 Known Limitations
 
-> 本文是 `v0.11.1 / M10.3 Provider Setup` 私有 Engineering Alpha 的负面能力清单；当前灰度与发布优先 Windows，macOS 保留本机回归，Linux 降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
+> 本文是 `v0.11.2 / M10.4 Explicit Research Sources` 私有 Engineering Alpha 候选的负面能力清单；当前灰度与发布优先 Windows，macOS 保留本机回归，Linux 降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
 
 ## Platform and distribution
 
-- Windows `v0.11.1` Setup/ZIP 已发布；它在 `windows-2025` Runner 原生打包，静默运行 Setup，从版本化安装目录覆盖无 Provider 首启、Credential Manager、loopback Provider、安装版 Research Run、双 Run 取消、硬退出恢复与重启，并调用 Squirrel 卸载；脱敏截图与摘要均已回下载核对。该门禁不覆盖终端用户设备上的 SmartScreen、标准用户/UAC、真实 Provider 与真实网络；
+- Windows `v0.11.2` Setup/ZIP 只有在 Tag workflow 完成原生打包、安装版合成灰度和回下载校验后才算发布；`v0.11.1` 的既有证据不能自动转移到新版本。该门禁仍不覆盖终端用户设备上的 SmartScreen、标准用户/UAC、真实 Provider 与真实网络；
 - Windows 没有受支持的本地进程隔离宿主，检查命令和本地进程型扩展 fail closed；
-- Linux `0.11.1` DEB 历史上已由 `ubuntu-24.04` PR Runner 原生构建；当前 Linux 只保留每周/手动维护，不进入 PR 或 Release 门禁，真实图形桌面与 Secret Service 验收暂不优先；
+- Linux `0.11.x` DEB 历史上已由 `ubuntu-24.04` Runner 原生构建；当前 Linux 只保留每周/手动维护，不进入 PR 或 Release 门禁，真实图形桌面与 Secret Service 验收暂不优先；
 - macOS 包是 ad-hoc 签名，未启用生产 Hardened Runtime，未 notarize；
 - Windows 包未做代码签名，可能出现 SmartScreen 提示；
 - Tag workflow 只发布 Windows x64 Setup/ZIP；Linux 与 macOS 不自动进入 GitHub Release。Windows Release 前运行安装版合成灰度；
 - `windows-2025` 是 Windows Server 2025 管理员 Runner，不能覆盖 Windows 11 的 SmartScreen、Defender、标准用户/UAC、DPI、输入法、睡眠或企业代理；
-- 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。`0.11.1` Tag 前已复查稳定版上游并记录 private Engineering Alpha 的打包期风险接受；后续继续跟踪稳定 Forge 迁移；
+- 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。`0.11.2` 候选已复查 registry：Forge `latest` 仍为 7.11.2，Forge 8 仍为 alpha；private Engineering Alpha 继续接受干净 Runner 上的打包期风险并跟踪稳定迁移；
 - 更新协议只下载、验签并 staging，不会自动替换正在使用的应用。
 
 ## Product experience
@@ -22,6 +22,8 @@
 - 没有 Project/Workspace 首页、跨工作区统一搜索或 SQLite 投影；
 - 已登记的有限文本 Artifact 可在哈希/大小复核后内嵌预览；PDF/DOCX、超限文件和通用编辑仍依赖外部应用；
 - 没有通用附件上传、PDF/DOCX 解析或语义索引/RAG；
+- Research 本地资料目前最多显式选择 50 个根；目录发现只搜索文件名，不做正文索引；单次搜索最多返回 50 条并检查 10,000 个目录项；单文件 UTF-8 读取上限为 200,000 bytes；
+- v1-v3 whole-workspace Research Run 不会自动转换为 v4 explicit-sources checkpoint。用户必须新建 Run 并重新选择资料；
 - 计划由 Orchestrator 生成，当前没有启动前可视化编辑或运行中动态重规划；失败 Run 只能从安全 checkpoint 恢复未完成 Task 链，不支持任意单 Task 手工重跑；
 - Desktop 只展示单 Run 的调用、Provider token、耗时和失败投影，没有币种成本换算、跨 Run 聚合或趋势阈值。
 

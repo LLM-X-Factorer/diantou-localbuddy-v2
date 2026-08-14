@@ -1,6 +1,6 @@
 # LocalBuddy V2 Dogfood Plan
 
-> 状态：`active`。当前源码版本为 `0.11.1 / M10.3 Provider Setup`。macOS arm64 首轮实机功能矩阵、M10.1 产品化闭环、M10.2 本地指引以及 M10.3 Provider/紧凑 Composer GUI 验收均已完成；Windows 自动化合成灰度见 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md)。真实 Provider Run、连续 7-14 天使用和 Windows 11 真人灰度仍是开放门禁；Linux 图形桌面当前不优先。本文不把单元测试、静态 Guide、CI 产物或 workflow 配置重复计作真人 dogfooding。
+> 状态：`active`。当前源码版本为 `v0.11.2 / M10.4 Explicit Research Sources` 候选。macOS arm64 的新资料选择 UI、原生文件选择器和包完整性已完成本机验收；大目录 deterministic resume 已通过。v4 explicit-sources 的真实 Provider Run、最终已安装应用恢复、Windows Tag 自动合成灰度、连续 7-14 天使用和 Windows 11 真人灰度仍是独立门禁。Windows 自动化边界见 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md)。本文不把单元测试、旧 v3 Run、静态 Guide、CI 产物或 workflow 配置重复计作新合同的真人 dogfooding。
 
 ## 目标
 
@@ -17,7 +17,7 @@
 
 | 场景 | 核心验收 |
 |---|---|
-| 本地资料研究 | 多 Worker 引用真实文件，Integrator 生成登记 Artifact |
+| 本地资料研究 | 运行位置不被扫描；只搜索/读取明确添加的资料，多 Worker 引用逻辑 source path，Integrator 生成登记 Artifact |
 | 两个并发 Run | 全局容量不超限，两个 Run 可分别取消和恢复 |
 | Coding 双 Worker | owned paths 不重叠，主工作区在批准前不变 |
 | Integration Gate | inline diff 哈希有效，批准、commit/revert 路径可证明 |

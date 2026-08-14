@@ -4,7 +4,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 
 这不是 Craft Agents 的分支，也不包含腾讯 WorkBuddy 的私有实现。仓库只参考公开产品行为、通用 Agent 架构模式，以及我们自行定义的验收契约。
 
-> **产品判断（2026-08-13）**：`v0.11.1 / M10.3 Provider Setup` 是当前私有 Engineering Alpha。Provider 配置与紧凑 Composer 已形成闭环；当前灰度与发布转为 Windows-first：PR 验证完整 Windows 合同与 Setup 无凭据首启，夜间/手动合成灰度进一步覆盖 Credential Manager、本地 Mock Provider、真实 Research Run、双 Run 取消、硬退出恢复和重启。Linux 降为每周/手动维护。Windows 11 真人灰度仍开放；它不是公开分发版，也不是与 WorkBuddy 功能对等的商业产品。
+> **产品判断（2026-08-14）**：`v0.11.2 / M10.4 Explicit Research Sources` 是当前私有 Engineering Alpha 候选。Research 已把运行记录位置与本次资料拆开，并以真正读取过的证据恢复 checkpoint；Windows-first Release 仍必须先通过原生安装版合成灰度。Windows 11 真人灰度仍开放；它不是公开分发版，也不是与 WorkBuddy 功能对等的商业产品。
 
 ## 一页状态
 
@@ -18,7 +18,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 | 代码写回 | 独立 worktree、组合预检、人工 Gate、apply/commit/revert commit |
 | 恢复 | Research/Coding 同 Run checkpoint resume；失败 Run 可恢复未完成 Task 链，并保留 replay 兜底 |
 | 扩展 | 本地/签名 Skill、MCP stdio/HTTP/OAuth、受限 Playwright Browser |
-| 分发 | macOS `0.11.1` ad-hoc DMG/ZIP 已完成本机验收；私有 `v0.11.1` Release 提供 Windows Setup/ZIP；Linux 仅维护 |
+| 分发 | macOS `0.11.2` ad-hoc DMG/ZIP 已完成本机包与 GUI 验收；Windows `v0.11.2` 等待 Tag Release 门禁；Linux 仅维护 |
 | 当前主动暂缓 | Developer ID、生产 Hardened Runtime、notarization、公开 Gatekeeper |
 
 M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M10.3 继续补齐它的必要前置条件：Provider 不再藏在扩展折叠区，凭据状态、管理动作、显式连接检查和启动门禁形成单一纵向闭环。保存不会自动联网；验证连接会明确把凭据发送到所示 Provider/Base URL 并只请求模型列表；真实 Run 仍必须由用户点击开始。连续真实 dogfooding 仍是开放验证门。
@@ -26,7 +26,7 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 ## 文档入口
 
 - [`docs/QUICKSTART.md`](docs/QUICKSTART.md)：内部试用者从安装、凭证到第一个 Run 的最短路径；
-- [`docs/KNOWN-LIMITATIONS.md`](docs/KNOWN-LIMITATIONS.md)：`v0.11.1` 私有 Engineering Alpha 的已知限制和不能宣称的能力；
+- [`docs/KNOWN-LIMITATIONS.md`](docs/KNOWN-LIMITATIONS.md)：`v0.11.2` 私有 Engineering Alpha 的已知限制和不能宣称的能力；
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)：当前 M10.3 架构事实；
 - [`docs/ROADMAP.md`](docs/ROADMAP.md)：已完成里程碑、外部门禁和待确认的下一阶段；
 - [`docs/RELEASE.md`](docs/RELEASE.md)：版本、Tag、CI、Release 与校验流程；
@@ -49,7 +49,7 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 
 - DeepSeek Chat Completions SSE 流式适配器。
 - Orchestrator 使用 JSON Output 生成 1-3 个并行 Worker Task。
-- Worker 通过受限工具读取本地工作区，Integrator 等待依赖后写产物。
+- Research Worker 只读取本次 Run 明确添加的文件/资料目录；运行位置不自动成为资料库，Integrator 等待依赖后写产物。
 - 工具参数由本地代码解析，路径逃逸、角色越权和未知工具会被拒绝。
 - API Key 优先从环境变量读取，macOS 下可存入系统钥匙串。
 - 确定性比例计算会生成 `calculationId`；含无来源数字、缺失计算底稿或擅自舍入的产物无法写入。
@@ -60,7 +60,7 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 - Electron Main 驱动真实 Headless Runtime，不在 Renderer 中执行模型或文件操作。
 - React 工作台展示历史 Run、Agent Task Graph、实时事件、状态和登记产物。
 - 从 `.localbuddy/runs/*/events.jsonl` 重建历史状态，重启应用后仍可查看。
-- 支持选择工作区、设置单 Run 并发数、启动和取消运行、打开登记产物。
+- 支持选择运行记录位置、为 Research Run 单独添加本次资料、设置单 Run 并发数、启动和取消运行、打开登记产物。
 - Preload 使用 context isolation 和 sandbox，只暴露逐项 IPC 方法。
 - Electron 真实窗口已经完成构建和截图验收，记录见 [`docs/M2-VALIDATION.md`](docs/M2-VALIDATION.md)。
 
@@ -95,7 +95,7 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 - Research Run 会原子保存计划、Task 消息历史、模型/工具阶段和工具执行回执；Artifact 与确定性计算登记也改为持久化注册表。
 - Desktop 可在应用重启后对同一 Run ID 执行 checkpoint resume。已完成 Task 直接恢复，未完成 Task 继续使用原 Agent 与原消息前缀。
 - 已完成工具结果会复用；中断中的只读/计算工具可以重试。无法确认是否已产生副作用的写入/执行工具会阻断续跑，不会盲目重复执行。
-- 恢复前校验原始 Request、持久计划、Task/Agent/工具契约和工作区内容快照。工作区漂移、checkpoint 损坏或超过快照上限时，用户仍可选择 M3.3 的从头重放。
+- 恢复前校验原始 Request、持久计划、Task/Agent/工具契约、明确选择的资料身份，以及本次 Run 真正读取过的文件 SHA-256。不会扫描或哈希整个运行目录；无关文件变化不阻断恢复，已读取资料被修改、移动或删除时才会阻断。旧版 whole-workspace Research checkpoint 不自动迁移，用户需新建 Run 并明确添加资料。
 - M3.4 阶段本身只覆盖 Research Run；Coding Run 的独立恢复协议由 M3.5 补齐。
 - 契约与验收见 [`docs/M3.4-SPEC.md`](docs/M3.4-SPEC.md) 和 [`docs/M3.4-VALIDATION.md`](docs/M3.4-VALIDATION.md)。
 
@@ -198,7 +198,7 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 - Windows 托管 Runner 已运行版本对应的 Squirrel Setup，从实际安装目录验证无 Provider 首启并调用卸载清理；安装/更新/卸载生命周期由标准 Squirrel 处理器提前收口；
 - 规格与验收见 [`docs/M10.3-SPEC.md`](docs/M10.3-SPEC.md) 和 [`docs/M10.3-VALIDATION.md`](docs/M10.3-VALIDATION.md)。
 
-当前主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。`0.11.1` 已有 Windows 安装级无凭据首启和完整安装版合成灰度证据，并已发布 Windows Setup/ZIP 与 SHA-256 清单。终端用户 Windows 11、真实 Provider 和第三方生产 MCP OAuth 仍需外部验收，不能用托管 Runner 或本地夹具冒充。Linux 当前不进入发布门禁。
+当前主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。`0.11.2` 必须重新通过 Windows 安装级无凭据首启和完整安装版合成灰度后才会发布 Windows Setup/ZIP 与 SHA-256 清单。终端用户 Windows 11、真实 Provider 和第三方生产 MCP OAuth 仍需外部验收，不能用托管 Runner 或本地夹具冒充。Linux 当前不进入发布门禁。
 
 ## 核心模型
 
@@ -239,7 +239,7 @@ pnpm make:win
 
 它们应分别在 Linux/Windows Runner 上执行；仓库不会把交叉编译配置冒充成目标平台运行验收。
 
-推送 `v*` Tag 会在 `windows-2025` Runner 上执行生产依赖审计、完整测试、Squirrel Setup/ZIP 构建和安装版合成灰度，并生成 LF 格式的 `SHA256SUMS-windows.txt`。发布作业确认 Tag 与 `package.json` 完全一致并复核清单后发布 Windows 资产；预发布 Tag 自动标记 prerelease。Linux 仅在每周/手动维护工作流中构建，不进入 Tag Release。当前内部发布见 [`v0.11.1`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.11.1)。
+推送 `v*` Tag 会在 `windows-2025` Runner 上执行生产依赖审计、完整测试、Squirrel Setup/ZIP 构建和安装版合成灰度，并生成 LF 格式的 `SHA256SUMS-windows.txt`。发布作业确认 Tag 与 `package.json` 完全一致并复核清单后发布 Windows 资产；预发布 Tag 自动标记 prerelease。Linux 仅在每周/手动维护工作流中构建，不进入 Tag Release。当前候选为 `v0.11.2`，发布状态以 [`docs/M10.4-VALIDATION.md`](docs/M10.4-VALIDATION.md) 为准。
 
 ## Headless 真实运行
 

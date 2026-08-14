@@ -109,6 +109,7 @@ async function execute(options: CliOptions): Promise<void> {
         provider,
         eventStore,
         workspaceRoot: options.workspace,
+        sourcePaths: persisted.sourcePaths,
         artifactRoot,
         globalConcurrency: persisted.concurrency,
         onTextDelta,

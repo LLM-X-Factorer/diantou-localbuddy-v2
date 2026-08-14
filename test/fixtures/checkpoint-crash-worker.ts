@@ -35,7 +35,7 @@ class CrashFixtureProvider implements ModelProvider {
         toolCalls: [{
           id: "read-note-tool",
           name: "read_file",
-          arguments: JSON.stringify({ path: "notes.md" }),
+          arguments: JSON.stringify({ path: "source-1" }),
         }],
         finishReason: "tool_calls",
       };
@@ -75,6 +75,7 @@ const workflow = new HeadlessWorkflow({
   provider: new CrashFixtureProvider(),
   eventStore,
   workspaceRoot: workspace,
+  sourcePaths: [join(workspace, "notes.md")],
   artifactRoot: join(runRoot, "artifacts"),
   checkpointRoot: join(runRoot, "checkpoint"),
   globalConcurrency: 1,

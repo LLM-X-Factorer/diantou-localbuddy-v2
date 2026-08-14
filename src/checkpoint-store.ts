@@ -4,6 +4,10 @@ import { dirname, resolve } from "node:path";
 
 import type { ChatMessage, ProviderToolCall } from "./provider.js";
 import { parsePlan, type HeadlessPlan } from "./planner.js";
+import {
+  hashResearchSourceReference,
+  resolveResearchSources,
+} from "./research-sources.js";
 import type {
   ToolContext,
   ToolExecutionJournal,
@@ -11,19 +15,16 @@ import type {
   ToolJournalState,
   ToolRisk,
 } from "./tool-runtime.js";
-import type { WorkspaceSnapshot } from "./workspace-manifest.js";
 
 const MAX_CHECKPOINT_BYTES = 10 * 1024 * 1024;
 
 export interface ResearchRunCheckpoint {
-  version: 1;
+  version: 2;
   runId: string;
   mode: "research";
   workspace: string;
   goalSha256: string;
-  workspaceSha256: string;
-  workspaceComplete: boolean;
-  workspaceEntryCount: number;
+  sourcePaths: readonly string[];
   plan: HeadlessPlan;
   createdAt: string;
   updatedAt: string;
@@ -117,20 +118,19 @@ export class ResearchCheckpointStore implements AgentCheckpointStore {
     runId: string;
     workspace: string;
     goal: string;
-    snapshot: WorkspaceSnapshot;
+    sourcePaths: readonly string[];
     plan: HeadlessPlan;
   }): Promise<ResearchRunCheckpoint> {
     const workspace = await realpath(input.workspace);
+    const sources = await resolveResearchSources(input.sourcePaths);
     const now = this.#clock().toISOString();
     const checkpoint: ResearchRunCheckpoint = {
-      version: 1,
+      version: 2,
       runId: input.runId,
       mode: "research",
       workspace,
       goalSha256: sha256(input.goal),
-      workspaceSha256: input.snapshot.sha256,
-      workspaceComplete: input.snapshot.complete,
-      workspaceEntryCount: input.snapshot.entryCount,
+      sourcePaths: sources.map((source) => source.path),
       plan: parsePlan(JSON.stringify(input.plan), 3),
       createdAt: now,
       updatedAt: now,
@@ -143,6 +143,7 @@ export class ResearchCheckpointStore implements AgentCheckpointStore {
     runId: string;
     workspace: string;
     goal: string;
+    sourcePaths: readonly string[];
   }): Promise<ResearchRunCheckpoint> {
     const raw = await readJson(this.#manifestPath());
     const checkpoint = parseRunCheckpoint(raw);
@@ -158,6 +159,10 @@ export class ResearchCheckpointStore implements AgentCheckpointStore {
     }
     if (checkpoint.goalSha256 !== sha256(input.goal)) {
       throw new Error("checkpoint goal does not match the persisted Run Request");
+    }
+    const currentSources = await resolveResearchSources(input.sourcePaths);
+    if (JSON.stringify(checkpoint.sourcePaths) !== JSON.stringify(currentSources.map((source) => source.path))) {
+      throw new Error("checkpoint research sources do not match the persisted Run Request");
     }
     return { ...checkpoint, workspace };
   }
@@ -283,7 +288,7 @@ export class ResearchCheckpointStore implements AgentCheckpointStore {
     runId: string;
     workspace: string;
     goal: string;
-    snapshot: WorkspaceSnapshot;
+    sourcePaths: readonly string[];
   }): Promise<ResumeInspection> {
     let manifest: ResearchRunCheckpoint;
     try {
@@ -291,21 +296,13 @@ export class ResearchCheckpointStore implements AgentCheckpointStore {
     } catch (error) {
       return { available: false, completedTasks: 0, resumableTasks: 0, reason: toMessage(error) };
     }
-    if (!manifest.workspaceComplete || !input.snapshot.complete) {
+    const evidenceDrift = await this.#inspectReadEvidence(manifest);
+    if (evidenceDrift !== undefined) {
       return {
         available: false,
         completedTasks: 0,
         resumableTasks: 0,
-        reason: "workspace snapshot exceeded the safe checkpoint entry limit",
-        manifest,
-      };
-    }
-    if (manifest.workspaceSha256 !== input.snapshot.sha256) {
-      return {
-        available: false,
-        completedTasks: 0,
-        resumableTasks: 0,
-        reason: "workspace contents changed after the checkpoint was created",
+        reason: evidenceDrift,
         manifest,
       };
     }
@@ -321,6 +318,50 @@ export class ResearchCheckpointStore implements AgentCheckpointStore {
       ...taskInspection,
       manifest,
     };
+  }
+
+  async #inspectReadEvidence(manifest: ResearchRunCheckpoint): Promise<string | undefined> {
+    const sources = await resolveResearchSources(manifest.sourcePaths);
+    const receipts = await this.#listToolReceipts();
+    for (const receipt of receipts) {
+      if (receipt.toolName !== "read_file" || receipt.status !== "completed" || receipt.result?.isError !== false) {
+        continue;
+      }
+      const evidence = parseReadEvidence(receipt.result.content);
+      if (evidence === undefined) {
+        return "checkpoint contains a completed local file read without verifiable evidence metadata";
+      }
+      try {
+        const current = await hashResearchSourceReference(sources, evidence.path);
+        if (current.sha256 !== evidence.sha256) {
+          return `a local source read by this Run changed after the checkpoint: ${evidence.path}`;
+        }
+      } catch (error) {
+        return `a local source read by this Run is no longer available: ${evidence.path} (${toMessage(error)})`;
+      }
+    }
+    return undefined;
+  }
+
+  async #listToolReceipts(): Promise<readonly ToolReceipt[]> {
+    const toolsRoot = resolve(this.#checkpointRoot, "tools");
+    let taskDirectories;
+    try {
+      taskDirectories = await readdir(toolsRoot, { withFileTypes: true });
+    } catch (error) {
+      if (isNodeError(error) && error.code === "ENOENT") return [];
+      throw error;
+    }
+    const receipts: ToolReceipt[] = [];
+    for (const taskDirectory of taskDirectories) {
+      if (!taskDirectory.isDirectory()) continue;
+      const directory = resolve(toolsRoot, taskDirectory.name);
+      for (const entry of await readdir(directory, { withFileTypes: true })) {
+        if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+        receipts.push(parseToolReceipt(await readJson(resolve(directory, entry.name))));
+      }
+    }
+    return receipts;
   }
 
   #manifestPath(): string {
@@ -408,19 +449,22 @@ class FileToolExecutionJournal implements ToolExecutionJournal {
 
 function parseRunCheckpoint(value: unknown): ResearchRunCheckpoint {
   const record = expectRecord(value, "research checkpoint");
+  if (record.version === 1 && record.mode === "research") {
+    throw new Error(
+      "this legacy research checkpoint used a whole-workspace snapshot; start a new Run and explicitly add the required sources",
+    );
+  }
   if (
-    record.version !== 1
+    record.version !== 2
     || record.mode !== "research"
     || typeof record.runId !== "string"
     || typeof record.workspace !== "string"
     || typeof record.goalSha256 !== "string"
-    || typeof record.workspaceSha256 !== "string"
-    || typeof record.workspaceComplete !== "boolean"
-    || typeof record.workspaceEntryCount !== "number"
+    || !Array.isArray(record.sourcePaths)
+    || !record.sourcePaths.every((item) => typeof item === "string")
     || typeof record.createdAt !== "string"
     || typeof record.updatedAt !== "string"
     || !/^[a-f0-9]{64}$/.test(record.goalSha256)
-    || !/^[a-f0-9]{64}$/.test(record.workspaceSha256)
   ) {
     throw new Error("research checkpoint has an invalid contract");
   }
@@ -428,6 +472,26 @@ function parseRunCheckpoint(value: unknown): ResearchRunCheckpoint {
     ...record,
     plan: parsePlan(JSON.stringify(record.plan), 3),
   } as ResearchRunCheckpoint;
+}
+
+function parseReadEvidence(content: string): { path: string; sha256: string } | undefined {
+  try {
+    const record = expectRecord(JSON.parse(content) as unknown, "read_file result");
+    if (typeof record.path === "string" && typeof record.sha256 === "string"
+      && /^[a-f0-9]{64}$/.test(record.sha256)) {
+      return { path: record.path, sha256: record.sha256 };
+    }
+  } catch {
+    const prefix = content.match(/"path":("(?:\\.|[^"\\])*"),"sha256":"([a-f0-9]{64})"/u);
+    if (prefix !== null) {
+      try {
+        return { path: JSON.parse(prefix[1]!) as string, sha256: prefix[2]! };
+      } catch {
+        return undefined;
+      }
+    }
+  }
+  return undefined;
 }
 
 function parseTaskCheckpoint(value: unknown): AgentTaskCheckpoint {

@@ -44,10 +44,10 @@ module.exports = {
     extraResource: [browserRoot],
     ignore: [
       /^\/\.localbuddy(?:\/|$)/,
-      /^\/(?:desktop|docs|fixtures|scripts|src|test)(?:\/|$)/,
+      /^\/(?:\.github|assets|desktop|docs|fixtures|scripts|src|test)(?:\/|$)/,
       /^\/dist\/test(?:\/|$)/,
       /(?:\.map|\.d\.ts|\.d\.cts)$/,
-      /^\/(?:AGENTS\.md|README\.md|tsconfig(?:\.renderer)?\.json|vite\.config\.ts|forge\.config\.cjs|pnpm-lock\.yaml|\.env\.example|\.npmrc)$/,
+      /^\/(?:\.gitignore|AGENTS\.md|CHANGELOG\.md|README\.md|tsconfig(?:\.renderer)?\.json|vite\.config\.ts|forge\.config\.cjs|pnpm-lock\.yaml|\.env\.example|\.npmrc)$/,
     ],
   },
   makers: [

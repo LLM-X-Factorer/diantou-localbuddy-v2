@@ -47,6 +47,7 @@ export function App() {
   const [runs, setRuns] = useState<readonly DesktopRunView[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string>();
   const [goal, setGoal] = useState("");
+  const [sourcePaths, setSourcePaths] = useState<readonly string[]>([]);
   const [concurrency, setConcurrency] = useState(3);
   const [mode, setMode] = useState<DesktopRunMode>("research");
   const [providerId, setProviderId] = useState<"deepseek" | "openai">("deepseek");
@@ -154,7 +155,8 @@ export function App() {
     setRecentWorkspaces((current) => promoteRecentWorkspace(current, selected));
     setWorkspaceReadiness(readiness);
     setGoal("");
-    setGuideStatus(guideVisible ? "工作区已更换。为避免把旧上下文带入新目录，编辑器已经清空；请选择合适的模板。" : undefined);
+    setSourcePaths([]);
+    setGuideStatus(guideVisible ? "运行位置已更换。编辑器和本次资料已经清空；请选择合适的模板。" : undefined);
   }
 
   async function openGuide() {
@@ -200,6 +202,7 @@ export function App() {
       setRecentWorkspaces(result.recentWorkspaces);
       setWorkspaceReadiness(result.readiness);
       setOnboarding(result.onboarding);
+      setSourcePaths(result.files.map((fileName) => joinLocalPath(result.workspace, fileName)));
       applyGuideTemplate("tutorial-research");
       setGuideStatus(result.created
         ? "教程工作区已在本机创建，研究模板已填入下方编辑器；任务尚未启动。"
@@ -209,6 +212,16 @@ export function App() {
       setError(toMessage(cause));
     } finally {
       setCreatingTutorial(false);
+    }
+  }
+
+  async function chooseResearchSources(kind: "files" | "folders") {
+    setError(undefined);
+    try {
+      const selected = await window.localbuddy.selectResearchSources(kind);
+      setSourcePaths((current) => [...new Set([...current, ...selected])]);
+    } catch (cause) {
+      setError(toMessage(cause));
     }
   }
 
@@ -252,6 +265,7 @@ export function App() {
         goal,
         concurrency,
         mode,
+        sourcePaths: mode === "research" ? sourcePaths : [],
         provider: {
           id: providerId,
           model: providerModel.trim() || undefined,
@@ -270,6 +284,7 @@ export function App() {
       setRuns((current) => upsertRun(current, run));
       setSelectedRunId(run.runId);
       setGoal("");
+      setSourcePaths([]);
       setGuideVisible(false);
       setGuideStatus(undefined);
     } catch (cause) {
@@ -348,7 +363,14 @@ export function App() {
   }
 
   async function restartRun() {
-    if (selectedRun?.status !== "interrupted" || selectedRun.restartedAs !== undefined) return;
+    if (
+      selectedRun === undefined
+      || (selectedRun.status !== "interrupted" && selectedRun.status !== "failed")
+      || selectedRun.restartedAs !== undefined
+    ) return;
+    if (!window.confirm(
+      "从头重新运行会保留原 Run，但会重新调用 Provider，并可能产生新的模型费用。确认继续吗？",
+    )) return;
     setError(undefined);
     try {
       const replay = await window.localbuddy.restartRun({ workspace, runId: selectedRun.runId });
@@ -363,7 +385,7 @@ export function App() {
     if (
       selectedRun === undefined
       || (selectedRun.status !== "interrupted" && selectedRun.status !== "failed")
-      || (selectedRun.status === "interrupted" && selectedRun.checkpoint?.status !== "available")
+      || selectedRun.checkpoint?.status !== "available"
     ) return;
     setError(undefined);
     try {
@@ -541,8 +563,8 @@ export function App() {
         <button className="workspace-button" onClick={chooseWorkspace}>
           <span className="workspace-icon">⌘</span>
           <span>
-            <small>工作区</small>
-            <strong title={workspace || "尚未选择工作区"}>{workspace.length === 0 ? "选择一个安全工作区" : shortPath(workspace)}</strong>
+            <small>运行位置</small>
+            <strong title={workspace || "尚未选择运行位置"}>{workspace.length === 0 ? "选择保存运行记录的位置" : shortPath(workspace)}</strong>
           </span>
           <span className="chevron">⌄</span>
         </button>
@@ -565,7 +587,7 @@ export function App() {
 
         {recentWorkspaces.filter((item) => item !== workspace).length > 0 && (
           <div className="recent-workspaces">
-            <span>最近工作区</span>
+            <span>最近运行位置</span>
             {recentWorkspaces.filter((item) => item !== workspace).slice(0, 3).map((item) => (
               <button key={item} onClick={() => openRecentWorkspace(item)} title={item}>
                 {shortPath(item)}
@@ -659,7 +681,6 @@ export function App() {
 
         {error && <div className="error-banner">{error}</div>}
         {diagnosticsStatus && <div className="success-banner">{diagnosticsStatus}</div>}
-
         {guideVisible ? (
           <FirstRunGuide
             workspace={workspace}
@@ -702,10 +723,31 @@ export function App() {
                 <div>
                   <span className="recovery-kicker">CHECKPOINT RETRY</span>
                   <h2>失败阶段：{failureStageLabel(selectedRun.metrics.failureStage)}</h2>
-                  <p>重试会复用安全 checkpoint 中已成功的 Task，只重新执行未完成 Task 及其依赖链；若工作区或工具收据已漂移，运行时会拒绝恢复。</p>
-                  {selectedRun.error && <small>{selectedRun.error}</small>}
+                  {selectedRun.checkpoint === undefined ? (
+                    <p>正在复核 checkpoint 和本次真正读取过的资料；完成前不会开放恢复操作。</p>
+                  ) : selectedRun.checkpoint.status === "available" ? (
+                    <p>
+                      checkpoint 已通过复核：已完成 {selectedRun.checkpoint.completedTasks} 个 Task，
+                      重试只执行剩余 {selectedRun.checkpoint.resumableTasks} 个 Task 及其依赖链。
+                    </p>
+                  ) : (
+                    <p>
+                      当前 checkpoint 不可安全重试：{recoveryBlockedReason(selectedRun.checkpoint?.reason)}。
+                      可以保留旧事件并从原请求创建一个全新 Run。
+                    </p>
+                  )}
+                  {selectedRun.error && <small>{toMessage(selectedRun.error)}</small>}
                 </div>
-                <button onClick={resumeRun}>重试未完成 Task 链</button>
+                <div className="recovery-actions">
+                  {selectedRun.checkpoint?.status === "available" && (
+                    <button onClick={resumeRun}>重试未完成 Task 链</button>
+                  )}
+                  {selectedRun.checkpoint !== undefined && (
+                    <button className="replay-button" onClick={restartRun} disabled={selectedRun.restartedAs !== undefined}>
+                      {selectedRun.restartedAs ? "已经重新运行" : "从头重新运行"}
+                    </button>
+                  )}
+                </div>
               </section>
             )}
 
@@ -724,7 +766,7 @@ export function App() {
                     </p>
                   ) : (
                     <p>
-                      当前 checkpoint 不可安全续跑：{selectedRun.checkpoint?.reason ?? "没有完整 checkpoint"}。
+                      当前 checkpoint 不可安全续跑：{recoveryBlockedReason(selectedRun.checkpoint?.reason)}。
                       仍可保留旧事件并从原请求创建一个全新 Run。
                     </p>
                   )}
@@ -798,7 +840,9 @@ export function App() {
                     </div>
                     <h3>{task.title}</h3>
                     <p>{task.agentId ?? "等待 Agent 分配"}</p>
-                    {task.error && <p className="task-error" title={task.error}>{task.error}</p>}
+                    {task.error && (
+                      <p className="task-error" title={toMessage(task.error)}>{toMessage(task.error)}</p>
+                    )}
                     <div className="task-progress"><span /></div>
                   </article>
                 ))}
@@ -969,7 +1013,7 @@ export function App() {
                   )}
                   {selectedRun.integration.error && (
                     <div className="integration-error">
-                      {selectedRun.integration.error}
+                      {toMessage(selectedRun.integration.error)}
                       {selectedRun.integration.rolledBack && " · 已自动恢复主工作区"}
                     </div>
                   )}
@@ -992,6 +1036,36 @@ export function App() {
             onChange={(event) => setGoal(event.target.value)}
             placeholder="描述一个需要多个 Agent 协作完成的本地任务…"
           />
+          {mode === "research" && (
+            <div className="research-sources">
+              <div className="research-sources-heading">
+                <span>
+                  <strong>本次资料</strong>
+                  <small>只读取你明确添加的资料；不会扫描上面的运行位置</small>
+                </span>
+                <span className="research-source-actions">
+                  <button type="button" onClick={() => chooseResearchSources("files")}>添加文件</button>
+                  <button type="button" onClick={() => chooseResearchSources("folders")}>添加资料文件夹</button>
+                </span>
+              </div>
+              {sourcePaths.length === 0 ? (
+                <p>未添加本地资料。任务仍可使用已启用的 Browser / MCP；没有证据时会明确说明缺口。</p>
+              ) : (
+                <div className="research-source-list">
+                  {sourcePaths.map((path) => (
+                    <span className="research-source-chip" key={path} title={path}>
+                      {shortPath(path)}
+                      <button
+                        type="button"
+                        aria-label={`移除资料 ${path}`}
+                        onClick={() => setSourcePaths((current) => current.filter((item) => item !== path))}
+                      >×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {!selectedProviderCredential.available && (
             <div className="provider-required-banner">
               <span><strong>{providerLabel(providerId)} 尚未配置</strong>真实任务需要可用的 API Key，Guide 和模板仍可离线使用。</span>
@@ -1118,7 +1192,9 @@ export function App() {
               <span className={`event-icon ${event.type.split(".")[0]}`}>{eventGlyph(event.type)}</span>
               <div>
                 <strong>{eventLabel(event.type)}</strong>
-                <p>{event.detail ?? event.taskId ?? event.agentId ?? "runtime"}</p>
+                <p>{event.detail === undefined
+                  ? event.taskId ?? event.agentId ?? "runtime"
+                  : toMessage(event.detail)}</p>
                 <small>#{event.sequence} · {formatClock(event.timestamp)}</small>
               </div>
             </div>
@@ -1529,6 +1605,11 @@ function shortPath(path: string) {
   return `…/${parts.slice(-2).join("/")}`;
 }
 
+function joinLocalPath(root: string, fileName: string) {
+  const separator = root.includes("\\") ? "\\" : "/";
+  return `${root.replace(/[\\/]$/u, "")}${separator}${fileName}`;
+}
+
 function statusLabel(status: string) {
   return ({
     starting: "启动中", planning: "规划中", queued: "排队中", running: "运行中",
@@ -1566,7 +1647,9 @@ function formatClock(value: string) {
 
 function formatBytes(value?: number) {
   if (value === undefined) return "size unknown";
-  return value < 1024 ? `${value} B` : `${(value / 1024).toFixed(1)} KB`;
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatDuration(value?: number) {
@@ -1594,7 +1677,47 @@ function failureStageLabel(stage?: string) {
 }
 
 function toMessage(value: unknown) {
-  return value instanceof Error ? value.message : String(value);
+  const message = value instanceof Error ? value.message : String(value);
+  return recoveryBlockedReason(
+    message.replace(/^Error invoking remote method '[^']+': Error: /, ""),
+  );
+}
+
+function recoveryBlockedReason(reason?: string) {
+  if (reason === undefined || reason === "No safe checkpoint is available") {
+    return "没有完整且可验证的 checkpoint";
+  }
+  if (reason.includes("workspace snapshot exceeded the safe checkpoint entry limit")) {
+    return "工作区可扫描条目超过安全快照上限";
+  }
+  if (reason.includes("workspace snapshot exceeded the safe checkpoint byte limit")) {
+    return "工作区可扫描文件总大小超过安全快照上限";
+  }
+  if (reason.includes("workspace contents changed after the checkpoint was created")) {
+    return "checkpoint 创建后工作区内容发生了变化";
+  }
+  if (reason.includes("a local source read by this Run changed")) {
+    return "本次任务已经读取过的资料在 checkpoint 之后发生了变化";
+  }
+  if (reason.includes("a local source read by this Run is no longer available")) {
+    return "本次任务已经读取过的资料已被移动或删除";
+  }
+  if (reason.includes("legacy research checkpoint used a whole-workspace snapshot")) {
+    return "这是旧版的整目录快照；请新建任务并明确添加所需资料";
+  }
+  if (reason.includes("legacy Research Run used the project directory as implicit evidence")) {
+    return "这个旧任务把整个项目目录当成隐式资料；请新建任务并明确添加所需资料";
+  }
+  if (reason.includes("checkpoint research sources do not match")) {
+    return "checkpoint 记录的本次资料与运行请求不一致";
+  }
+  if (/\b(?:EACCES|EPERM)\b|permission denied/i.test(reason)) {
+    return "工作区中有 LocalBuddy 无法读取的文件或目录";
+  }
+  if (/\bENOENT\b|no such file or directory/i.test(reason)) {
+    return "所需的本地文件已不存在或位置发生了变化";
+  }
+  return reason;
 }
 
 function isCleanupProtected(run?: DesktopRunView) {

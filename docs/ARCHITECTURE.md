@@ -1,6 +1,6 @@
 # LocalBuddy V2 Architecture
 
-> **状态基线**：2026-08-13，`v0.11.1 / M10.3` 私有 Engineering Alpha。本文件描述当前架构事实；各 `M*-SPEC.md` 保留对应阶段当时的范围，不因后续实现而回写历史。
+> **状态基线**：2026-08-14，`v0.11.2 / M10.4` 私有 Engineering Alpha 候选。本文件描述当前架构事实；各历史 Validation 保留对应阶段当时的证据边界。
 
 ## 1. 产品判断
 
@@ -119,7 +119,7 @@ Event Store 是运行事实的追加式记录。初期采用 JSONL，避免桌�
 
 M3.3 提供 request replay：Desktop 启动或读取历史时，只对 `runtimeOwner=desktop` 且最新生命周期没有终态的 Run 追加 `run.interrupted`；用户确认后，从同一 Request 创建新 Run，并在旧 Run 追加 `run.restarted`。旧事件不可修改，新 Run 也不会复用旧 Run ID。CLI 与 Desktop 的 owner 标记用于避免 Desktop 把另一个 CLI 进程的执行误判成崩溃。
 
-M3.4 在 Research Run 上增加同一 Run ID 的 checkpoint resume。`checkpoint/manifest.json` 固定原始计划、目标哈希和工作区内容快照；每个 Task 独立原子保存消息历史、Agent/工具契约哈希、turn、阶段和工具游标；工具回执、Artifact 注册表和计算注册表分别持久化。checkpoint 文件含 Prompt、模型消息和工具结果，是仅限本机的私有运行状态，与 API Key 一样不可提交或同步。
+M3.4 在 Research Run 上增加同一 Run ID 的 checkpoint resume；M10.4 把证据身份从整个工作区快照收敛为 Run 明确选择的 source paths。`checkpoint/manifest.json` 固定原始计划、目标哈希和资料身份；每个 Task 独立原子保存消息历史、Agent/工具契约哈希、turn、阶段和工具游标；成功 `read_file` 回执还保存逻辑路径、bytes 和 SHA-256。恢复只重哈希真正读取过的资料，不枚举运行目录。checkpoint 文件含 Prompt、模型消息和工具结果，是仅限本机的私有运行状态，与 API Key 一样不可提交或同步。
 
 恢复遵守以下边界：
 
@@ -225,6 +225,7 @@ Desktop 使用 Electron single-instance lock，避免两个桌面进程同时拥
 15. **M10 Dogfooding + Productization（已完成代码、本机与原生 Runner 范围）**：Desktop Provider/凭证设置、持久信任档、哈希校验 inline diff、脱敏诊断导出、macOS 包复验、Linux/Windows 原生构建和 Windows GitHub Release。Windows 真机端到端与生产 MCP OAuth 仍是外部门禁。
 16. **M10.1 Local Dogfood Closure（已完成本机闭环）**：Run 指标投影、Artifact Gate 反馈/预算、失败 Run 安全 checkpoint 恢复、最近工作区、校验后的文本 Artifact 预览与显式继续、MCP stdio 脱敏失败诊断，以及真实 Coding commit/reverse-commit 验证。连续 7-14 天使用仍是开放门禁。
 17. **M10.2 First Trusted Run（已完成本机实现与 UI 验收）**：本地确定性 Guide、私有版本化偏好、Provider 布尔 readiness、显式合成教程工作区、只预填模板和真实 Run 状态提示。Guide 不属于 Run，不调用模型，也不进入审计指标；真实执行仍复用既有 Run 合同。
-18. **M10.3 Provider Setup（已完成本机与原生 PR 闭环）**：独立 Provider 一级入口、来源状态、安全保存/替换/删除、显式 `/models` 连接探针、紧凑 Composer 状态和缺失凭据启动拦截。Skills/MCP/Browser 继续作为可选扩展单独配置；macOS 包与已安装 App 已验收，Windows/Linux `0.11.1` 已原生构建，Windows Setup 已完成托管 Runner 安装、无凭据首启和卸载。正式 Tag/Release 与终端用户设备验收仍待授权。
+18. **M10.3 Provider Setup（已发布）**：独立 Provider 一级入口、来源状态、安全保存/替换/删除、显式 `/models` 连接探针、紧凑 Composer 状态和缺失凭据启动拦截。Skills/MCP/Browser 继续作为可选扩展单独配置；Windows `v0.11.1` 已完成 Tag Release，终端用户设备验收仍开放。
+19. **M10.4 Explicit Research Sources（本机候选完成）**：运行位置与本次资料分离；本地 Research 工具只面向明确 source scope；目录按需有界搜索；checkpoint 只复核 read evidence；旧 implicit-workspace Run fail closed。macOS 包与 GUI 已验收，Windows `v0.11.2` Tag Gate 和真实 Provider v4 dogfood 仍待完成。
 
 M11 尚未立项。持久化多轮工作线程、Project/Workspace 首页、资料摄取、非纯文本产物预览和更可控的多 Agent 交互属于候选方向，必须在连续 dogfooding 后再确定范围，不能写成已承诺能力。

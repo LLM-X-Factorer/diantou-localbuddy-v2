@@ -10,6 +10,7 @@ import {
 const CHANNELS = {
   bootstrap: "localbuddy:bootstrap",
   selectWorkspace: "localbuddy:select-workspace",
+  selectResearchSources: "localbuddy:select-research-sources",
   inspectWorkspace: "localbuddy:inspect-workspace",
   createTutorialWorkspace: "localbuddy:create-tutorial-workspace",
   updateOnboarding: "localbuddy:update-onboarding",
@@ -35,6 +36,7 @@ const CHANNELS = {
 const api: DesktopApi = {
   bootstrap: () => ipcRenderer.invoke(CHANNELS.bootstrap),
   selectWorkspace: () => ipcRenderer.invoke(CHANNELS.selectWorkspace),
+  selectResearchSources: (kind) => ipcRenderer.invoke(CHANNELS.selectResearchSources, kind),
   inspectWorkspace: (workspace) => ipcRenderer.invoke(CHANNELS.inspectWorkspace, workspace),
   createTutorialWorkspace: () => ipcRenderer.invoke(CHANNELS.createTutorialWorkspace),
   updateOnboarding: (request) => ipcRenderer.invoke(CHANNELS.updateOnboarding, request),

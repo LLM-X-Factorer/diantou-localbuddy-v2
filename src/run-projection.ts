@@ -67,6 +67,13 @@ export function projectRun(
     } else if (event.type === "run.cancelled") {
       status = "cancelled";
       completedAt = event.timestamp;
+    } else if (event.type === "checkpoint.resume_blocked") {
+      checkpoint = {
+        status: "blocked",
+        completedTasks: getNumber(event.data?.completedTasks) ?? 0,
+        resumableTasks: getNumber(event.data?.resumableTasks) ?? 0,
+        reason: getString(event.data?.reason) ?? "No safe checkpoint is available",
+      };
     } else if (event.type === "run.interrupted") {
       status = "interrupted";
       mode = event.data?.mode === "code" ? "code" : mode;

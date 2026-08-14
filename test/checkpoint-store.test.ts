@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdtemp, realpath, rm, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -15,58 +16,109 @@ import {
   ToolRuntime,
   type ToolDefinition,
 } from "../src/tool-runtime.js";
-import { buildWorkspaceSnapshot } from "../src/workspace-manifest.js";
 
 const plan = {
   tasks: [{ id: "read-note", title: "Read note", instructions: "Read notes.md." }],
   integration: { instructions: "Write a grounded result.", fileName: "result.md" },
 } as const;
 
-test("validates workspace-bound checkpoints and detects workspace drift", async (context) => {
+test("ignores unrelated workspace drift but blocks changes to a file actually read", async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "localbuddy-checkpoint-store-"));
   context.after(async () => rm(workspace, { recursive: true, force: true }));
-  await writeFile(join(workspace, "notes.md"), "stable evidence\n", "utf8");
+  const notesPath = join(workspace, "notes.md");
+  const originalContent = "stable evidence\n";
+  await writeFile(notesPath, originalContent, "utf8");
   const store = new ResearchCheckpointStore(join(workspace, ".localbuddy", "checkpoint"));
-  const snapshot = await buildWorkspaceSnapshot(workspace);
   await store.initialize({
     runId: "run-checkpoint",
     workspace,
     goal: "Read the note",
-    snapshot,
+    sourcePaths: [notesPath],
     plan,
+  });
+  const agent = makeAgent();
+  const toolCall = { id: "read-note-call", name: "read_file", arguments: '{"path":"source-1"}' };
+  const toolContext = { runId: "run-checkpoint", taskId: "read-note", agent };
+  const journal = store.toolJournal();
+  await journal.start(toolCall, toolContext, "read");
+  await journal.complete(toolCall, toolContext, "read", {
+    toolCallId: toolCall.id,
+    isError: false,
+    content: JSON.stringify({
+      path: "source-1",
+      sha256: createHash("sha256").update(originalContent).digest("hex"),
+      bytes: Buffer.byteLength(originalContent),
+      content: originalContent,
+    }),
   });
 
   const available = await store.inspectResume({
     runId: "run-checkpoint",
     workspace,
     goal: "Read the note",
-    snapshot: await buildWorkspaceSnapshot(workspace),
+    sourcePaths: [notesPath],
   });
   assert.equal(available.available, true);
   assert.equal(available.resumableTasks, 2);
 
-  await writeFile(join(workspace, "notes.md"), "changed evidence\n", "utf8");
+  await writeFile(join(workspace, "unrelated.tmp"), "unrelated change\n", "utf8");
+  assert.equal((await store.inspectResume({
+    runId: "run-checkpoint",
+    workspace,
+    goal: "Read the note",
+    sourcePaths: [notesPath],
+  })).available, true);
+
+  await writeFile(notesPath, "changed evidence\n", "utf8");
   const drifted = await store.inspectResume({
     runId: "run-checkpoint",
     workspace,
     goal: "Read the note",
-    snapshot: await buildWorkspaceSnapshot(workspace),
+    sourcePaths: [notesPath],
   });
   assert.equal(drifted.available, false);
-  assert.match(drifted.reason ?? "", /workspace contents changed/);
+  assert.match(drifted.reason ?? "", /local source read by this Run changed/);
+});
+
+test("does not inspect or hash a large unrelated workspace file", async (context) => {
+  const workspace = await mkdtemp(join(tmpdir(), "localbuddy-checkpoint-byte-limit-"));
+  context.after(async () => rm(workspace, { recursive: true, force: true }));
+  const largeFile = join(workspace, "large-sparse.bin");
+  await writeFile(largeFile, "", "utf8");
+  await truncate(largeFile, 600 * 1024 * 1024);
+  const notesPath = join(workspace, "notes.md");
+  await writeFile(notesPath, "selected evidence", "utf8");
+  const store = new ResearchCheckpointStore(join(workspace, ".localbuddy", "checkpoint"));
+  const manifest = await store.initialize({
+    runId: "run-byte-limit",
+    workspace,
+    goal: "Inspect the workspace",
+    sourcePaths: [notesPath],
+    plan,
+  });
+
+  const inspection = await store.inspectResume({
+    runId: "run-byte-limit",
+    workspace,
+    goal: "Inspect the workspace",
+    sourcePaths: [notesPath],
+  });
+
+  assert.deepEqual(manifest.sourcePaths, [await realpath(notesPath)]);
+  assert.equal(inspection.available, true);
 });
 
 test("blocks an ambiguous write receipt and preserves append-only task messages", async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "localbuddy-checkpoint-write-"));
   context.after(async () => rm(workspace, { recursive: true, force: true }));
-  await writeFile(join(workspace, "notes.md"), "evidence\n", "utf8");
+  const notesPath = join(workspace, "notes.md");
+  await writeFile(notesPath, "evidence\n", "utf8");
   const store = new ResearchCheckpointStore(join(workspace, ".localbuddy", "checkpoint"));
-  const snapshot = await buildWorkspaceSnapshot(workspace);
   await store.initialize({
     runId: "run-write-ambiguity",
     workspace,
     goal: "Read the note",
-    snapshot,
+    sourcePaths: [notesPath],
     plan,
   });
   const messages: ChatMessage[] = [
@@ -108,7 +160,7 @@ test("blocks an ambiguous write receipt and preserves append-only task messages"
     runId: "run-write-ambiguity",
     workspace,
     goal: "Read the note",
-    snapshot: await buildWorkspaceSnapshot(workspace),
+    sourcePaths: [notesPath],
   });
   assert.equal(blocked.available, false);
   assert.match(blocked.reason ?? "", /ambiguous write tool call/);
@@ -130,13 +182,14 @@ test("blocks an ambiguous write receipt and preserves append-only task messages"
 test("continues an Agent Loop after a completed tool-result checkpoint without repeating the tool", async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "localbuddy-agent-checkpoint-"));
   context.after(async () => rm(workspace, { recursive: true, force: true }));
-  await writeFile(join(workspace, "notes.md"), "checkpoint evidence\n", "utf8");
+  const notesPath = join(workspace, "notes.md");
+  await writeFile(notesPath, "checkpoint evidence\n", "utf8");
   const checkpointStore = new ResearchCheckpointStore(join(workspace, ".localbuddy", "checkpoint"));
   await checkpointStore.initialize({
     runId: "run-agent-resume",
     workspace,
     goal: "Read evidence",
-    snapshot: await buildWorkspaceSnapshot(workspace),
+    sourcePaths: [notesPath],
     plan,
   });
   const eventStore = new InMemoryEventStore();

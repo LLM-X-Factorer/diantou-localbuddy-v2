@@ -60,6 +60,8 @@ test("Forge package is ASAR-only and declares every Electron 43 fuse", async () 
   const verifyWindowsInstaller = await readFile("scripts/verify-windows-installer-first-launch.ps1", "utf8");
 
   assert.match(config, /asar: true/);
+  assert.match(config, /\.github\|assets\|desktop\|docs\|fixtures\|scripts\|src\|test/);
+  assert.match(config, /CHANGELOG\\\.md/);
   assert.match(config, /strictlyRequireAllFuses: true/);
   for (const fuse of [
     "RunAsNode",
@@ -125,6 +127,24 @@ test("Renderer composer is a compact input plus wrapping control toolbar", async
   assert.match(styles, /\.control-label \{ position: absolute; width: 1px; height: 1px/);
   assert.match(styles, /\.extensions-toggle \{[^}]*min-height: 32px/);
   assert.doesNotMatch(styles, /\.composer-actions \{[^}]*repeat\(16/);
+});
+
+test("Renderer separates explicit research sources from recovery and confirms paid replay", async () => {
+  const renderer = await readFile("desktop/renderer/src/App.tsx", "utf8");
+
+  assert.match(renderer, /只读取你明确添加的资料/);
+  assert.match(renderer, /不会扫描上面的运行位置/);
+  assert.match(renderer, /selectResearchSources/);
+  assert.doesNotMatch(renderer, /当前工作区可扫描条目超过/);
+  assert.doesNotMatch(renderer, /当前工作区可扫描文件总大小超过/);
+  assert.match(renderer, /selectedRun\.error && <small>\{toMessage\(selectedRun\.error\)\}<\/small>/);
+  assert.match(renderer, /本次任务已经读取过的资料已被移动或删除/);
+  assert.match(renderer, /selectedRun\.checkpoint\?\.status === "available"/);
+  assert.match(renderer, /正在复核 checkpoint 和本次真正读取过的资料/);
+  assert.match(renderer, /当前 checkpoint 不可安全重试/);
+  assert.match(renderer, /window\.confirm\(/);
+  assert.match(renderer, /会重新调用 Provider，并可能产生新的模型费用/);
+  assert.match(renderer, /message\.replace\(\/\^Error invoking remote method/);
 });
 
 test("brand assets provide native macOS, Windows, and Linux icon formats", async () => {

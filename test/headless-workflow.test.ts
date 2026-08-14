@@ -21,6 +21,7 @@ test("plans parallel workers and integrates their grounded outputs into an artif
     provider: new DeterministicWorkflowProvider(),
     eventStore,
     workspaceRoot: directory,
+    sourcePaths: [join(directory, "metrics.csv"), join(directory, "notes.md")],
     artifactRoot,
     globalConcurrency: 3,
   });
@@ -46,6 +47,51 @@ test("plans parallel workers and integrates their grounded outputs into an artif
   );
   assert.equal(workerStarts.length, 2);
   assert.deepEqual(new Set(workerStarts.map((event) => event.agentId)), new Set(["worker-1", "worker-2"]));
+});
+
+test("records a failed lifecycle when workspace setup fails before planning", async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "localbuddy-workflow-setup-failure-"));
+  context.after(async () => rm(directory, { recursive: true, force: true }));
+  const eventStore = new InMemoryEventStore();
+  let modelCalls = 0;
+  const workflow = new HeadlessWorkflow({
+    provider: {
+      async complete() {
+        modelCalls += 1;
+        throw new Error("model must not be called");
+      },
+    },
+    eventStore,
+    workspaceRoot: join(directory, "missing-workspace"),
+    artifactRoot: join(directory, "artifacts"),
+  });
+
+  await assert.rejects(workflow.run("run-setup-failure", "Inspect the workspace"), /ENOENT/);
+  const events = await eventStore.list("run-setup-failure");
+
+  assert.equal(modelCalls, 0);
+  assert.deepEqual(events.map((event) => event.type), ["run.started", "run.failed"]);
+});
+
+test("does not expose project paths or local read tools when no research sources are selected", async (context) => {
+  const directory = await mkdtemp(join(tmpdir(), "localbuddy-workflow-no-sources-"));
+  context.after(async () => rm(directory, { recursive: true, force: true }));
+  await writeFile(join(directory, "private-project-note.md"), "must not enter model context", "utf8");
+  const provider = new NoLocalSourcesProvider();
+  const runRoot = join(directory, ".localbuddy", "runs", "run-no-sources");
+  const result = await new HeadlessWorkflow({
+    provider,
+    eventStore: new InMemoryEventStore(),
+    workspaceRoot: directory,
+    sourcePaths: [],
+    artifactRoot: join(runRoot, "artifacts"),
+    checkpointRoot: join(runRoot, "checkpoint"),
+    globalConcurrency: 1,
+  }).run("run-no-sources", "State the evidence gap in no-sources.md");
+
+  assert.equal(result.summary.status, "succeeded");
+  assert.equal(provider.plannerSawPrivatePath, false);
+  assert.equal(provider.workerHadReadTool, false);
 });
 
 class DeterministicWorkflowProvider implements ModelProvider {
@@ -79,7 +125,7 @@ class DeterministicWorkflowProvider implements ModelProvider {
     );
     if (prompt.includes("Task ID: analyze-metrics")) {
       if (!toolResultIds.has("metrics-read")) {
-        return toolResponse("metrics-read", "read_file", { path: "metrics.csv" });
+        return toolResponse("metrics-read", "read_file", { path: "source-1" });
       }
       if (!toolResultIds.has("metrics-ratio")) {
         return toolResponse("metrics-ratio", "compare_ratios", {
@@ -96,11 +142,12 @@ class DeterministicWorkflowProvider implements ModelProvider {
     if (prompt.includes("Task ID: analyze-notes")) {
       return toolResultIds.has("notes-read")
         ? response("notes finding: ROI remains unknown")
-        : toolResponse("notes-read", "read_file", { path: "notes.md" });
+        : toolResponse("notes-read", "read_file", { path: "source-2" });
     }
     if (prompt.includes("Task ID: integrate")) {
       assert.match(prompt, /128 leads/);
       assert.match(prompt, /ROI remains unknown/);
+      assert.match(prompt, /Preserve source provenance.*source titles, dates, and URLs/);
       const calculationIds = [...prompt.matchAll(/calc-[a-f0-9]{12}/g)].map((match) => match[0]);
       return toolResultIds.has("artifact-write")
         ? response("Artifact written and registered.")
@@ -108,6 +155,40 @@ class DeterministicWorkflowProvider implements ModelProvider {
             fileName: "weekly-report.md",
             content: `# Weekly report\n\n- 128 leads\n- 8 orders\n- 0.359375 is lower than 0.375 [${calculationIds[0]}]\n- ROI remains unknown\n`,
             calculationIds,
+          });
+    }
+    throw new Error(`Unexpected request: ${prompt}`);
+  }
+}
+
+class NoLocalSourcesProvider implements ModelProvider {
+  plannerSawPrivatePath = false;
+  workerHadReadTool = false;
+
+  async complete(request: ModelRequest): Promise<ModelResponse> {
+    const serializedMessages = JSON.stringify(request.messages);
+    if (request.responseFormat === "json_object") {
+      this.plannerSawPrivatePath = serializedMessages.includes("private-project-note.md");
+      assert.match(serializedMessages, /No local research sources were selected/);
+      return response(JSON.stringify({
+        tasks: [{ id: "identify-gap", title: "Identify evidence gap", instructions: "State the gap." }],
+        integration: { instructions: "Write an honest result.", fileName: "no-sources.md" },
+      }));
+    }
+    const prompt = findLastUserMessage(request.messages);
+    if (prompt.includes("Task ID: identify-gap")) {
+      this.workerHadReadTool = (request.tools ?? []).some((tool) =>
+        tool.name === "read_file" || tool.name === "search_files");
+      return response("No local evidence was selected.");
+    }
+    if (prompt.includes("Task ID: integrate")) {
+      const wrote = request.messages.some((message) => message.role === "tool");
+      return wrote
+        ? response("done")
+        : toolResponse("write-no-sources", "write_artifact", {
+            fileName: "no-sources.md",
+            content: "# Evidence gap\n\nNo local evidence was selected.\n",
+            calculationIds: [],
           });
     }
     throw new Error(`Unexpected request: ${prompt}`);

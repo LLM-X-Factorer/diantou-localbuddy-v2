@@ -122,6 +122,7 @@ button { cursor: pointer; }
 .status-pill.interrupted i { background: #d98d38; }
 .error-banner { margin-bottom: 14px; padding: 10px 12px; color: #983b38; background: #fbe6e4; border: 1px solid #f0c4c1; border-radius: 9px; font-size: 11px; }
 .success-banner { margin-bottom: 14px; padding: 10px 12px; color: #216342; background: #e7f5ec; border: 1px solid #c3e3cf; border-radius: 9px; font-size: 10px; overflow-wrap: anywhere; }
+.warning-banner { margin-bottom: 14px; padding: 10px 12px; color: #765312; background: #fff5cf; border: 1px solid #e5cf80; border-radius: 9px; font-size: 10px; line-height: 1.5; }
 .run-content { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
 .summary-strip { display: grid; grid-template-columns: repeat(3,1fr); margin-bottom: 15px; overflow: hidden; border: 1px solid #dcdedb; border-radius: 13px; background: rgba(255,255,255,.58); }
 .summary-metric { display: grid; grid-template-columns: 1fr auto; padding: 12px 15px; border-right: 1px solid #e1e2df; }
@@ -230,6 +231,16 @@ button { cursor: pointer; }
 .composer { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding: 10px 12px; border: 1px solid #d6d8d5; border-radius: 14px; background: #fff; box-shadow: 0 9px 27px rgba(32,45,65,.08); }
 .composer textarea { width: 100%; height: 46px; padding: 3px 2px; color: #26394f; resize: none; border: 0; outline: none; background: transparent; font-size: 11px; line-height: 1.5; }
 .composer textarea::placeholder { color: #a3abb5; }
+.research-sources { display: grid; gap: 7px; padding: 8px 9px; border: 1px solid #dfe5e2; border-radius: 9px; background: #f7faf8; }
+.research-sources-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.research-sources-heading > span:first-child { display: grid; gap: 2px; min-width: 0; }
+.research-sources-heading strong { color: #29465d; font-size: 9px; }
+.research-sources-heading small, .research-sources p { margin: 0; color: #718295; font-size: 8px; line-height: 1.45; }
+.research-source-actions { display: flex; flex: 0 0 auto; gap: 5px; }
+.research-source-actions button { padding: 5px 7px; color: #285a4a; border: 1px solid #bfd8cd; border-radius: 7px; background: #eaf5ef; font-size: 8px; font-weight: 750; }
+.research-source-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.research-source-chip { display: inline-flex; align-items: center; max-width: 240px; padding: 4px 5px 4px 7px; color: #31546d; border: 1px solid #d4dee4; border-radius: 999px; background: #fff; font-size: 8px; }
+.research-source-chip > button { margin-left: 5px; padding: 0 3px; color: #8797a4; border: 0; background: transparent; font-size: 11px; line-height: 1; }
 .extensions-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: 0 0 auto; min-height: 32px; padding: 6px 9px; color: #5b6d82; border: 1px solid #dfe3e4; border-radius: 8px; background: #f5f7f7; font-size: 8px; font-weight: 750; white-space: nowrap; }
 .extensions-toggle span { color: #8c99a7; font-size: 8px; }
 .extensions-config { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; padding: 9px; border: 1px solid #e2e3df; border-radius: 9px; background: #f8f8f5; }
@@ -293,7 +304,9 @@ button { cursor: pointer; }
 .failed-recovery-panel h2 { margin: 4px 0 6px; color: #703a37; font-size: 14px; }
 .failed-recovery-panel p { max-width: 720px; margin: 0; color: #775956; font-size: 10px; line-height: 1.6; }
 .failed-recovery-panel small { display: block; max-width: 720px; margin-top: 7px; overflow-wrap: anywhere; color: #9c5f5a; font: 8px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
-.failed-recovery-panel > button { flex: none; padding: 9px 12px; color: #fff; border: 0; border-radius: 8px; background: #a34d48; font-size: 9px; font-weight: 700; }
+.failed-recovery-panel .recovery-actions button { flex: none; padding: 9px 12px; color: #fff; border: 0; border-radius: 8px; background: #a34d48; font-size: 9px; font-weight: 700; }
+.failed-recovery-panel .recovery-actions button:disabled { cursor: default; opacity: .42; }
+.failed-recovery-panel .replay-button { color: #8b403c; border: 1px solid #e1b7b3; background: #fff; }
 .recovery-panel button:disabled, .worktree-actions button:disabled { cursor: default; opacity: .42; }
 .recovery-actions { display: flex; flex-direction: column; align-items: stretch; gap: 7px; }
 .recovery-panel .replay-button { color: #7f5726; border: 1px solid #dfbf91; background: #fff7ea; }

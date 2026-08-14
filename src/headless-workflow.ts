@@ -22,6 +22,7 @@ import type { ModelProvider } from "./provider.js";
 import type { ProcessSharedCapacity } from "./process-shared-provider.js";
 import type { OAuthRedirectHandler } from "./mcp-oauth.js";
 import { WorkflowPlanner } from "./planner.js";
+import { researchSourceCatalog, researchSourceSummary } from "./research-sources.js";
 import {
   MultiAgentScheduler,
   type SchedulerResumeState,
@@ -34,13 +35,13 @@ import {
   type TrustProfile,
 } from "./tool-runtime.js";
 import { createWorkspaceTools } from "./workspace-tools.js";
-import { buildWorkspaceSnapshot } from "./workspace-manifest.js";
 import type { ToolApprovalHandler } from "./tool-approval.js";
 
 export interface HeadlessWorkflowOptions {
   provider: ModelProvider;
   eventStore: EventStore;
   workspaceRoot: string;
+  sourcePaths?: readonly string[];
   artifactRoot: string;
   artifactRegistry?: ArtifactRegistry;
   globalConcurrency?: number;
@@ -94,20 +95,6 @@ export class HeadlessWorkflow {
     let extensions: PreparedRunExtensions | undefined;
 
     try {
-      const workspaceRoot = await realpath(this.#options.workspaceRoot);
-      const artifactRootInput = resolve(this.#options.artifactRoot);
-      await mkdir(artifactRootInput, { recursive: true });
-      const artifactRoot = await realpath(artifactRootInput);
-      const checkpointRoot = resolve(
-        this.#options.checkpointRoot ?? resolve(dirname(artifactRoot), "checkpoint"),
-      );
-      const checkpointStore = new ResearchCheckpointStore(checkpointRoot);
-      const snapshot = await buildWorkspaceSnapshot(workspaceRoot);
-      const artifactRegistry = this.#options.artifactRegistry
-        ?? new JsonArtifactRegistry(resolve(checkpointRoot, "artifacts.json"));
-      const calculationRegistry = new JsonCalculationRegistry(
-        resolve(checkpointRoot, "calculations.json"),
-      );
       if (!resume) {
         await eventStore.append({
           type: "run.started",
@@ -118,10 +105,26 @@ export class HeadlessWorkflow {
             runtimeOwner: this.#options.runtimeOwner ?? "core",
             providerId: this.#options.providerId ?? "unknown",
             trustProfile: this.#options.trustProfile ?? "balanced",
+            sourceCount: this.#options.sourcePaths?.length ?? 0,
           },
         });
         lifecycleStarted = true;
       }
+      const workspaceRoot = await realpath(this.#options.workspaceRoot);
+      const artifactRootInput = resolve(this.#options.artifactRoot);
+      await mkdir(artifactRootInput, { recursive: true });
+      const artifactRoot = await realpath(artifactRootInput);
+      const checkpointRoot = resolve(
+        this.#options.checkpointRoot ?? resolve(dirname(artifactRoot), "checkpoint"),
+      );
+      const checkpointStore = new ResearchCheckpointStore(checkpointRoot);
+      const sources = await researchSourceCatalog(this.#options.sourcePaths ?? []);
+      const sourcePaths = sources.map((source) => source.path);
+      const artifactRegistry = this.#options.artifactRegistry
+        ?? new JsonArtifactRegistry(resolve(checkpointRoot, "artifacts.json"));
+      const calculationRegistry = new JsonCalculationRegistry(
+        resolve(checkpointRoot, "calculations.json"),
+      );
       extensions = await prepareRunExtensions({
         workspace: workspaceRoot,
         checkpointRoot,
@@ -142,7 +145,7 @@ export class HeadlessWorkflow {
           runId,
           workspace: workspaceRoot,
           goal,
-          snapshot,
+          sourcePaths,
         });
         if (!inspection.available || inspection.manifest === undefined) {
           throw new ResumeBlockedError(inspection.reason ?? "checkpoint is unavailable");
@@ -161,15 +164,16 @@ export class HeadlessWorkflow {
         plan = await planner.plan(
           runId,
           goal,
-          snapshot.manifest,
+          researchSourceSummary(sources),
           signal,
           extensionPlannerContext(extensions),
+          sources.length > 0,
         );
         await checkpointStore.initialize({
           runId,
           workspace: workspaceRoot,
           goal,
-          snapshot,
+          sourcePaths,
           plan,
         });
         await eventStore.append({
@@ -177,13 +181,13 @@ export class HeadlessWorkflow {
           runId,
           data: {
             mode: "research",
-            workspaceSha256: snapshot.sha256,
-            workspaceComplete: snapshot.complete,
+            sourceCount: sourcePaths.length,
+            semantics: "explicit-sources-and-read-evidence",
           },
         });
       }
       const tools = await createWorkspaceTools({
-        workspaceRoot,
+        sourcePaths,
         artifactRoot,
         artifactRegistry,
         calculationRegistry,
@@ -213,7 +217,15 @@ export class HeadlessWorkflow {
         checkpointStore,
         onCheckpoint: this.#options.onCheckpoint,
       });
-      const definition = compilePlan(runId, goal, workspaceRoot, plan, extensions);
+      const definition = compilePlan(
+        runId,
+        goal,
+        workspaceRoot,
+        plan,
+        sources.length > 0,
+        researchSourceSummary(sources),
+        extensions,
+      );
       let resumeState: SchedulerResumeState | undefined;
       if (restoredCheckpoints !== undefined) {
         const tasks = new Map<string, SchedulerResumeTask>();
@@ -326,6 +338,8 @@ function compilePlan(
   goal: string,
   workspaceRoot: string,
   plan: Awaited<ReturnType<WorkflowPlanner["plan"]>>,
+  hasLocalSources: boolean,
+  sourceSummary: readonly string[],
   extensions?: PreparedRunExtensions,
 ): RunDefinition {
   const skillInstructions = extensions?.systemInstructions("research") ?? "";
@@ -336,7 +350,10 @@ function compilePlan(
       id: `worker-${index + 1}`,
       role: "worker",
       instructions: [
-        "You are a local evidence worker. Read the supplied files and report grounded findings with file references.",
+        hasLocalSources
+          ? "You are an evidence worker. Only the explicitly selected local sources below are available; the project directory is not a source. Search filenames on demand, read relevant files, and cite logical source paths."
+          : "You are an evidence worker. No local sources were selected, and the project directory is not available as evidence. Use only enabled extensions or the task description, and state evidence gaps instead of inventing facts.",
+        `Local source catalog:\n${sourceSummary.join("\n")}`,
         skillInstructions,
       ].filter(Boolean).join("\n\n"),
       capabilities: ["worker"],
@@ -348,6 +365,7 @@ function compilePlan(
     role: "integrator",
     instructions: [
       "You integrate worker outputs into a truthful final artifact. Preserve disagreements and missing evidence.",
+      "Preserve source provenance from worker outputs, including source titles, dates, and URLs, near the claims they support.",
       skillInstructions,
     ].filter(Boolean).join("\n\n"),
     capabilities: ["integrate"],
@@ -358,7 +376,11 @@ function compilePlan(
     title: task.title,
     input: {
       instructions: `${task.instructions}\n\nOverall goal: ${goal}`,
-      availableTools: unique(["list_files", "read_file", "compare_ratios", ...extensionTools]),
+      availableTools: unique([
+        ...(hasLocalSources ? ["search_files", "read_file"] : []),
+        "compare_ratios",
+        ...extensionTools,
+      ]),
     },
     requiredCapabilities: ["worker"],
     workspace: { resourceId: workspaceRoot, access: "read" as const },
@@ -377,8 +399,10 @@ function compilePlan(
             plan.integration.instructions,
             `Write the complete result with write_artifact using fileName ${plan.integration.fileName}.`,
             "After the tool succeeds, return a short completion summary.",
-            "Every numeric claim must cite its [calculationId] on the same line.",
-            "Pass every registered calculationId to write_artifact; the write is rejected if any calculation is missing or any numeric claim is unregistered.",
+            "Preserve source provenance from dependency results, including source titles, dates, and URLs, near the claims they support.",
+            "Every derived numeric calculation (such as a ratio, percentage, rate, or growth comparison) must cite its [calculationId] on the same line.",
+            "Dates, source facts, identifiers, and URLs do not require calculations unless you derive a new value from them.",
+            "Pass every registered calculationId to write_artifact; the write is rejected if any calculation is missing or any derived numeric calculation is unregistered.",
           ].join("\n"),
           availableTools: unique(["write_artifact", "compare_ratios", ...extensionTools]),
         },
