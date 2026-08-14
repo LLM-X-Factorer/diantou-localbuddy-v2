@@ -1,17 +1,17 @@
 # LocalBuddy V2 0.11.2 Known Limitations
 
-> 本文是 `v0.11.2 / M10.4 Explicit Research Sources` 私有 Engineering Alpha 候选的负面能力清单；当前灰度与发布优先 Windows，macOS 保留本机回归，Linux 降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
+> 本文是 `v0.11.2 / M10.4 Explicit Research Sources` 私有 Engineering Alpha Release 的负面能力清单；当前灰度与发布优先 Windows，macOS 保留本机回归，Linux 降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
 
 ## Platform and distribution
 
-- Windows `v0.11.2` Setup/ZIP 只有在 Tag workflow 完成原生打包、安装版合成灰度和回下载校验后才算发布；`v0.11.1` 的既有证据不能自动转移到新版本。该门禁仍不覆盖终端用户设备上的 SmartScreen、标准用户/UAC、真实 Provider 与真实网络；
+- Windows `v0.11.2` Setup/ZIP 已通过 Tag workflow 的原生打包、安装版合成灰度和回下载校验并发布。该门禁使用 Windows Server 2025 管理员 Runner 和确定性 Mock Provider，仍不覆盖终端用户设备上的 SmartScreen、标准用户/UAC、真实 Provider 与真实网络；
 - Windows 没有受支持的本地进程隔离宿主，检查命令和本地进程型扩展 fail closed；
 - Linux `0.11.x` DEB 历史上已由 `ubuntu-24.04` Runner 原生构建；当前 Linux 只保留每周/手动维护，不进入 PR 或 Release 门禁，真实图形桌面与 Secret Service 验收暂不优先；
 - macOS 包是 ad-hoc 签名，未启用生产 Hardened Runtime，未 notarize；
 - Windows 包未做代码签名，可能出现 SmartScreen 提示；
 - Tag workflow 只发布 Windows x64 Setup/ZIP；Linux 与 macOS 不自动进入 GitHub Release。Windows Release 前运行安装版合成灰度；
 - `windows-2025` 是 Windows Server 2025 管理员 Runner，不能覆盖 Windows 11 的 SmartScreen、Defender、标准用户/UAC、DPI、输入法、睡眠或企业代理；
-- 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。`0.11.2` 候选已复查 registry：Forge `latest` 仍为 7.11.2，Forge 8 仍为 alpha；private Engineering Alpha 继续接受干净 Runner 上的打包期风险并跟踪稳定迁移；
+- 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。`0.11.2` Tag 前已复查 registry：Forge `latest` 仍为 7.11.2，Forge 8 仍为 alpha；private Engineering Alpha 继续接受干净 Runner 上的打包期风险并跟踪稳定迁移；
 - 更新协议只下载、验签并 staging，不会自动替换正在使用的应用。
 
 ## Product experience

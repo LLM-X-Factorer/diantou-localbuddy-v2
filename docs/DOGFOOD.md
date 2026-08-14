@@ -1,6 +1,6 @@
 # LocalBuddy V2 Dogfood Plan
 
-> 状态：`active`。当前源码版本为 `v0.11.2 / M10.4 Explicit Research Sources` 候选。macOS arm64 的新资料选择 UI、原生文件选择器和包完整性已完成本机验收；大目录 deterministic resume 已通过。v4 explicit-sources 的真实 Provider Run、最终已安装应用恢复、Windows Tag 自动合成灰度、连续 7-14 天使用和 Windows 11 真人灰度仍是独立门禁。Windows 自动化边界见 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md)。本文不把单元测试、旧 v3 Run、静态 Guide、CI 产物或 workflow 配置重复计作新合同的真人 dogfooding。
+> 状态：`active`。当前源码版本为 `v0.11.2 / M10.4 Explicit Research Sources` 私有 Engineering Alpha Release。macOS arm64 的新资料选择 UI、原生文件选择器和包完整性已完成本机验收；大目录 deterministic resume 已通过；Windows Tag 自动门禁已完成原生构建、安装版合成灰度、恢复/重启矩阵和资产回下载校验。v4 explicit-sources 的真实 Provider Run、连续 7-14 天使用和 Windows 11 真人灰度仍是独立门禁。Windows 自动化边界见 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md)。本文不把单元测试、旧 v3 Run、静态 Guide、CI 产物或 workflow 配置重复计作新合同的真人 dogfooding。
 
 ## 目标
 
@@ -32,6 +32,8 @@
 自动化范围、触发方式和证据边界以 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 为准。它持续验证真实 Setup、安装版 App、Credential Manager、loopback Mock Provider、故障矩阵、Research Run、两个活动 Run、取消、硬退出恢复和重启持久化。
 
 当前基线为提交 `d686cd6`：[`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610) 已完成完整故障矩阵和 5 次额外重启，脱敏摘要 9 项检查全部通过；配套 [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 的 Windows 合同、macOS 回归和 Setup 无凭据首启也全部通过。
+
+`v0.11.2` 的固定发布基线为提交 `c9a7e4ab979ea7ef9760681f66e0e4a8a5962a8a`：[`Release Gate 31767365053`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31767365053) 已重新完成 Windows 原生 Setup/ZIP、安装版合成灰度、checkpoint 恢复、重启持久化、SHA-256 和发布；三项 Release 资产已回下载核验。该证据仍不等于 Windows 11 真人或真实 Provider dogfood。
 
 该阶段不使用真实 Provider Key，不产生模型费用，也不能证明 Windows 11 消费者桌面环境。
 

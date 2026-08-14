@@ -8,7 +8,7 @@
 
 ## 0.11.2 — 2026-08-14
 
-M10.4 Explicit Research Sources 私有 Engineering Alpha 候选。修复 Research 把运行目录误当资料库和恢复快照的根因；Windows-first Tag Release 仍需通过原生安装版合成灰度后才能发布资产。
+M10.4 Explicit Research Sources 私有 Engineering Alpha Release。修复 Research 把运行目录误当资料库和恢复快照的根因；Windows-first Tag Release 已通过原生安装版合成灰度，资产已发布并完成回下载核验。
 
 ### Changed
 
@@ -37,6 +37,7 @@ M10.4 Explicit Research Sources 私有 Engineering Alpha 候选。修复 Researc
 - macOS DMG：222,390,401 bytes，SHA-256 `f48c7c752a898700dab8379b4475f1ae67dc5fe2831c35f03b720678a5032488`；ZIP：221,174,198 bytes，SHA-256 `a77246a16a525685331d0e4f22703cd59f54d35c55c2a5046f765afa83a21444`；
 - `pnpm verify:mac-package` 证明版本、DMG 完整性、strict-deep ad-hoc 签名、14 个相对 symlink、Fuse、ASAR、内置浏览器和 Renderer smoke；最终 `app.asar` SHA-256 为 `fcdef5c6ef210f20a4dc05181a4a232a38528b367140df4620d664bab423f194`；
 - 最终打包 App 已在 macOS 实际重启，显式显示“运行位置”“本次资料”和“不扫描运行位置”，原生文件选择器可打开和取消。没有把既有 v3 whole-workspace Provider Run 冒充为 v4 explicit-sources 验收。
+- 提交 `c9a7e4ab979ea7ef9760681f66e0e4a8a5962a8a` 的 [`v0.11.2` Release Gate `31767365053`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31767365053) 通过 Windows 原生构建、安装版合成灰度、恢复/重启矩阵和发布；Release 的 Setup 为 266,290,688 bytes、SHA-256 `6ac196352396069e8df4d5a25d52654c9358e7dd8617028d2f887ce990c5f77f`，ZIP 为 274,222,866 bytes、SHA-256 `241a72634e82c241d6d64bc74eb124b6ac68e247300eab2afad0a129bb3a428a`；三项资产已在新临时目录回下载，清单与 GitHub digest 一致。
 
 ## 0.11.1 — 2026-08-13
 

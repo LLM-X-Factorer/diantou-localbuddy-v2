@@ -1,10 +1,10 @@
 # LocalBuddy V2 Roadmap after M10.4
 
-> **状态真源**：2026-08-14。当前候选为 `v0.11.2 / M10.4 Explicit Research Sources Engineering Alpha`。后续灰度与发布保持 Windows-first，Linux 只做每周/手动维护。阶段内证据以对应 Validation 和 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 为准。
+> **状态真源**：2026-08-14。当前私有 Release 为 `v0.11.2 / M10.4 Explicit Research Sources Engineering Alpha`。后续灰度与发布保持 Windows-first，Linux 只做每周/手动维护。阶段内证据以对应 Validation 和 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 为准。
 
 ## 当前里程碑
 
-### v0.11.2 · M10.4 Explicit Research Sources — private Engineering Alpha candidate
+### v0.11.2 · M10.4 Explicit Research Sources — private Engineering Alpha
 
 - Research 的运行记录位置不再自动成为模型资料库；
 - 用户按 Run 明确添加文件或资料目录，Planner/Worker 只看到逻辑 source ID，不看到绝对路径或整个运行目录清单；
@@ -13,7 +13,7 @@
 - v1-v3 whole-workspace Research checkpoint 和 replay fail closed，不在新语义下静默继续；
 - 自动门禁为 138 项，本机 136 passed、2 项 Windows-only 合同按平台跳过、0 failed；1,050 个无关文件的失败 Run resume 回归通过；
 - macOS `0.11.2` DMG/ZIP 已通过版本、DMG 完整性、ad-hoc 签名、14 个相对 symlink、Fuse、ASAR、内置浏览器和 Renderer smoke；最终打包 App 的资料选择 UI 与原生文件面板已完成实际 GUI 读回；
-- Windows `v0.11.2` Tag Release、Windows 11 真人灰度、真实 Provider v4 Run 和连续 dogfood 仍是独立门禁，不能由 macOS unit/package 证据替代。
+- Windows `v0.11.2` Tag Release 已通过原生构建、安装版合成灰度、恢复/重启矩阵和资产回下载核验；Windows 11 真人灰度、真实 Provider v4 Run 和连续 dogfood 仍是独立门禁，不能由托管 Runner 或 macOS unit/package 证据替代。
 
 规格与本机证据见 [`M3.4-SPEC.md`](M3.4-SPEC.md) 和 [`M10.4-VALIDATION.md`](M10.4-VALIDATION.md)。
 
@@ -144,7 +144,7 @@ M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批
 
 规格与本机证据见 [`M10.3-SPEC.md`](M10.3-SPEC.md) 和 [`M10.3-VALIDATION.md`](M10.3-VALIDATION.md)。
 
-### M10.4 · Explicit Research Sources — candidate
+### M10.4 · Explicit Research Sources — private Engineering Alpha released
 
 - 运行位置与资料输入成为两个明确产品对象；
 - Research 资料读取使用逻辑引用、路径约束和按需发现，不把整个目录树塞给 Planner；
@@ -152,7 +152,7 @@ M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批
 - 历史旧合同 fail closed，避免在用户不知情时改变证据语义；
 - 保留所有模型和工具动作的可审计事件，不把本地隐私路径暴露给模型。
 
-本机可证明范围已完成；Windows-first Release 和持续真实任务验证以 [`M10.4-VALIDATION.md`](M10.4-VALIDATION.md) 为准。
+本机与 Windows-first 托管发布门禁均已完成；持续真实任务和终端 Windows 11 验证仍以 [`M10.4-VALIDATION.md`](M10.4-VALIDATION.md) 为准。
 
 ## 外部门禁与明确暂缓
 
@@ -166,15 +166,17 @@ M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批
 
 ## 下一阶段候选，尚未立项
 
-M11 的正式范围必须从连续 dogfooding 结果产生。当前候选是：
+M11 的正式范围必须同时由连续 dogfooding 和 [`CODEX-BENCHMARK-2026-08-14.md`](CODEX-BENCHMARK-2026-08-14.md) 的本地差距验证产生。当前 P0 候选是：
 
-- 持久化的多轮工作线程，同时保持每次新 Run 与上下文选择可审计；
-- Project/Workspace 首页、跨工作区历史和待审批入口；
-- Markdown/TXT/PDF/DOCX 等资料摄取与显式上下文选择；
-- PDF/DOCX 等非纯文本 Artifact 的安全内嵌预览；
-- 启动前计划审阅、运行中重新规划和 Reviewer/Critic；
-- 跨 Run 的成本、时长、成功率和人工介入趋势；
-- Windows 执行宿主方案，仅在真机边界和威胁模型明确后实施。
+- Goal Contract：结果、约束、验证标准、资料集与 append-only 修订；
+- 启动前计划审阅，以及资料/权限变化时的显式 replan Gate；
+- 可检查和可 steering 的 Agent Session：阶段、预算、蒸馏结果、中断/追问/重试；
+- 独立只读 Reviewer/Critic：Artifact/patch 发现、退回、接受或带理由 override；
+- 基于现有 JSONL trace 的版本化 Eval 数据集和 deterministic graders。
+
+P1 候选是 Project/Thread/Run 分层、Project 资料集合但 Run 精确选集、Coding 前后台 Handoff/可恢复清理，以及可发现的 Skills/Plugins 权限卡。PDF/DOCX 摄取、非纯文本 Artifact 预览和跨 Run 趋势可按真实需求进入相邻增量。
+
+本地 Memory、Record-and-Replay 与 scheduled/background tasks 属于 P2。它们必须在 Goal、Review、Eval、通知/待处理入口和最小权限模型成熟后再立项；不能为了功能对标提前开放无人值守副作用。
 
 远程 Skill 市场、云同步、团队账号、无人值守外部副作用和完全自动更新不属于已批准的 M11 范围。
 

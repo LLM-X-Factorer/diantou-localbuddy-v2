@@ -1,6 +1,6 @@
 # LocalBuddy V2 Architecture
 
-> **状态基线**：2026-08-14，`v0.11.2 / M10.4` 私有 Engineering Alpha 候选。本文件描述当前架构事实；各历史 Validation 保留对应阶段当时的证据边界。
+> **状态基线**：2026-08-14，`v0.11.2 / M10.4` 私有 Engineering Alpha Release。本文件描述当前架构事实；各历史 Validation 保留对应阶段当时的证据边界。
 
 ## 1. 产品判断
 
@@ -226,6 +226,6 @@ Desktop 使用 Electron single-instance lock，避免两个桌面进程同时拥
 16. **M10.1 Local Dogfood Closure（已完成本机闭环）**：Run 指标投影、Artifact Gate 反馈/预算、失败 Run 安全 checkpoint 恢复、最近工作区、校验后的文本 Artifact 预览与显式继续、MCP stdio 脱敏失败诊断，以及真实 Coding commit/reverse-commit 验证。连续 7-14 天使用仍是开放门禁。
 17. **M10.2 First Trusted Run（已完成本机实现与 UI 验收）**：本地确定性 Guide、私有版本化偏好、Provider 布尔 readiness、显式合成教程工作区、只预填模板和真实 Run 状态提示。Guide 不属于 Run，不调用模型，也不进入审计指标；真实执行仍复用既有 Run 合同。
 18. **M10.3 Provider Setup（已发布）**：独立 Provider 一级入口、来源状态、安全保存/替换/删除、显式 `/models` 连接探针、紧凑 Composer 状态和缺失凭据启动拦截。Skills/MCP/Browser 继续作为可选扩展单独配置；Windows `v0.11.1` 已完成 Tag Release，终端用户设备验收仍开放。
-19. **M10.4 Explicit Research Sources（本机候选完成）**：运行位置与本次资料分离；本地 Research 工具只面向明确 source scope；目录按需有界搜索；checkpoint 只复核 read evidence；旧 implicit-workspace Run fail closed。macOS 包与 GUI 已验收，Windows `v0.11.2` Tag Gate 和真实 Provider v4 dogfood 仍待完成。
+19. **M10.4 Explicit Research Sources（已发布）**：运行位置与本次资料分离；本地 Research 工具只面向明确 source scope；目录按需有界搜索；checkpoint 只复核 read evidence；旧 implicit-workspace Run fail closed。macOS 包与 GUI 已验收，Windows `v0.11.2` Tag Gate、安装版合成灰度和资产回下载核验已完成；真实 Provider v4 dogfood 仍待完成。
 
 M11 尚未立项。持久化多轮工作线程、Project/Workspace 首页、资料摄取、非纯文本产物预览和更可控的多 Agent 交互属于候选方向，必须在连续 dogfooding 后再确定范围，不能写成已承诺能力。

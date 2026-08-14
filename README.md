@@ -4,7 +4,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 
 这不是 Craft Agents 的分支，也不包含腾讯 WorkBuddy 的私有实现。仓库只参考公开产品行为、通用 Agent 架构模式，以及我们自行定义的验收契约。
 
-> **产品判断（2026-08-14）**：`v0.11.2 / M10.4 Explicit Research Sources` 是当前私有 Engineering Alpha 候选。Research 已把运行记录位置与本次资料拆开，并以真正读取过的证据恢复 checkpoint；Windows-first Release 仍必须先通过原生安装版合成灰度。Windows 11 真人灰度仍开放；它不是公开分发版，也不是与 WorkBuddy 功能对等的商业产品。
+> **产品判断（2026-08-14）**：`v0.11.2 / M10.4 Explicit Research Sources` 是当前私有 Engineering Alpha Release。Research 已把运行记录位置与本次资料拆开，并以真正读取过的证据恢复 checkpoint；Windows-first 原生构建、安装版合成灰度、发布与资产回下载校验已经完成。Windows 11 真人灰度和 v4 真实 Provider 连续试用仍开放；它不是公开分发版，也不是与 WorkBuddy 功能对等的商业产品。
 
 ## 一页状态
 
@@ -18,7 +18,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 | 代码写回 | 独立 worktree、组合预检、人工 Gate、apply/commit/revert commit |
 | 恢复 | Research/Coding 同 Run checkpoint resume；失败 Run 可恢复未完成 Task 链，并保留 replay 兜底 |
 | 扩展 | 本地/签名 Skill、MCP stdio/HTTP/OAuth、受限 Playwright Browser |
-| 分发 | macOS `0.11.2` ad-hoc DMG/ZIP 已完成本机包与 GUI 验收；Windows `v0.11.2` 等待 Tag Release 门禁；Linux 仅维护 |
+| 分发 | macOS `0.11.2` ad-hoc DMG/ZIP 已完成本机包与 GUI 验收；Windows `v0.11.2` Setup/ZIP 已由私有 Release 发布并回下载核验；Linux 仅维护 |
 | 当前主动暂缓 | Developer ID、生产 Hardened Runtime、notarization、公开 Gatekeeper |
 
 M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M10.3 继续补齐它的必要前置条件：Provider 不再藏在扩展折叠区，凭据状态、管理动作、显式连接检查和启动门禁形成单一纵向闭环。保存不会自动联网；验证连接会明确把凭据发送到所示 Provider/Base URL 并只请求模型列表；真实 Run 仍必须由用户点击开始。连续真实 dogfooding 仍是开放验证门。
@@ -27,7 +27,9 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 
 - [`docs/QUICKSTART.md`](docs/QUICKSTART.md)：内部试用者从安装、凭证到第一个 Run 的最短路径；
 - [`docs/KNOWN-LIMITATIONS.md`](docs/KNOWN-LIMITATIONS.md)：`v0.11.2` 私有 Engineering Alpha 的已知限制和不能宣称的能力；
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)：当前 M10.3 架构事实；
+- [`docs/CODEX-BENCHMARK-2026-08-14.md`](docs/CODEX-BENCHMARK-2026-08-14.md)：基于 OpenAI 官方文档的 Codex 产品/Agent 基准、LocalBuddy 差距和优先级；
+- [`docs/AGENT-PRODUCT-PRINCIPLES.md`](docs/AGENT-PRODUCT-PRINCIPLES.md)：从真实故障、恢复、并发和发布中沉淀的长期 Agent 产品原则；
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)：当前 M10.4 架构事实；
 - [`docs/ROADMAP.md`](docs/ROADMAP.md)：已完成里程碑、外部门禁和待确认的下一阶段；
 - [`docs/RELEASE.md`](docs/RELEASE.md)：版本、Tag、CI、Release 与校验流程；
 - [`docs/DOGFOOD.md`](docs/DOGFOOD.md)：真实任务试用矩阵与退出口径；
@@ -239,7 +241,7 @@ pnpm make:win
 
 它们应分别在 Linux/Windows Runner 上执行；仓库不会把交叉编译配置冒充成目标平台运行验收。
 
-推送 `v*` Tag 会在 `windows-2025` Runner 上执行生产依赖审计、完整测试、Squirrel Setup/ZIP 构建和安装版合成灰度，并生成 LF 格式的 `SHA256SUMS-windows.txt`。发布作业确认 Tag 与 `package.json` 完全一致并复核清单后发布 Windows 资产；预发布 Tag 自动标记 prerelease。Linux 仅在每周/手动维护工作流中构建，不进入 Tag Release。当前候选为 `v0.11.2`，发布状态以 [`docs/M10.4-VALIDATION.md`](docs/M10.4-VALIDATION.md) 为准。
+推送 `v*` Tag 会在 `windows-2025` Runner 上执行生产依赖审计、完整测试、Squirrel Setup/ZIP 构建和安装版合成灰度，并生成 LF 格式的 `SHA256SUMS-windows.txt`。发布作业确认 Tag 与 `package.json` 完全一致并复核清单后发布 Windows 资产；预发布 Tag 自动标记 prerelease。Linux 仅在每周/手动维护工作流中构建，不进入 Tag Release。当前私有 Release 为 [`v0.11.2`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.11.2)，发布证据以 [`docs/M10.4-VALIDATION.md`](docs/M10.4-VALIDATION.md) 为准。
 
 ## Headless 真实运行
 
