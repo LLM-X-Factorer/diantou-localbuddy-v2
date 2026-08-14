@@ -1,10 +1,43 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
+import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const execFileAsync = promisify(execFile);
+
+test("assigns Canary versions above the latest stable release", async () => {
+  const script = resolve(repository, "scripts", "prepare-windows-canary-version.mjs");
+  const scenarios = [
+    { packageVersion: "0.12.2", stableTag: "v0.12.2", expected: "0.12.3-canary.38" },
+    { packageVersion: "0.12.3", stableTag: "v0.12.2", expected: "0.12.3-canary.38" },
+  ];
+
+  for (const scenario of scenarios) {
+    const workingDirectory = await mkdtemp(resolve(tmpdir(), "localbuddy-canary-version-"));
+    try {
+      await writeFile(
+        resolve(workingDirectory, "package.json"),
+        `${JSON.stringify({ version: scenario.packageVersion }, null, 2)}\n`,
+        "utf8",
+      );
+      const result = await execFileAsync(process.execPath, [script, "38", scenario.stableTag], {
+        cwd: workingDirectory,
+      });
+      const packageJson = JSON.parse(await readFile(resolve(workingDirectory, "package.json"), "utf8")) as {
+        version: string;
+      };
+      assert.equal(result.stdout.trim(), scenario.expected);
+      assert.equal(packageJson.version, scenario.expected);
+    } finally {
+      await rm(workingDirectory, { recursive: true, force: true });
+    }
+  }
+});
 
 test("declares Windows-first CI plus low-frequency Linux maintenance boundaries", async () => {
   const packageJson = JSON.parse(await readFile(resolve(repository, "package.json"), "utf8")) as {
@@ -48,6 +81,7 @@ test("declares Windows-first CI plus low-frequency Linux maintenance boundaries"
   assert.match(workflow, /Install Windows Setup and verify clean first launch without Provider credentials/);
   assert.match(workflow, /pnpm verify:first-run-windows-installer/);
   assert.match(workflow, /prepare-windows-canary-version\.mjs/);
+  assert.match(workflow, /LOCALBUDDY_UPGRADE_BASE_TAG/);
   assert.match(workflow, /localbuddy-windows-canary-feed/);
   assert.match(workflow, /verify-windows-installer-upgrade\.ps1/);
   assert.match(workflow, /Windows install and in-place upgrade/);

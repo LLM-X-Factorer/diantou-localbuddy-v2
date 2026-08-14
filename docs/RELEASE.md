@@ -79,6 +79,8 @@ Linux 不再进入 Tag Release。`.github/workflows/linux-maintenance.yml` 只�
 5. 在真实 Windows 11 设备执行安装、从上一稳定版升级、启动、凭证、真实 Provider Run、忙碌时更新阻断、恢复和卸载矩阵；
 6. 把真实结果写入 Validation 和 [`DOGFOOD.md`](DOGFOOD.md)。
 
+发布后的下一次 `main` CI 会读取最新稳定 Tag。若 `package.json` 仍等于该稳定版，Canary 自动使用下一个 patch 的预发布版本，例如 `v0.12.2` 之后生成 `0.12.3-canary.*`；这样文档提交也不会因为 Squirrel 拒绝稳定版降级为同号 prerelease 而失败。
+
 第 5 步当前未完成，不能由 Windows Server 2025 Runner 替代。Linux 图形桌面当前不属于 Windows-first 发布门禁。
 
 ## 5. 回滚与修复

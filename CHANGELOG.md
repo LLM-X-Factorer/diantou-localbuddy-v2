@@ -2,6 +2,12 @@
 
 本文件记录已经发布或准备发布的产品版本。里程碑范围和证据分别以 [`docs/ROADMAP.md`](docs/ROADMAP.md) 与对应的 `docs/M*-VALIDATION.md` 为准。
 
+## Unreleased
+
+### Fixed
+
+- Canary 版本现在会与最新稳定 Release 比较；发布后的下一次 `main` 构建自动进入下一 patch 的 prerelease 线，避免 Squirrel 把同号 `X.Y.Z-canary.*` 识别为低于已经安装的稳定 `X.Y.Z`。
+
 ## 0.12.2 — 2026-08-14
 
 Windows Canary 与安全原地更新候选。本版本把高频开发同步、安装器升级验证和未来稳定版应用内更新拆成三条独立通道；当前没有配置生产更新源，也没有完成 Windows 11 真机升级验收。

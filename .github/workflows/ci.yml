@@ -61,12 +61,17 @@ jobs:
       - name: Assign unique Windows Canary identity
         if: github.event_name == 'push'
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          $version = node scripts/prepare-windows-canary-version.mjs $env:GITHUB_RUN_NUMBER
+          $stableTag = gh release view --repo $env:GITHUB_REPOSITORY --json tagName --jq .tagName
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($stableTag)) { throw "Could not resolve latest stable Release" }
+          $version = node scripts/prepare-windows-canary-version.mjs $env:GITHUB_RUN_NUMBER $stableTag
           if ($LASTEXITCODE -ne 0) { throw "Could not assign Canary version" }
           "LOCALBUDDY_BUILD_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "LOCALBUDDY_BUILD_CHANNEL=canary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "LOCALBUDDY_BUILD_SHA=$env:GITHUB_SHA" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "LOCALBUDDY_UPGRADE_BASE_TAG=$stableTag" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Build Windows installer and portable ZIP
         run: pnpm make:win
       - name: Install Windows Setup and verify clean first launch without Provider credentials
@@ -78,9 +83,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           New-Item -ItemType Directory -Force previous-release | Out-Null
-          $tag = gh release view --repo $env:GITHUB_REPOSITORY --json tagName --jq .tagName
-          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($tag)) { throw "Could not resolve previous stable Release" }
-          gh release download $tag --repo $env:GITHUB_REPOSITORY --pattern "LocalBuddy-*-Setup.exe" --dir previous-release
+          if ([string]::IsNullOrWhiteSpace($env:LOCALBUDDY_UPGRADE_BASE_TAG)) { throw "Latest stable Release was not resolved" }
+          gh release download $env:LOCALBUDDY_UPGRADE_BASE_TAG --repo $env:GITHUB_REPOSITORY --pattern "LocalBuddy-*-Setup.exe" --dir previous-release
           if ($LASTEXITCODE -ne 0) { throw "Could not download previous stable Setup" }
           $setups = @(Get-ChildItem previous-release -File -Filter "LocalBuddy-*-Setup.exe")
           if ($setups.Count -ne 1) { throw "Expected exactly one previous stable Setup" }

@@ -49,7 +49,7 @@ pwsh -NoLogo -NoProfile -File scripts/sync-windows-canary.ps1 -RunId 123456789
 pwsh -NoLogo -NoProfile -File scripts/sync-windows-canary.ps1 -NoLaunch
 ```
 
-Canary 的 UI 会显示 `channel + version + short SHA`，用于确认“我实际打开的是哪一包”。本地工作区含未提交修改时会额外显示 `+dirty`，不能把它冒充为精确提交构建。CI 为每次 `main` 构建生成唯一的 `X.Y.Z-canary.<run-number>` 版本，避免 Squirrel 把不同提交当成同一个版本。
+Canary 的 UI 会显示 `channel + version + short SHA`，用于确认“我实际打开的是哪一包”。本地工作区含未提交修改时会额外显示 `+dirty`，不能把它冒充为精确提交构建。CI 为每次 `main` 构建生成唯一的 `X.Y.Z-canary.<run-number>` 版本，避免 Squirrel 把不同提交当成同一个版本。Canary 版本还必须高于最新稳定版：若仓库版本已经等于最新 Release，例如 `0.12.2`，发布后的下一包会自动进入 `0.12.3-canary.*`，不会尝试用较低的 `0.12.2-canary.*` 覆盖 `0.12.2`。
 
 ### 隔离边界
 
