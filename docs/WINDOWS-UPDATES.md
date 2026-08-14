@@ -1,6 +1,6 @@
 # Windows 开发更新与安装升级
 
-> 状态：`0.12.2` 候选实现。当前正式私有 Release 仍是 `v0.12.1`。本页把“日常拿新包”“验证安装升级”“稳定版自动更新”分开，避免用一种流程冒充另外两种验收。
+> 状态：当前私有 `v0.12.2` Engineering Alpha Release。本页把“日常拿新包”“验证安装升级”“稳定版自动更新”分开，避免用一种流程冒充另外两种验收。生产更新源仍未配置。
 
 ## 一句话方案
 
@@ -83,7 +83,7 @@ Windows 安装包已经接入 Electron/Squirrel 更新控制器，但默认不�
 - Renderer 不能设置 feed，也不能绕过 Main 的空闲检查；
 - 当前没有静默安装、强制更新或自动回滚。
 
-Release workflow 从 `0.12.2` 起准备 Setup、便携 ZIP、`RELEASES`、full NuGet package 和 SHA-256 清单。生产 feed 的托管、访问控制、代码签名和真实 Windows 11 升级仍是发布前的独立决策，不能因为产物已经生成就写成“自动更新已上线”。
+Release workflow 从 `0.12.2` 起发布 Setup、便携 ZIP、`RELEASES`、full NuGet package 和 SHA-256 清单。生产 feed 的托管、访问控制、代码签名和真实 Windows 11 升级仍是后续独立决策，不能因为 feed 原始产物已经发布就写成“自动更新已上线”。
 
 ## 验收记录
 

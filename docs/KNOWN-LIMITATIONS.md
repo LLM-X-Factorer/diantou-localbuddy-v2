@@ -1,17 +1,17 @@
-# LocalBuddy V2 0.12.2 Candidate Known Limitations
+# LocalBuddy V2 0.12.2 Known Limitations
 
-> 当前正式私有 Release 是 `v0.12.1`；本文同时覆盖源码中的 `0.12.2` Windows 更新候选。当前灰度与发布优先 Windows，macOS 保留本机回归，Linux 降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
+> 本文覆盖当前私有 `v0.12.2 / Windows Canary + Safe Updates` Engineering Alpha Release。当前灰度与发布优先 Windows，macOS 保留本机回归，Linux 降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
 
 ## Platform and distribution
 
-- Windows `v0.12.1` Setup/ZIP 已通过 Tag workflow 的原生打包、安装版合成灰度和回下载校验并发布。该门禁使用 Windows Server 2025 管理员 Runner 和确定性 Mock Provider，仍不覆盖终端用户设备上的 SmartScreen、标准用户/UAC、真实 Provider 与真实网络；
+- Windows `v0.12.2` Setup/ZIP/full nupkg/RELEASES 已通过 Tag workflow 的原生打包、安装版合成灰度、`v0.12.1 -> v0.12.2` 原地升级、profile 保留和回下载 SHA-256 校验并发布。该门禁使用 Windows Server 2025 管理员 Runner 和确定性 Mock Provider，仍不覆盖终端用户设备上的 SmartScreen、标准用户/UAC、真实 Provider 与真实网络；
 - Windows 没有受支持的本地进程隔离宿主，检查命令和本地进程型扩展 fail closed；
 - Linux `0.11.x` DEB 历史上已由 `ubuntu-24.04` Runner 原生构建；当前 Linux 只保留每周/手动维护，不进入 PR 或 Release 门禁，真实图形桌面与 Secret Service 验收暂不优先；
 - macOS 包是 ad-hoc 签名，未启用生产 Hardened Runtime，未 notarize；
 - Windows 包未做代码签名，可能出现 SmartScreen 提示；
 - Tag workflow 只发布 Windows x64 Setup/ZIP；Linux 与 macOS 不自动进入 GitHub Release。Windows Release 前运行安装版合成灰度；
 - `windows-2025` 是 Windows Server 2025 管理员 Runner，不能覆盖 Windows 11 的 SmartScreen、Defender、标准用户/UAC、DPI、输入法、睡眠或企业代理；
-- 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。`0.12.1` Tag 前已复查并继续在干净 Runner 上隔离打包；private Engineering Alpha 跟踪稳定上游迁移；
+- 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。`0.12.2` Tag 前已复查并继续在干净 Runner 上隔离打包；private Engineering Alpha 跟踪稳定上游迁移；
 - 平台无关的 Ed25519 更新协议仍只下载、验签并 staging；Windows Squirrel updater 只有显式配置 feed 时才启用，当前没有生产 feed、静默安装或自动回滚；
 - `pnpm windows:canary` 只隔离 Electron user-data 和构建目录，不隔离系统 Credential Manager 或工作区 `.localbuddy/`；Canary 与稳定版不应同时写同一测试工作区；
 - CI 的上一稳定版原地升级使用 Windows Server 2025 一次性管理员 Runner，只能证明安装器与 profile 保留合同，不能代替 Windows 11 真人升级。

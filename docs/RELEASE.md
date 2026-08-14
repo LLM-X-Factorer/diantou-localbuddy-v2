@@ -1,6 +1,6 @@
 # LocalBuddy V2 Release Runbook
 
-> 当前私有 Release：`v0.12.1 / M11.1 Goal Contract + Plan Review Engineering Alpha`；源码版本 `0.12.2` 是 Windows 更新候选。Git push、Tag 和 Release 都是外部状态变更，必须获得用户明确授权。
+> 当前私有 Release：`v0.12.2 / Windows Canary + Safe Updates Engineering Alpha`，并继续包含 M11.1 Goal Contract + Plan Review。Git push、Tag 和 Release 都是外部状态变更，必须获得用户明确授权。
 
 ## 1. 发布真源
 
@@ -29,7 +29,7 @@ pnpm audit --audit-level high
 git diff --check
 ```
 
-生产依赖审计必须通过。完整审计同时覆盖打包工具；任何告警都必须写入当前 Validation 并在 Tag 前复查，不能通过静默 ignore 伪装成全绿。当前发布证据与边界见 [`M11.1-VALIDATION.md`](M11.1-VALIDATION.md) 和 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
+生产依赖审计必须通过。完整审计同时覆盖打包工具；任何告警都必须写入当前 Validation 并在 Tag 前复查，不能通过静默 ignore 伪装成全绿。当前发布证据与边界见 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md) 和 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
 
 4. 检查仓库中没有 Provider Key、用户 Prompt、`.localbuddy/` 运行状态和私有 Artifact；
 5. 更新 Changelog、Roadmap、Known Limitations 和对应 Validation；
@@ -89,4 +89,4 @@ Linux 不再进入 Tag Release。`.github/workflows/linux-maintenance.yml` 只�
 - 集成代码回滚使用普通 revert commit，不 amend 已推送提交；
 - Release 事实变化后同步 Changelog、Known Limitations 和 Validation。
 
-`v0.12.1` 的发布和回下载证据见 [`M11.1-VALIDATION.md`](M11.1-VALIDATION.md)；`v0.11.2` 的 Explicit Research Sources Release 见 [`M10.4-VALIDATION.md`](M10.4-VALIDATION.md)；更早的 Windows-first Release 见对应历史 Validation。旧 Release 不回写、不替换；Linux 资产不进入 `v0.12.1`。
+`v0.12.2` 的发布、原地升级和回下载证据见 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md)；`v0.12.1` 的 Goal Contract Release 见 [`M11.1-VALIDATION.md`](M11.1-VALIDATION.md)。旧 Release 不回写、不替换；Linux 资产不进入 `v0.12.2`。

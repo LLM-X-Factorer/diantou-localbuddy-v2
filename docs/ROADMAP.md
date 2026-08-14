@@ -1,17 +1,19 @@
 # LocalBuddy V2 Roadmap after M11.1
 
-> **状态真源**：2026-08-14。当前私有 Release 为 `v0.12.1 / M11.1 Goal Contract + Plan Review`；源码 `0.12.2` 正在准备 Windows Canary 与安全原地更新候选。`v0.12.0` Tag Gate 在打包前因 Windows 测试清理竞态停止，没有 Release 或资产。后续灰度保持 Windows-first，Linux 只做每周/手动维护。阶段内证据以对应 Validation、[`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 和 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md) 为准。
+> **状态真源**：2026-08-14。当前私有 Release 为 `v0.12.2 / Windows Canary + Safe Updates`，并继续包含 M11.1 Goal Contract + Plan Review。Windows 原生 Canary、稳定版合成灰度、`v0.12.1 -> v0.12.2` 原地升级、Release 和资产回下载均已完成；生产 feed 与 Windows 11 真人升级仍开放。后续灰度保持 Windows-first，Linux 只做每周/手动维护。
 
-### v0.12.2 · Windows Canary + Safe Updates — candidate
+## 当前里程碑
+
+### v0.12.2 · Windows Canary + Safe Updates — private Engineering Alpha
 
 - 日常 Windows 开发改用按成功 CI、Git SHA 和唯一 Canary 版本同步的便携包，不覆盖稳定版，也不要求每次卸载重装；
 - `main` 与 Tag Release 分别验证干净安装和 `上一稳定版 -> 当前目标版` 原地升级，profile 保留与新 UI 版本都必须读回；
 - Desktop 加入可配置 Squirrel updater，但默认关闭；用户手动检查，下载后需确认，Run 启动/执行和 Integration 写回期间禁止退出安装；
-- Release 候选从 Setup/ZIP 扩展为同时保留 `RELEASES` 和 full `.nupkg`，但生产 feed、代码签名与 Windows 11 真人升级尚未完成。
+- Release 已从 Setup/ZIP 扩展为同时发布 `RELEASES` 和 full `.nupkg`；生产 feed、代码签名与 Windows 11 真人升级尚未完成。
 
 设计与开放证据见 [`WINDOWS-UPDATES.md`](WINDOWS-UPDATES.md) 和 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md)。该增量是交付/测试闭环，不改变 M11 Agent Session、Reviewer 或 Eval 的产品优先级。
 
-## 当前里程碑
+## 历史里程碑
 
 ### v0.12.1 · M11.1 Goal Contract + Plan Review — private Engineering Alpha
 
