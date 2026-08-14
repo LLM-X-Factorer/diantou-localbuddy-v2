@@ -4,15 +4,23 @@ import { dirname, resolve } from "node:path";
 
 import type { DesktopRunMode, StartDesktopRunRequest } from "./desktop-contract.js";
 import { normalizeRunExtensions, type RunExtensionSelection } from "./extension-config.js";
+import {
+  compileGoalContract,
+  normalizeGoalContract,
+  type GoalContract,
+} from "./goal-contract.js";
 import { normalizeProviderSelection, type ProviderSelection } from "./provider-config.js";
 import { canonicalResearchSourcePaths } from "./research-sources.js";
 import { normalizeTrustProfile, type TrustProfile } from "./tool-runtime.js";
 
 export interface PersistedRunRequest {
-  version: 4;
+  version: 5;
   runId: string;
   workspace: string;
-  goal: string;
+  goalContract: GoalContract;
+  /** Compiled execution text. For v1-v4 loads this preserves the legacy checkpoint identity. */
+  executionGoal: string;
+  planReview: "required" | "skipped";
   concurrency: number;
   mode: DesktopRunMode;
   sourcePaths: readonly string[];
@@ -30,6 +38,7 @@ export interface SaveRunRequestInput extends StartDesktopRunRequest {
   workspace: string;
   recoveryOf?: string;
   runtimeOwner?: "desktop" | "cli";
+  planReview?: "required" | "skipped";
 }
 
 export class RunRequestStore {
@@ -50,15 +59,21 @@ export class RunRequestStore {
     const sourcePaths = mode === "research"
       ? await canonicalResearchSourcePaths(input.sourcePaths ?? [])
       : [];
-    const request: PersistedRunRequest = {
-      version: 4,
+    const goalContract = normalizeGoalContract({
+      outcome: input.goal,
+      constraints: input.goalConstraints,
+      verificationCriteria: input.verificationCriteria,
+    });
+    const stored = {
+      version: 5 as const,
       runId: input.runId,
       workspace,
-      goal: input.goal,
+      goalContract,
+      planReview: input.planReview ?? "skipped",
       concurrency: input.concurrency,
       mode,
       sourcePaths,
-      sourceContract: "explicit",
+      sourceContract: "explicit" as const,
       createdAt: this.#clock().toISOString(),
       runtimeOwner: input.runtimeOwner ?? "desktop",
       recoveryOf: input.recoveryOf,
@@ -69,12 +84,12 @@ export class RunRequestStore {
     const requestPath = resolve(runRoot, "run-request.json");
     const temporaryPath = `${requestPath}.${process.pid}.${randomUUID()}.tmp`;
     await mkdir(dirname(requestPath), { recursive: true });
-    await writeFile(temporaryPath, `${JSON.stringify(request, null, 2)}\n`, {
+    await writeFile(temporaryPath, `${JSON.stringify(stored, null, 2)}\n`, {
       encoding: "utf8",
       flag: "wx",
     });
     await rename(temporaryPath, requestPath);
-    return request;
+    return { ...stored, executionGoal: compileGoalContract(goalContract) };
   }
 
   async load(
@@ -90,21 +105,35 @@ export class RunRequestStore {
     }
     const request = raw as Record<string, unknown>;
     if (
-      (request.version !== 1 && request.version !== 2 && request.version !== 3 && request.version !== 4)
+      (request.version !== 1
+        && request.version !== 2
+        && request.version !== 3
+        && request.version !== 4
+        && request.version !== 5)
       || request.runId !== expectedRunId
       || typeof request.workspace !== "string"
-      || typeof request.goal !== "string"
       || typeof request.concurrency !== "number"
       || (request.mode !== "research" && request.mode !== "code")
       || typeof request.createdAt !== "string"
       || Number.isNaN(Date.parse(request.createdAt))
       || (request.runtimeOwner !== "desktop" && request.runtimeOwner !== "cli")
       || (request.recoveryOf !== undefined && typeof request.recoveryOf !== "string")
-      || ((request.version === 2 || request.version === 3 || request.version === 4)
+      || ((request.version === 2
+        || request.version === 3
+        || request.version === 4
+        || request.version === 5)
         && (request.provider === undefined || request.extensions === undefined))
-      || (request.version === 3 && request.trustProfile === undefined)
+      || ((request.version === 3 || request.version === 4 || request.version === 5)
+        && request.trustProfile === undefined)
+      || (request.version !== 5 && typeof request.goal !== "string")
       || (request.version === 4
         && (request.trustProfile === undefined
+          || !Array.isArray(request.sourcePaths)
+          || !request.sourcePaths.every((item) => typeof item === "string")
+          || request.sourceContract !== "explicit"))
+      || (request.version === 5
+        && (request.goalContract === undefined
+          || (request.planReview !== "required" && request.planReview !== "skipped")
           || !Array.isArray(request.sourcePaths)
           || !request.sourcePaths.every((item) => typeof item === "string")
           || request.sourceContract !== "explicit"))
@@ -117,18 +146,24 @@ export class RunRequestStore {
     const extensions = normalizeRunExtensions(
       request.version === 1 ? undefined : request.extensions as RunExtensionSelection | undefined,
     );
-    const trustProfile = normalizeTrustProfile(
-      request.version === 3 || request.version === 4 ? request.trustProfile : undefined,
-    );
-    const sourcePaths = request.version === 4 && request.mode === "research"
+    const trustProfile = normalizeTrustProfile(request.version >= 3 ? request.trustProfile : undefined);
+    const sourcePaths = request.version >= 4 && request.mode === "research"
       ? await canonicalResearchSourcePaths(request.sourcePaths as string[])
       : [];
-    const sourceContract = request.version === 4 || request.mode === "code"
+    const sourceContract = request.version >= 4 || request.mode === "code"
       ? "explicit" as const
       : "legacy-workspace" as const;
+    const goalContract = request.version === 5
+      ? normalizeGoalContract(request.goalContract as GoalContract)
+      : normalizeGoalContract({ outcome: request.goal as string });
+    const executionGoal = request.version === 5
+      ? compileGoalContract(goalContract)
+      : request.goal as string;
     validateRequest({
       workspace: request.workspace,
-      goal: request.goal,
+      goal: goalContract.outcome,
+      goalConstraints: goalContract.constraints,
+      verificationCriteria: goalContract.verificationCriteria,
       concurrency: request.concurrency,
       mode: request.mode,
       provider,
@@ -147,10 +182,12 @@ export class RunRequestStore {
       throw new Error("persisted Run Request workspace does not match the selected workspace");
     }
     return {
-      version: 4,
+      version: 5,
       runId: request.runId,
       workspace,
-      goal: request.goal,
+      goalContract,
+      executionGoal,
+      planReview: request.version === 5 && request.planReview === "required" ? "required" : "skipped",
       concurrency: request.concurrency,
       mode: request.mode,
       sourcePaths,
@@ -175,9 +212,11 @@ function validateRequest(request: StartDesktopRunRequest): void {
   if (request.workspace.trim().length === 0) {
     throw new Error("Workspace is required");
   }
-  if (request.goal.trim().length === 0 || request.goal.length > 20_000) {
-    throw new Error("Goal must contain between 1 and 20,000 characters");
-  }
+  normalizeGoalContract({
+    outcome: request.goal,
+    constraints: request.goalConstraints,
+    verificationCriteria: request.verificationCriteria,
+  });
   if (!Number.isInteger(request.concurrency) || request.concurrency < 1 || request.concurrency > 8) {
     throw new Error("Persisted concurrency must be an integer between 1 and 8");
   }

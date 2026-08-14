@@ -31,6 +31,7 @@ import {
   type DesktopArtifactActionRequest,
   type DesktopRunActionRequest,
   type RevertDesktopIntegrationRequest,
+  type ResolveDesktopPlanReviewRequest,
   type ResolveDesktopToolApprovalRequest,
   type StartDesktopRunRequest,
   type UpdateDesktopOnboardingRequest,
@@ -75,6 +76,7 @@ let mainWindow: BrowserWindow | null = null;
 let recentWorkspaceStore: RecentWorkspaceStore | undefined;
 let onboardingStateStore: OnboardingStateStore | undefined;
 const runManager = new DesktopRunManager({
+  requirePlanReview: true,
   createProvider(selection) {
     return createConfiguredProvider(selection);
   },
@@ -349,7 +351,7 @@ function registerIpcHandlers(): void {
 
   ipcMain.handle(DESKTOP_CHANNELS.cancelRun, async (event, runId: unknown) => {
     assertTrustedSender(event);
-    runManager.cancel(expectString(runId, "runId"));
+    await runManager.cancel(expectString(runId, "runId"));
   });
 
   ipcMain.handle(DESKTOP_CHANNELS.restartRun, async (event, request: unknown) => {
@@ -448,6 +450,11 @@ function registerIpcHandlers(): void {
     return runManager.resolveToolApproval(parseResolveToolApprovalRequest(request));
   });
 
+  ipcMain.handle(DESKTOP_CHANNELS.resolvePlanReview, async (event, request: unknown) => {
+    assertTrustedSender(event);
+    return runManager.resolvePlanReview(parseResolvePlanReviewRequest(request));
+  });
+
   ipcMain.handle(
     DESKTOP_CHANNELS.openArtifact,
     async (event, request: unknown) => {
@@ -482,6 +489,11 @@ function parseStartRequest(value: unknown): StartDesktopRunRequest {
   return {
     workspace: expectString(record.workspace, "workspace"),
     goal: expectString(record.goal, "goal"),
+    goalConstraints: expectOptionalStringArray(record.goalConstraints, "goalConstraints"),
+    verificationCriteria: expectOptionalStringArray(
+      record.verificationCriteria,
+      "verificationCriteria",
+    ),
     concurrency: expectNumber(record.concurrency, "concurrency"),
     mode: expectMode(record.mode),
     sourcePaths: record.sourcePaths === undefined
@@ -588,6 +600,19 @@ function parseResolveToolApprovalRequest(value: unknown): ResolveDesktopToolAppr
     workspace: expectString(record.workspace, "workspace"),
     runId: expectString(record.runId, "runId"),
     approvalId: expectString(record.approvalId, "approvalId"),
+    decision,
+  };
+}
+
+function parseResolvePlanReviewRequest(value: unknown): ResolveDesktopPlanReviewRequest {
+  const record = expectRecord(value, "Plan Review request");
+  const decision = expectString(record.decision, "decision");
+  if (decision !== "approve" && decision !== "reject") {
+    throw new Error("Plan Review decision must be approve or reject");
+  }
+  return {
+    workspace: expectString(record.workspace, "workspace"),
+    runId: expectString(record.runId, "runId"),
     decision,
   };
 }
@@ -746,6 +771,9 @@ async function captureSmokeScreenshotIfRequested(window: BrowserWindow): Promise
     };
     const providerEntry = await waitFor('.provider-entry');
     const startButton = await waitFor('.start-button');
+    const goalContract = await waitFor('.goal-contract-heading');
+    const goalFields = [...document.querySelectorAll('.goal-outcome-field textarea, .goal-contract-grid textarea')];
+    const planReviewGuideVisible = document.body?.innerText?.includes('批准前 Worker 不启动') ?? false;
     providerEntry.click();
     const providerDialog = await waitFor('.provider-settings-dialog');
     const providerChoices = [...providerDialog.querySelectorAll('.provider-choice-grid button')]
@@ -757,6 +785,10 @@ async function captureSmokeScreenshotIfRequested(window: BrowserWindow): Promise
       api: typeof globalThis.localbuddy,
       rootChildren: document.getElementById('root')?.childElementCount ?? -1,
       guideVisible: document.querySelector('.guide-state') !== null,
+      goalContractVisible: goalContract.innerText.includes('GOAL CONTRACT'),
+      goalFieldCount: goalFields.length,
+      planReviewGuideVisible,
+      startButtonText: startButton.innerText.trim(),
       providerEntry: providerEntry.innerText.trim(),
       providerDialogVisible: providerDialog !== null,
       providerChoices,

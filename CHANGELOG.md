@@ -2,11 +2,25 @@
 
 本文件记录已经发布或准备发布的产品版本。里程碑范围和证据分别以 [`docs/ROADMAP.md`](docs/ROADMAP.md) 与对应的 `docs/M*-VALIDATION.md` 为准。
 
-## Unreleased
+## 0.12.0 — 2026-08-14
+
+### Added
+
+- 新增版本化 Goal Contract：Desktop 将结果、约束和完成标准分开填写，Run Request v5 持久化结构化合同；
+- 新增执行前 Plan Review：Orchestrator 先生成可审阅任务计划，Desktop 用户批准后 Worker 才启动，拒绝则保留审计记录并结束 Run；
+- Plan Review 的 Goal、完整计划和 Run scope 由 SHA-256 绑定，pending/approved/rejected/cancelled 状态可跨应用重启恢复。
 
 ### Changed
 
 - 将 GitHub Actions 升级到声明 Node 24 runtime 的当前主版本，关闭 `v0.11.2` Release Gate 中旧 Action 被 Runner 强制从 Node 20 切到 Node 24 的兼容性告警；发布 Tag 与既有资产保持不变。
+- CLI/Core 保持非交互执行，Desktop Main 才默认要求 Plan Review；旧只含裸 goal 的调用继续使用原执行文本，避免破坏 v1-v4 checkpoint 身份；
+- Windows 安装版合成灰度新增真实 Plan Review 页面批准，并停止把没有显式添加的本地文件冒充为已读取资料。
+
+### Evidence
+
+- `pnpm check`：152 项；macOS 本机 150 passed、2 项 Windows-only 合同按平台跳过、0 failed；批准、拒绝、重启恢复、批准指纹、决定审计修复和旧 checkpoint 兼容矩阵通过；
+- macOS 源码 Electron 界面已实际读回 Goal Contract 三个输入区、完成标准启动门禁和 Guide 的“批准前 Worker 不启动”；本次未点击生成计划，没有真实 Provider 调用。
+- macOS `0.12.0` DMG/ZIP 已通过版本、DMG 完整性、ad-hoc 签名、Fuse、ASAR、内置浏览器和无凭据首启；最终 App 还通过回环合成 Provider 的计划展示/批准、成功、双 Run 取消、checkpoint 恢复、重启历史和凭据脱敏矩阵，生产依赖审计无已知漏洞。
 
 ## 0.11.2 — 2026-08-14
 

@@ -46,6 +46,10 @@ import type { ModelProvider } from "./provider.js";
 import type { ProcessSharedCapacity } from "./process-shared-provider.js";
 import type { OAuthRedirectHandler } from "./mcp-oauth.js";
 import {
+  PlanReviewEndedError,
+  type PlanReviewHandler,
+} from "./plan-review.js";
+import {
   MultiAgentScheduler,
   type SchedulerResumeState,
   type SchedulerResumeTask,
@@ -76,6 +80,7 @@ export interface CodingWorkflowOptions {
   processTaskCapacity?: ProcessSharedCapacity;
   oauthRedirectHandler?: OAuthRedirectHandler;
   trustProfile?: TrustProfile;
+  planReview?: PlanReviewHandler;
 }
 
 export interface CodingWorkflowResult {
@@ -191,6 +196,14 @@ export class CodingWorkflow {
           data: { mode: "code", baselineHead },
         });
       }
+      await this.#options.planReview?.({
+        mode: "code",
+        tasks: plan.tasks.map((task) => ({ ...task })),
+        integration: {
+          ...plan.integration,
+          verificationCommands: plan.integration.verificationCommands,
+        },
+      }, signal);
       for (const task of plan.tasks) {
         const restored = await worktreeManager.restoreOrCreate(
           repoRoot,
@@ -422,9 +435,17 @@ export class CodingWorkflow {
     } catch (error) {
       if (lifecycleStarted) {
         await eventStore.append({
-          type: signal?.aborted === true ? "run.cancelled" : "run.failed",
+          type: signal?.aborted === true || error instanceof PlanReviewEndedError
+            ? "run.cancelled"
+            : "run.failed",
           runId,
           data: { error: error instanceof Error ? error.message : String(error) },
+        });
+      } else if (resume && error instanceof PlanReviewEndedError) {
+        await eventStore.append({
+          type: "run.cancelled",
+          runId,
+          data: { error: error.message, mode: "code" },
         });
       } else if (resume) {
         await eventStore.append({

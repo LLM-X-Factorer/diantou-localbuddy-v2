@@ -16,6 +16,8 @@ test("persists and validates a replayable Run Request", async (context) => {
     runId: "run-request-test",
     workspace,
     goal: "Verify persisted recovery input",
+    goalConstraints: ["Do not modify the primary checkout"],
+    verificationCriteria: ["The replay input remains byte-stable"],
     concurrency: 2,
     mode: "code",
     recoveryOf: "run-source",
@@ -32,12 +34,23 @@ test("persists and validates a replayable Run Request", async (context) => {
   assert.deepEqual(loaded, saved);
   assert.equal(loaded.createdAt, "2026-08-08T10:00:00.000Z");
   assert.equal(loaded.recoveryOf, "run-source");
-  assert.equal(loaded.version, 4);
+  assert.equal(loaded.version, 5);
+  assert.equal(loaded.planReview, "skipped");
+  assert.deepEqual(loaded.goalContract, {
+    version: 1,
+    revision: 1,
+    outcome: "Verify persisted recovery input",
+    constraints: ["Do not modify the primary checkout"],
+    verificationCriteria: ["The replay input remains byte-stable"],
+  });
+  assert.match(loaded.executionGoal, /Verification criteria:/);
   assert.deepEqual(loaded.sourcePaths, []);
   assert.equal(loaded.trustProfile, "strict");
   assert.equal(loaded.provider.id, "openai");
   assert.deepEqual(loaded.extensions.skillIds, ["browser-evidence"]);
-  assert.match(await readFile(join(runRoot, "run-request.json"), "utf8"), /Verify persisted recovery input/);
+  const persistedJson = await readFile(join(runRoot, "run-request.json"), "utf8");
+  assert.match(persistedJson, /Verify persisted recovery input/);
+  assert.doesNotMatch(persistedJson, /"goal":/);
 });
 
 test("migrates a v2 Run Request to balanced trust without rewriting history", async (context) => {
@@ -59,7 +72,10 @@ test("migrates a v2 Run Request to balanced trust without rewriting history", as
   }, null, 2)}\n`, "utf8");
 
   const loaded = await new RunRequestStore().load(runRoot, workspace, "run-v2");
-  assert.equal(loaded.version, 4);
+  assert.equal(loaded.version, 5);
+  assert.equal(loaded.executionGoal, "Legacy replay input");
+  assert.equal(loaded.goalContract.outcome, "Legacy replay input");
+  assert.equal(loaded.planReview, "skipped");
   assert.equal(loaded.trustProfile, "balanced");
   assert.deepEqual(loaded.sourcePaths, []);
   assert.equal(loaded.sourceContract, "legacy-workspace");

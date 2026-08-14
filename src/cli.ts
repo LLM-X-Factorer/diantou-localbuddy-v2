@@ -96,7 +96,7 @@ async function execute(options: CliOptions): Promise<void> {
         extensions: persisted.extensions,
         trustProfile: persisted.trustProfile,
         processTaskCapacity,
-      })[options.resume ? "resume" : "run"](options.runId, persisted.goal).then((result) => ({
+      })[options.resume ? "resume" : "run"](options.runId, persisted.executionGoal).then((result) => ({
         result,
         integration: result.integration,
         worktrees: result.worktrees.map((worktree) => ({
@@ -118,7 +118,7 @@ async function execute(options: CliOptions): Promise<void> {
         extensions: persisted.extensions,
         trustProfile: persisted.trustProfile,
         processTaskCapacity,
-      })[options.resume ? "resume" : "run"](options.runId, persisted.goal).then((result) => ({
+      })[options.resume ? "resume" : "run"](options.runId, persisted.executionGoal).then((result) => ({
         result,
         integration: undefined as IntegrationProposal | undefined,
         worktrees: [],

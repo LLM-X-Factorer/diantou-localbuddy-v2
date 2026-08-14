@@ -9,7 +9,7 @@ const fixtureModule = await import(pathToFileURL(
 ).href) as {
   startWindowsGrayMockProvider(apiKey: string): Promise<{
     baseUrl: string;
-    state: { modelRequests: number; completionRequests: number };
+    state: { modelRequests: number; completionRequests: number; cancelledRequests: number };
     close(): Promise<void>;
   }>;
 };
@@ -62,3 +62,44 @@ test("Windows gray Provider fixture streams a valid OpenAI-compatible plan", asy
   assert.match(body, /data: \[DONE\]/);
   assert.equal(provider.state.completionRequests, 1);
 });
+
+test("Windows cancel gray still plans before its Worker request becomes interruptible", async (context) => {
+  const apiKey = "localbuddy-public-fixture-key";
+  const provider = await fixtureModule.startWindowsGrayMockProvider(apiKey);
+  context.after(() => provider.close());
+  const headers = {
+    authorization: `Bearer ${apiKey}`,
+    "content-type": "application/json",
+  };
+  const plan = await fetch(`${provider.baseUrl}/v1/chat/completions`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      response_format: { type: "json_object" },
+      messages: [{ role: "user", content: "Plan WINDOWS_GRAY_CANCEL" }],
+    }),
+  });
+  assert.equal(plan.status, 200);
+  assert.match(await plan.text(), /inspect-fixture/);
+
+  const controller = new AbortController();
+  const worker = fetch(`${provider.baseUrl}/v1/chat/completions`, {
+    method: "POST",
+    headers,
+    signal: controller.signal,
+    body: JSON.stringify({
+      messages: [{ role: "user", content: "WINDOWS_GRAY_CANCEL Task ID: inspect-fixture" }],
+    }),
+  });
+  await waitUntil(() => provider.state.cancelledRequests === 1);
+  controller.abort();
+  await assert.rejects(worker, /abort/u);
+});
+
+async function waitUntil(predicate: () => boolean): Promise<void> {
+  const deadline = Date.now() + 2_000;
+  while (!predicate()) {
+    if (Date.now() >= deadline) throw new Error("Timed out waiting for fixture state");
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 5));
+  }
+}

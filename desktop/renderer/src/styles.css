@@ -53,7 +53,7 @@ button { cursor: pointer; }
 .run-item strong { font-size: 12px; font-weight: 600; }
 .run-item small { margin-top: 3px; color: #7891b7; font-size: 9px; }
 .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #7387a8; box-shadow: 0 0 0 3px rgba(115,135,168,.12); }
-.status-dot.running, .status-dot.planning, .status-dot.starting { background: #ffc928; box-shadow: 0 0 0 3px rgba(255,201,40,.15); }
+.status-dot.running, .status-dot.planning, .status-dot.starting, .status-dot.awaiting_plan_approval { background: #ffc928; box-shadow: 0 0 0 3px rgba(255,201,40,.15); }
 .status-dot.succeeded { background: #58c58a; }
 .status-dot.failed { background: #ef6a67; }
 .status-dot.interrupted { background: #d98d38; }
@@ -115,8 +115,8 @@ button { cursor: pointer; }
 .status-pill i { width: 6px; height: 6px; background: #71869a; border-radius: 50%; }
 .status-pill.succeeded { color: #24704b; background: #def1e6; }
 .status-pill.succeeded i { background: #36a66b; }
-.status-pill.running, .status-pill.planning { color: #8a6900; background: #fff1bd; }
-.status-pill.running i, .status-pill.planning i { background: #e8ad00; }
+.status-pill.running, .status-pill.planning, .status-pill.awaiting_plan_approval { color: #8a6900; background: #fff1bd; }
+.status-pill.running i, .status-pill.planning i, .status-pill.awaiting_plan_approval i { background: #e8ad00; }
 .status-pill.failed { color: #9e3e3a; background: #fbe1df; }
 .status-pill.interrupted { color: #855116; background: #f8e5cb; }
 .status-pill.interrupted i { background: #d98d38; }
@@ -229,7 +229,18 @@ button { cursor: pointer; }
 .guide-event-rail .event-item p { white-space: normal; }
 
 .composer { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding: 10px 12px; border: 1px solid #d6d8d5; border-radius: 14px; background: #fff; box-shadow: 0 9px 27px rgba(32,45,65,.08); }
-.composer textarea { width: 100%; height: 46px; padding: 3px 2px; color: #26394f; resize: none; border: 0; outline: none; background: transparent; font-size: 11px; line-height: 1.5; }
+.goal-contract-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 2px 2px 4px; }
+.goal-contract-heading > div { display: grid; gap: 2px; }
+.goal-contract-heading strong { color: #263f5a; font-size: 10px; }
+.goal-contract-heading small { color: #7c8b9b; font-size: 8px; line-height: 1.4; }
+.goal-contract-heading > span { color: #9a7a1e; font-size: 7px; font-weight: 900; letter-spacing: .12em; }
+.goal-outcome-field, .goal-contract-grid label { display: grid; gap: 5px; min-width: 0; padding: 8px 9px; border: 1px solid #e0e3df; border-radius: 9px; background: #fafbf9; }
+.goal-outcome-field > span, .goal-contract-grid label > span { color: #3b5169; font-size: 8px; font-weight: 800; }
+.goal-contract-grid label > span small { color: #8d98a4; font-size: 7px; font-weight: 500; }
+.goal-contract-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.composer textarea { box-sizing: border-box; width: 100%; height: 46px; padding: 3px 2px; color: #26394f; resize: vertical; border: 0; outline: none; background: transparent; font-size: 11px; line-height: 1.5; }
+.goal-outcome-field textarea { min-height: 54px; }
+.goal-contract-grid textarea { min-height: 50px; font-size: 9px; }
 .composer textarea::placeholder { color: #a3abb5; }
 .research-sources { display: grid; gap: 7px; padding: 8px 9px; border: 1px solid #dfe5e2; border-radius: 9px; background: #f7faf8; }
 .research-sources-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -336,6 +347,38 @@ button { cursor: pointer; }
 .deny-tool-button { color: #913e38; background: #f6dfdd; }
 .approve-tool-button { color: #fff; background: #9a6325; }
 
+.plan-review-panel { border-color: #dfc467; background: #fffcf3; box-shadow: 0 10px 28px rgba(115,85,15,.08); }
+.plan-review-panel.approved { border-color: #b9d9c6; background: #f7fcf8; }
+.plan-review-panel.rejected, .plan-review-panel.cancelled { border-color: #e2c4c1; background: #fff9f8; }
+.plan-review-heading > div { align-items: flex-start; }
+.plan-review-heading h2 { margin-bottom: 3px; }
+.plan-review-heading p { margin: 0; color: #7d745e; font-size: 8px; line-height: 1.45; }
+.plan-review-status { padding: 5px 8px; color: #76570a; border-radius: 999px; background: #ffebb0; font-size: 8px; font-weight: 800; white-space: nowrap; }
+.plan-review-status.approved { color: #236344; background: #dff2e6; }
+.plan-review-status.rejected, .plan-review-status.cancelled { color: #913e38; background: #f5dfdd; }
+.plan-review-contract { display: grid; grid-template-columns: 1.25fr .8fr .9fr; gap: 8px; margin-bottom: 9px; }
+.plan-review-contract > div { min-width: 0; padding: 10px; border: 1px solid #e6dfca; border-radius: 9px; background: rgba(255,255,255,.7); }
+.plan-review-contract span { display: block; margin-bottom: 5px; color: #8b7a52; font-size: 7px; font-weight: 850; letter-spacing: .05em; }
+.plan-review-contract strong { display: block; color: #34465a; font-size: 10px; line-height: 1.5; white-space: pre-wrap; }
+.plan-review-contract ul { display: grid; gap: 4px; margin: 0; padding-left: 13px; color: #526275; font-size: 8px; line-height: 1.45; }
+.plan-review-scope { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
+.plan-review-scope span { padding: 4px 7px; color: #5d6d7e; border: 1px solid #dce1df; border-radius: 999px; background: #f7f8f6; font-size: 7px; }
+.plan-review-tasks { display: grid; gap: 6px; }
+.plan-review-tasks article { display: grid; grid-template-columns: 28px minmax(0,1fr); gap: 9px; padding: 9px 10px; border: 1px solid #e3e1d8; border-radius: 9px; background: #fff; }
+.plan-review-tasks article > span { display: grid; place-items: center; width: 25px; height: 25px; color: #7b610f; border-radius: 7px; background: #ffecae; font-size: 8px; font-weight: 900; }
+.plan-review-tasks strong { color: #33495f; font-size: 9px; }
+.plan-review-tasks p { margin: 3px 0 0; color: #657487; font-size: 8px; line-height: 1.5; white-space: pre-wrap; }
+.plan-review-tasks small { display: block; margin-top: 5px; color: #89939d; font: 7px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+.plan-review-tasks .plan-review-integration { border-style: dashed; background: #f7faf7; }
+.plan-review-tasks .plan-review-integration > span { color: #28694a; background: #def0e5; }
+.plan-review-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; padding-top: 9px; border-top: 1px solid #e5dfce; }
+.plan-review-footer > small { color: #998b6e; font: 7px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.plan-review-footer > div { display: flex; gap: 7px; }
+.plan-review-footer button { padding: 8px 11px; border: 0; border-radius: 8px; font-size: 8px; font-weight: 800; }
+.plan-review-footer button:disabled { cursor: default; opacity: .45; }
+.reject-plan-button { color: #913e38; background: #f6dfdd; }
+.approve-plan-button { color: #fff; background: #0a3472; }
+
 .event-rail { display: flex; flex-direction: column; min-width: 0; padding: 28px 18px 16px; background: #edece8; border-left: 1px solid #d9d9d5; overflow: hidden; }
 .event-header { display: flex; align-items: center; justify-content: space-between; padding: 5px 2px 17px; color: #2e4258; font-size: 11px; font-weight: 800; }
 .event-header > div { display: flex; align-items: center; gap: 7px; }
@@ -365,4 +408,5 @@ button { cursor: pointer; }
   .composer { padding-left: 10px; padding-right: 10px; }
   .composer-actions { align-items: stretch; gap: 8px; }
   .composer-buttons { align-self: end; }
+  .plan-review-contract { grid-template-columns: 1fr; }
 }

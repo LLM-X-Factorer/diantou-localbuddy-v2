@@ -57,6 +57,12 @@ export function projectRun(
       };
     } else if (event.type === "plan.created") {
       status = "running";
+    } else if (event.type === "plan.review_requested") {
+      status = "awaiting_plan_approval";
+    } else if (event.type === "plan.approved") {
+      status = "running";
+    } else if (event.type === "plan.rejected") {
+      status = "cancelling";
     } else if (event.type === "run.succeeded") {
       status = "succeeded";
       completedAt = event.timestamp;

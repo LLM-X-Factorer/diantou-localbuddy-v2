@@ -31,7 +31,8 @@ export async function startWindowsGrayMockProvider(expectedApiKey) {
       if (request.method === "POST" && url.pathname.endsWith("/chat/completions")) {
         state.completionRequests += 1;
         const body = JSON.parse(await readRequestBody(request));
-        if (JSON.stringify(body).includes("WINDOWS_GRAY_CANCEL")) {
+        const isPlanningRequest = body.response_format?.type === "json_object";
+        if (!isPlanningRequest && JSON.stringify(body).includes("WINDOWS_GRAY_CANCEL")) {
           state.cancelledRequests += 1;
           await waitForCancellation(response);
           return;
@@ -136,7 +137,7 @@ function respondToCompletion(body, response) {
       tasks: [{
         id: "inspect-fixture",
         title: "Inspect Windows gray fixture",
-        instructions: "Read evidence.txt and report the exact non-sensitive fixture statement.",
+        instructions: "Return the exact non-sensitive deterministic fixture statement.",
       }],
       integration: {
         instructions: "Write the grounded fixture statement to a Markdown artifact.",
@@ -147,10 +148,6 @@ function respondToCompletion(body, response) {
   }
 
   if (promptText.includes("Task ID: inspect-fixture")) {
-    if (!toolResultIds.has("gray-read")) {
-      sendToolCall(response, "gray-read", "read_file", { path: "evidence.txt" });
-      return;
-    }
     sendContent(response, "The local Windows gray fixture confirms an installed-app research run.");
     return;
   }

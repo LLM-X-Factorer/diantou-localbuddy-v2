@@ -89,6 +89,10 @@ assert.equal(diagnostics.url, "localbuddy://app/index.html");
 assert.equal(diagnostics.api, "object");
 assert.equal(diagnostics.rootChildren, 1);
 assert.ok(diagnostics.bodyCharacters > 100);
+assert.equal(diagnostics.goalContractVisible, true);
+assert.equal(diagnostics.goalFieldCount, 3);
+assert.equal(diagnostics.planReviewGuideVisible, true);
+assert.match(diagnostics.startButtonText, /生成计划/);
 assert.ok((await stat(screenshot)).size > 10_000);
 
 await execFileAsync("hdiutil", ["verify", dmgPath]);

@@ -28,6 +28,10 @@ try {
   assert.equal(diagnostics.rootChildren, 1);
   assert.ok(diagnostics.bodyCharacters > 100);
   assert.equal(diagnostics.guideVisible, true);
+  assert.equal(diagnostics.goalContractVisible, true);
+  assert.equal(diagnostics.goalFieldCount, 3);
+  assert.equal(diagnostics.planReviewGuideVisible, true);
+  assert.match(diagnostics.startButtonText, /生成计划/);
   assert.equal(diagnostics.providerDialogVisible, true);
   assert.match(diagnostics.providerEntry, /DeepSeek/);
   assert.match(diagnostics.providerEntry, /未配置/);

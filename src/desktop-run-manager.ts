@@ -10,6 +10,7 @@ import type {
   DesktopRunActionRequest,
   DesktopRunView,
   RevertDesktopIntegrationRequest,
+  ResolveDesktopPlanReviewRequest,
   ResolveDesktopToolApprovalRequest,
   StartDesktopRunRequest,
 } from "./desktop-contract.js";
@@ -21,6 +22,10 @@ import type { EventStore, PendingRuntimeEvent, RuntimeEvent } from "./event-stor
 import { JsonlEventStore } from "./event-store.js";
 import { ExecutionCoordinator } from "./execution-coordinator.js";
 import { HeadlessWorkflow } from "./headless-workflow.js";
+import {
+  goalContractCharacterCount,
+  normalizeGoalContract,
+} from "./goal-contract.js";
 import { IntegrationManager, readVerifiedIntegrationPatch } from "./integration-manager.js";
 import type { ModelProvider } from "./provider.js";
 import type { ProcessSharedCapacity } from "./process-shared-provider.js";
@@ -43,6 +48,11 @@ import {
   type PendingToolApproval,
 } from "./tool-approval.js";
 import { normalizeTrustProfile } from "./tool-runtime.js";
+import {
+  InteractivePlanReviewBroker,
+  PlanReviewStore,
+  type PlanReviewRecord,
+} from "./plan-review.js";
 
 export interface DesktopRunManagerOptions {
   createProvider(selection: ProviderSelection): Promise<ModelProvider>;
@@ -50,6 +60,7 @@ export interface DesktopRunManagerOptions {
   globalConcurrency?: number;
   processTaskCapacity?: ProcessSharedCapacity;
   oauthRedirectHandler?: OAuthRedirectHandler;
+  requirePlanReview?: boolean;
 }
 
 interface ActiveRun {
@@ -58,6 +69,7 @@ interface ActiveRun {
   execution: Promise<void>;
   view: DesktopRunView;
   approvalBroker?: InteractiveToolApprovalBroker;
+  planReviewBroker?: InteractivePlanReviewBroker;
   processLease: WorkspaceProcessLease;
 }
 
@@ -79,6 +91,7 @@ export class DesktopRunManager {
   readonly #processTaskCapacity?: ProcessSharedCapacity;
   readonly #workspaceLocks = new WorkspaceProcessLockManager();
   readonly #oauthRedirectHandler?: OAuthRedirectHandler;
+  readonly #requirePlanReview: boolean;
   readonly #active = new Map<string, ActiveRun>();
   readonly #launching = new Set<string>();
   readonly #listeners = new Set<(run: DesktopRunView) => void>();
@@ -89,6 +102,7 @@ export class DesktopRunManager {
     this.#executionCoordinator = new ExecutionCoordinator(options.globalConcurrency ?? 3);
     this.#processTaskCapacity = options.processTaskCapacity;
     this.#oauthRedirectHandler = options.oauthRedirectHandler;
+    this.#requirePlanReview = options.requirePlanReview ?? false;
   }
 
   subscribe(listener: (run: DesktopRunView) => void): () => void {
@@ -125,7 +139,9 @@ export class DesktopRunManager {
       return await this.#start(
         {
           workspace,
-          goal: persisted.goal,
+          goal: persisted.goalContract.outcome,
+          goalConstraints: persisted.goalContract.constraints,
+          verificationCriteria: persisted.goalContract.verificationCriteria,
           concurrency: persisted.concurrency,
           mode: persisted.mode,
           sourcePaths: persisted.sourcePaths,
@@ -142,6 +158,7 @@ export class DesktopRunManager {
           });
           this.#emit(projectRun(request.runId, workspace, await eventStore.list(request.runId)));
         },
+        persisted.planReview,
       );
     } finally {
       await lease.release();
@@ -199,14 +216,15 @@ export class DesktopRunManager {
         if (active === undefined) {
           return;
         }
-        active.view = withPendingApprovals(
+        active.view = decorateRun(
           projectRun(request.runId, workspace, events, active.view.status),
           active.approvalBroker?.list(),
+          active.planReviewBroker?.current,
         );
         this.#emit(active.view);
       });
       const abortController = new AbortController();
-      const initialView: DesktopRunView = { ...source, status: "starting" };
+      const initialView = await this.#withPersistentRunState({ ...source, status: "starting" });
       const placeholder: ActiveRun = {
         abortController,
         events,
@@ -217,6 +235,10 @@ export class DesktopRunManager {
       this.#active.set(request.runId, placeholder);
       const approvalBroker = this.#createApprovalBroker(request.runId, eventStore);
       placeholder.approvalBroker = approvalBroker;
+      const planReviewBroker = persisted.planReview === "required"
+        ? this.#createPlanReviewBroker(request.runId, runRoot, persisted, eventStore)
+        : undefined;
+      placeholder.planReviewBroker = planReviewBroker;
       this.#launching.delete(request.runId);
       this.#emit(initialView);
 
@@ -238,6 +260,7 @@ export class DesktopRunManager {
               extensionApprovalHandler: approvalBroker,
               processTaskCapacity: this.#processTaskCapacity,
               oauthRedirectHandler: this.#oauthRedirectHandler,
+              planReview: planReviewBroker?.review.bind(planReviewBroker),
             })
           : new HeadlessWorkflow({
               provider,
@@ -255,9 +278,10 @@ export class DesktopRunManager {
               extensionApprovalHandler: approvalBroker,
               processTaskCapacity: this.#processTaskCapacity,
               oauthRedirectHandler: this.#oauthRedirectHandler,
+              planReview: planReviewBroker?.review.bind(planReviewBroker),
             });
         placeholder.execution = workflow
-          .resume(request.runId, persisted.goal, abortController.signal)
+          .resume(request.runId, persisted.executionGoal, abortController.signal)
           .then(() => undefined)
           .catch(() => undefined)
           .finally(async () => {
@@ -330,8 +354,19 @@ export class DesktopRunManager {
     request: StartDesktopRunRequest,
     recoveryOf?: string,
     onPersisted?: (runId: string) => Promise<void>,
+    planReviewPolicy: PersistedRunRequest["planReview"] = this.#requirePlanReview
+      ? "required"
+      : "skipped",
   ): Promise<DesktopRunView> {
     validateStartRequest(request);
+    if (planReviewPolicy === "required"
+      && normalizeGoalContract({
+        outcome: request.goal,
+        constraints: request.goalConstraints,
+        verificationCriteria: request.verificationCriteria,
+      }).verificationCriteria.length === 0) {
+      throw new Error("Desktop Goal Contract requires at least one verification criterion");
+    }
     if (this.#active.size + this.#launching.size >= this.#maxActiveRuns) {
       throw new Error(`At most ${this.#maxActiveRuns} runs can be active at once.`);
     }
@@ -349,14 +384,16 @@ export class DesktopRunManager {
     }
     const runRoot = resolve(workspace, ".localbuddy", "runs", runId);
     const artifactRoot = resolve(runRoot, "artifacts");
+    let persisted: PersistedRunRequest;
     try {
       await mkdir(artifactRoot, { recursive: true });
-      await this.#requestStore.save(runRoot, {
+      persisted = await this.#requestStore.save(runRoot, {
         ...request,
         workspace,
         runId,
         recoveryOf,
         runtimeOwner: "desktop",
+        planReview: planReviewPolicy,
       });
       await onPersisted?.(runId);
     } catch (error) {
@@ -372,9 +409,10 @@ export class DesktopRunManager {
       if (active === undefined) {
         return;
       }
-      active.view = withPendingApprovals(
+      active.view = decorateRun(
         projectRun(runId, workspace, events, active.view.status),
         active.approvalBroker?.list(),
+        active.planReviewBroker?.current,
       );
       this.#emit(active.view);
     });
@@ -384,8 +422,8 @@ export class DesktopRunManager {
       mode: request.mode ?? "research",
       runtimeOwner: "desktop",
       recoveryOf,
-      providerId: normalizeProviderSelection(request.provider).id,
-      trustProfile: normalizeTrustProfile(request.trustProfile),
+      providerId: persisted.provider.id,
+      trustProfile: persisted.trustProfile,
     };
     const placeholder: ActiveRun = {
       abortController,
@@ -397,49 +435,58 @@ export class DesktopRunManager {
     this.#active.set(runId, placeholder);
     const approvalBroker = this.#createApprovalBroker(runId, eventStore);
     placeholder.approvalBroker = approvalBroker;
+    const planReviewBroker = persisted.planReview === "required"
+      ? this.#createPlanReviewBroker(runId, runRoot, persisted, eventStore)
+      : undefined;
+    placeholder.planReviewBroker = planReviewBroker;
     this.#launching.delete(runId);
     this.#emit(initialView);
 
     try {
-      const providerSelection = normalizeProviderSelection(request.provider);
-      const provider = await this.#createProvider(providerSelection);
-      const mode = request.mode ?? "research";
+      const provider = await this.#createProvider(persisted.provider);
+      const mode = persisted.mode;
       const workflow = mode === "code"
         ? new CodingWorkflow({
             provider,
             eventStore,
             repoRoot: workspace,
             artifactRoot,
-            globalConcurrency: request.concurrency,
+            globalConcurrency: persisted.concurrency,
             executionCoordinator: this.#executionCoordinator,
             recoveryOf,
             runtimeOwner: "desktop",
-            providerId: providerSelection.id,
-            trustProfile: normalizeTrustProfile(request.trustProfile),
-            extensions: request.extensions,
+            providerId: persisted.provider.id,
+            trustProfile: persisted.trustProfile,
+            extensions: persisted.extensions,
             extensionApprovalHandler: approvalBroker,
             processTaskCapacity: this.#processTaskCapacity,
             oauthRedirectHandler: this.#oauthRedirectHandler,
+            planReview: planReviewBroker?.review.bind(planReviewBroker),
           })
         : new HeadlessWorkflow({
             provider,
             eventStore,
             workspaceRoot: workspace,
-            sourcePaths: request.sourcePaths ?? [],
+            sourcePaths: persisted.sourcePaths,
             artifactRoot,
-            globalConcurrency: request.concurrency,
+            globalConcurrency: persisted.concurrency,
             executionCoordinator: this.#executionCoordinator,
             recoveryOf,
             runtimeOwner: "desktop",
-            providerId: providerSelection.id,
-            trustProfile: normalizeTrustProfile(request.trustProfile),
-            extensions: request.extensions,
+            providerId: persisted.provider.id,
+            trustProfile: persisted.trustProfile,
+            extensions: persisted.extensions,
             extensionApprovalHandler: approvalBroker,
             processTaskCapacity: this.#processTaskCapacity,
             oauthRedirectHandler: this.#oauthRedirectHandler,
+            planReview: planReviewBroker?.review.bind(planReviewBroker),
           });
       placeholder.execution = workflow
-        .run(runId, request.goal, abortController.signal)
+        .run(
+          runId,
+          persisted.executionGoal,
+          abortController.signal,
+        )
         .then(() => undefined)
         .catch(() => undefined)
         .finally(async () => {
@@ -457,11 +504,11 @@ export class DesktopRunManager {
         type: "run.started",
         runId,
         data: {
-          mode: request.mode ?? "research",
+          mode: persisted.mode,
           recoveryOf,
           runtimeOwner: "desktop",
-          providerId: normalizeProviderSelection(request.provider).id,
-          trustProfile: normalizeTrustProfile(request.trustProfile),
+          providerId: persisted.provider.id,
+          trustProfile: persisted.trustProfile,
         },
       });
       await eventStore.append({
@@ -480,14 +527,36 @@ export class DesktopRunManager {
     }
   }
 
-  cancel(runId: string): void {
+  async cancel(runId: string): Promise<void> {
     const active = this.#active.get(runId);
     if (active === undefined) {
       throw new Error(`Run is not active: ${runId}`);
     }
     active.view = { ...active.view, status: "cancelling" };
     this.#emit(active.view);
-    active.abortController.abort();
+    try {
+      await active.planReviewBroker?.cancel();
+    } finally {
+      active.abortController.abort();
+    }
+  }
+
+  async resolvePlanReview(
+    request: ResolveDesktopPlanReviewRequest,
+  ): Promise<DesktopRunView> {
+    validateRunId(request.runId);
+    const workspace = await realpath(request.workspace);
+    const active = this.#active.get(request.runId);
+    if (
+      active === undefined
+      || active.view.workspace !== workspace
+      || active.planReviewBroker === undefined
+      || active.view.status !== "awaiting_plan_approval"
+    ) {
+      throw new Error(`Run has no live Plan Review decision: ${request.runId}`);
+    }
+    await active.planReviewBroker.resolve(request.decision);
+    return active.view;
   }
 
   async resolveToolApproval(
@@ -605,7 +674,7 @@ export class DesktopRunManager {
         startedAt: view.startedAt,
         completedAt: view.completedAt,
         recoveryOf: persisted.recoveryOf,
-        goalCharacters: persisted.goal.length,
+        goalCharacters: goalContractCharacterCount(persisted.goalContract),
         metrics: view.metrics,
       },
       extensions: {
@@ -706,7 +775,7 @@ export class DesktopRunManager {
     const activeIds = new Set(active.map((run) => run.runId));
     return Promise.all(
       [...active, ...persisted.filter((run) => !activeIds.has(run.runId))]
-        .map((run) => this.#withRecoveryInspection(run)),
+        .map((run) => this.#withPersistentRunState(run)),
     );
   }
 
@@ -733,11 +802,16 @@ export class DesktopRunManager {
         events.push(event);
         const view = projectRun(runId, workspace, events);
         const active = this.#active.get(runId);
+        const decorated = decorateRun(
+          view,
+          active?.approvalBroker?.list(),
+          active?.planReviewBroker?.current,
+        );
         if (active !== undefined) {
           active.events = events;
-          active.view = view;
+          active.view = decorated;
         }
-        this.#emit(view);
+        this.#emit(decorated);
       });
       await operation(
         new IntegrationManager({
@@ -746,7 +820,7 @@ export class DesktopRunManager {
         }),
         resolve(runRoot, "integration-proposal.json"),
       );
-      return projectRun(runId, workspace, events);
+      return await this.#withPersistentRunState(projectRun(runId, workspace, events));
     } finally {
       await lease.release();
     }
@@ -827,13 +901,13 @@ export class DesktopRunManager {
         return await new CodingCheckpointStore(resolve(runRoot, "checkpoint")).inspectResume({
           runId,
           repoRoot: workspace,
-          goal: request.goal,
+          goal: request.executionGoal,
         });
       }
       return await new ResearchCheckpointStore(resolve(runRoot, "checkpoint")).inspectResume({
         runId,
         workspace,
-        goal: request.goal,
+        goal: request.executionGoal,
         sourcePaths: request.sourcePaths,
       });
     } catch (error) {
@@ -881,6 +955,28 @@ export class DesktopRunManager {
           reason: inspection.reason ?? "No safe checkpoint is available",
         };
     return { ...view, checkpoint };
+  }
+
+  async #withPersistentRunState(view: DesktopRunView): Promise<DesktopRunView> {
+    const inspected = await this.#withRecoveryInspection(view);
+    if (inspected.planReview !== undefined) return inspected;
+    try {
+      const record = await new PlanReviewStore(resolve(
+        inspected.workspace,
+        ".localbuddy",
+        "runs",
+        inspected.runId,
+        "plan-review.json",
+      )).load();
+      return decorateRun(inspected, inspected.pendingApprovals, record);
+    } catch (error) {
+      if (isNodeError(error) && error.code === "ENOENT") return inspected;
+      return {
+        ...inspected,
+        error: inspected.error
+          ?? `Unable to read Plan Review state: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
   }
 
   async #reconcileApplyingIntegrations(workspace: string): Promise<void> {
@@ -949,18 +1045,88 @@ export class DesktopRunManager {
       onChange: (pending) => {
         const active = this.#active.get(runId);
         if (active === undefined) return;
-        active.view = withPendingApprovals(active.view, pending);
+        active.view = decorateRun(active.view, pending, active.planReviewBroker?.current);
+        this.#emit(active.view);
+      },
+    });
+  }
+
+  #createPlanReviewBroker(
+    runId: string,
+    runRoot: string,
+    request: PersistedRunRequest,
+    eventStore: EventStore,
+  ): InteractivePlanReviewBroker {
+    const extensionCount = (request.extensions.skillIds?.length ?? 0)
+      + (request.extensions.mcpServerIds?.length ?? 0)
+      + (request.extensions.browser === undefined ? 0 : 1);
+    return new InteractivePlanReviewBroker({
+      runId,
+      goalContract: request.goalContract,
+      scope: {
+        sourceCount: request.sourcePaths.length,
+        trustProfile: request.trustProfile,
+        extensionCount,
+      },
+      scopeIdentity: {
+        mode: request.mode,
+        sourcePaths: request.sourcePaths,
+        provider: request.provider,
+        trustProfile: request.trustProfile,
+        extensions: request.extensions,
+      },
+      store: new PlanReviewStore(resolve(runRoot, "plan-review.json")),
+      eventStore,
+      onChange: (record) => {
+        const active = this.#active.get(runId);
+        if (active === undefined) return;
+        active.view = decorateRun(active.view, active.approvalBroker?.list(), record);
         this.#emit(active.view);
       },
     });
   }
 }
 
-function withPendingApprovals(
+function decorateRun(
   view: DesktopRunView,
   pending: readonly PendingToolApproval[] | undefined,
+  planReview?: PlanReviewRecord,
 ): DesktopRunView {
-  return { ...view, pendingApprovals: pending ?? [] };
+  const review = planReview ?? view.planReview;
+  const plannedStatus = view.status === "cancelled" || review?.status === "rejected" || review?.status === "cancelled"
+    ? "cancelled" as const
+    : "queued" as const;
+  const plannedTasks = review === undefined ? [] : [
+    ...review.plan.tasks.map((task) => ({
+      id: task.id,
+      title: task.title,
+      status: plannedStatus,
+    })),
+    {
+      id: "integrate",
+      title: "Integrate worker results",
+      status: plannedStatus,
+    },
+  ];
+  const projectedById = new Map(view.tasks.map((task) => [task.id, task]));
+  const tasks = [
+    ...plannedTasks.map((task) => projectedById.get(task.id) ?? task),
+    ...view.tasks.filter((task) => !plannedTasks.some((planned) => planned.id === task.id)),
+  ];
+  return {
+    ...view,
+    tasks,
+    pendingApprovals: pending ?? [],
+    planReview: planReview === undefined ? view.planReview : {
+      status: planReview.status,
+      approvalSha256: planReview.approvalSha256,
+      goalContract: planReview.goalContract,
+      plan: planReview.plan,
+      scope: planReview.scope,
+      requestedAt: planReview.requestedAt,
+      resolvedAt: planReview.resolvedAt,
+    },
+  };
 }
 
 function hasTerminalRunState(events: readonly RuntimeEvent[]): boolean {
@@ -1002,9 +1168,11 @@ function validateStartRequest(request: StartDesktopRunRequest): void {
   if (request.workspace.trim().length === 0) {
     throw new Error("Workspace is required");
   }
-  if (request.goal.trim().length === 0 || request.goal.length > 20_000) {
-    throw new Error("Goal must contain between 1 and 20,000 characters");
-  }
+  normalizeGoalContract({
+    outcome: request.goal,
+    constraints: request.goalConstraints,
+    verificationCriteria: request.verificationCriteria,
+  });
   if (!Number.isInteger(request.concurrency) || request.concurrency < 1 || request.concurrency > 3) {
     throw new Error("Concurrency must be an integer between 1 and 3");
   }

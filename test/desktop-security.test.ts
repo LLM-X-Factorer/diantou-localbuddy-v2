@@ -47,7 +47,7 @@ test("desktop runtime uses the privileged local protocol and Electron isolation 
   assert.match(main, /requireForSquirrel/);
   assert.doesNotMatch(main, /recentWorkspaces\[0\]\s*\?\? app\.getPath\("documents"\)/);
   assert.match(renderer, /我不会在这里调用模型、读取文件或启动任务/);
-  assert.match(renderer, /只有点击“开始任务”后才会调用 Provider/);
+  assert.match(renderer, /点击“生成计划”才会调用 Provider，Worker 仍需你批准计划后才开始/);
   assert.match(main, /确认创建一个反向 Git commit 吗/);
   assert.match(main, /原提交会保留在历史中/);
 });
@@ -145,6 +145,19 @@ test("Renderer separates explicit research sources from recovery and confirms pa
   assert.match(renderer, /window\.confirm\(/);
   assert.match(renderer, /会重新调用 Provider，并可能产生新的模型费用/);
   assert.match(renderer, /message\.replace\(\/\^Error invoking remote method/);
+});
+
+test("Renderer exposes Goal Contract fields and a Worker-blocking Plan Review decision", async () => {
+  const renderer = await readFile("desktop/renderer/src/App.tsx", "utf8");
+  const main = await readFile("desktop/main.ts", "utf8");
+
+  assert.match(renderer, /GOAL CONTRACT/);
+  assert.match(renderer, /完成标准/);
+  assert.match(renderer, /生成计划/);
+  assert.match(renderer, /Worker 和代码工作树尚未启动/);
+  assert.match(renderer, /批准，开始 Worker/);
+  assert.match(renderer, /resolvePlanReview/);
+  assert.match(main, /requirePlanReview: true/);
 });
 
 test("brand assets provide native macOS, Windows, and Linux icon formats", async () => {

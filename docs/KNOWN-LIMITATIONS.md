@@ -24,7 +24,9 @@
 - 没有通用附件上传、PDF/DOCX 解析或语义索引/RAG；
 - Research 本地资料目前最多显式选择 50 个根；目录发现只搜索文件名，不做正文索引；单次搜索最多返回 50 条并检查 10,000 个目录项；单文件 UTF-8 读取上限为 200,000 bytes；
 - v1-v3 whole-workspace Research Run 不会自动转换为 v4 explicit-sources checkpoint。用户必须新建 Run 并重新选择资料；
-- 计划由 Orchestrator 生成，当前没有启动前可视化编辑或运行中动态重规划；失败 Run 只能从安全 checkpoint 恢复未完成 Task 链，不支持任意单 Task 手工重跑；
+- main 上的 M11.1 候选可以在 Worker 前查看并批准/拒绝计划，但不能直接编辑计划、带理由退回重规划或在运行中动态 steering；失败 Run 只能从安全 checkpoint 恢复未完成 Task 链，不支持任意单 Task 手工重跑；
+- Desktop 的 Plan Review 发生在 Orchestrator 规划调用之后，因此即使用户拒绝计划，仍会产生一次规划模型调用；CLI/Core 非交互入口默认跳过此 Gate；
+- Goal Contract 当前固定为 revision 1，没有 append-only 目标修订、资料/权限漂移 replan 或跨 Run Thread；
 - Desktop 只展示单 Run 的调用、Provider token、耗时和失败投影，没有币种成本换算、跨 Run 聚合或趋势阈值。
 
 ## Extensions and external services

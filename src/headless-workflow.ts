@@ -22,6 +22,10 @@ import type { ModelProvider } from "./provider.js";
 import type { ProcessSharedCapacity } from "./process-shared-provider.js";
 import type { OAuthRedirectHandler } from "./mcp-oauth.js";
 import { WorkflowPlanner } from "./planner.js";
+import {
+  PlanReviewEndedError,
+  type PlanReviewHandler,
+} from "./plan-review.js";
 import { researchSourceCatalog, researchSourceSummary } from "./research-sources.js";
 import {
   MultiAgentScheduler,
@@ -58,6 +62,7 @@ export interface HeadlessWorkflowOptions {
   processTaskCapacity?: ProcessSharedCapacity;
   oauthRedirectHandler?: OAuthRedirectHandler;
   trustProfile?: TrustProfile;
+  planReview?: PlanReviewHandler;
 }
 
 export interface HeadlessWorkflowResult {
@@ -186,6 +191,14 @@ export class HeadlessWorkflow {
           },
         });
       }
+      await this.#options.planReview?.({
+        mode: "research",
+        tasks: plan.tasks.map((task) => ({ ...task, ownedPaths: [] })),
+        integration: {
+          ...plan.integration,
+          verificationCommands: [],
+        },
+      }, signal);
       const tools = await createWorkspaceTools({
         sourcePaths,
         artifactRoot,
@@ -296,9 +309,17 @@ export class HeadlessWorkflow {
     } catch (error) {
       if (lifecycleStarted) {
         await eventStore.append({
-          type: signal?.aborted === true ? "run.cancelled" : "run.failed",
+          type: signal?.aborted === true || error instanceof PlanReviewEndedError
+            ? "run.cancelled"
+            : "run.failed",
           runId,
           data: { error: error instanceof Error ? error.message : String(error) },
+        });
+      } else if (resume && error instanceof PlanReviewEndedError) {
+        await eventStore.append({
+          type: "run.cancelled",
+          runId,
+          data: { error: error.message },
         });
       } else if (resume) {
         await eventStore.append({

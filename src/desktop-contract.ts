@@ -20,6 +20,7 @@ export const DESKTOP_CHANNELS = {
   loadArtifactPreview: "localbuddy:load-artifact-preview",
   exportDiagnostics: "localbuddy:export-diagnostics",
   resolveToolApproval: "localbuddy:resolve-tool-approval",
+  resolvePlanReview: "localbuddy:resolve-plan-review",
   openArtifact: "localbuddy:open-artifact",
   runUpdated: "localbuddy:run-updated",
 } as const;
@@ -27,6 +28,7 @@ export const DESKTOP_CHANNELS = {
 export type DesktopRunStatus =
   | "starting"
   | "planning"
+  | "awaiting_plan_approval"
   | "running"
   | "succeeded"
   | "failed"
@@ -141,7 +143,41 @@ export interface DesktopRunView {
     mcpWritesAllowed: boolean;
   };
   pendingApprovals: readonly DesktopToolApprovalView[];
+  planReview?: DesktopPlanReviewView;
   metrics: DesktopRunMetricsView;
+}
+
+export interface DesktopPlanReviewView {
+  status: "pending" | "approved" | "rejected" | "cancelled";
+  approvalSha256: string;
+  goalContract: {
+    version: 1;
+    revision: 1;
+    outcome: string;
+    constraints: readonly string[];
+    verificationCriteria: readonly string[];
+  };
+  plan: {
+    mode: DesktopRunMode;
+    tasks: readonly {
+      id: string;
+      title: string;
+      instructions: string;
+      ownedPaths: readonly string[];
+    }[];
+    integration: {
+      instructions: string;
+      fileName: string;
+      verificationCommands: readonly string[];
+    };
+  };
+  scope: {
+    sourceCount: number;
+    trustProfile: DesktopTrustProfile;
+    extensionCount: number;
+  };
+  requestedAt: string;
+  resolvedAt?: string;
 }
 
 export type DesktopFailureStage =
@@ -212,6 +248,8 @@ export interface DesktopTutorialWorkspaceResult {
 export interface StartDesktopRunRequest {
   workspace: string;
   goal: string;
+  goalConstraints?: readonly string[];
+  verificationCriteria?: readonly string[];
   concurrency: number;
   mode?: DesktopRunMode;
   sourcePaths?: readonly string[];
@@ -291,6 +329,10 @@ export interface ResolveDesktopToolApprovalRequest extends DesktopRunActionReque
   decision: "approve" | "deny";
 }
 
+export interface ResolveDesktopPlanReviewRequest extends DesktopRunActionRequest {
+  decision: "approve" | "reject";
+}
+
 export interface DesktopApi {
   bootstrap(): Promise<DesktopBootstrap>;
   selectWorkspace(): Promise<string | null>;
@@ -319,6 +361,7 @@ export interface DesktopApi {
   loadArtifactPreview(request: DesktopArtifactActionRequest): Promise<DesktopArtifactPreviewView>;
   exportDiagnostics(request: DesktopRunActionRequest): Promise<string | null>;
   resolveToolApproval(request: ResolveDesktopToolApprovalRequest): Promise<DesktopRunView>;
+  resolvePlanReview(request: ResolveDesktopPlanReviewRequest): Promise<DesktopRunView>;
   openArtifact(request: DesktopArtifactActionRequest): Promise<void>;
   onRunUpdate(listener: (run: DesktopRunView) => void): () => void;
 }

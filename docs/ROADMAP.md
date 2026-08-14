@@ -1,8 +1,20 @@
-# LocalBuddy V2 Roadmap after M10.4
+# LocalBuddy V2 Roadmap after M11.1
 
-> **状态真源**：2026-08-14。当前私有 Release 为 `v0.11.2 / M10.4 Explicit Research Sources Engineering Alpha`。后续灰度与发布保持 Windows-first，Linux 只做每周/手动维护。阶段内证据以对应 Validation 和 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 为准。
+> **状态真源**：2026-08-14。当前私有 Release 仍为 `v0.11.2 / M10.4`；`v0.12.0 / M11.1 Goal Contract + Plan Review` 已完成本机实现和自动化验证，正处于发布候选。后续灰度与发布保持 Windows-first，Linux 只做每周/手动维护。阶段内证据以对应 Validation 和 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 为准。
 
 ## 当前里程碑
+
+### v0.12.0 · M11.1 Goal Contract + Plan Review — release candidate
+
+- Desktop 将自由文本目标拆为 outcome、constraints 和 verification criteria，并以 Run Request v5 持久化；
+- Orchestrator 计划生成后进入 `awaiting_plan_approval`，页面显示 Goal、范围、Worker 任务、owned paths、整合产物和检查命令；
+- 批准前 Research/Coding Worker 均不启动，Coding worktree 不创建；拒绝计划会结束 Run；
+- Goal、计划和 Run scope 由审批指纹绑定；pending 与 approved 状态可跨应用重启和 same-Run resume；
+- CLI/Core 保持非交互兼容，旧单段 goal 和 v1-v4 checkpoint 身份不变；
+- 本机 `pnpm check` 为 152 项：150 passed、2 项 Windows-only 合同按平台跳过、0 failed；macOS 源码 UI 与最终 App 合成灰度均已实际读回；
+- macOS `0.12.0` DMG/ZIP、包完整性、无凭据首启和最终 App 回环合成灰度已通过；Windows 安装版灰度、Tag Release 和资产回下载仍是开放门禁。
+
+规格与本机证据见 [`M11.1-SPEC.md`](M11.1-SPEC.md) 和 [`M11.1-VALIDATION.md`](M11.1-VALIDATION.md)。本增量不包含计划编辑、Goal revision 2+、steering、独立 Reviewer 或完整 Eval 系统。
 
 ### v0.11.2 · M10.4 Explicit Research Sources — private Engineering Alpha
 
@@ -164,12 +176,12 @@ M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批
 4. Windows 代码签名与 SmartScreen 信誉：公开分发前再决策；
 5. Linux 图形桌面安装/启动验收：当前降为非优先，不阻塞 Windows 灰度和 Release。
 
-## 下一阶段候选，尚未立项
+## M11 后续增量
 
-M11 的正式范围必须同时由连续 dogfooding 和 [`CODEX-BENCHMARK-2026-08-14.md`](CODEX-BENCHMARK-2026-08-14.md) 的本地差距验证产生。当前 P0 候选是：
+M11.1 已按 [`CODEX-BENCHMARK-2026-08-14.md`](CODEX-BENCHMARK-2026-08-14.md) 启动 Goal Contract revision 1 和 approve/reject Plan Review。尚未完成的 P0 是：
 
-- Goal Contract：结果、约束、验证标准、资料集与 append-only 修订；
-- 启动前计划审阅，以及资料/权限变化时的显式 replan Gate；
+- Goal Contract append-only revision 2+ 和资料/权限变化时的显式 replan Gate；
+- Plan Review 计划编辑、理由化退回和重新规划；
 - 可检查和可 steering 的 Agent Session：阶段、预算、蒸馏结果、中断/追问/重试；
 - 独立只读 Reviewer/Critic：Artifact/patch 发现、退回、接受或带理由 override；
 - 基于现有 JSONL trace 的版本化 Eval 数据集和 deterministic graders。

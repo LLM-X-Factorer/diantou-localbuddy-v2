@@ -23,6 +23,10 @@ const evidenceRoot = resolve(
 );
 const faultMatrix = process.env.LOCALBUDDY_GRAY_FAULT_MATRIX === "1";
 const soakCycles = boundedInteger(process.env.LOCALBUDDY_GRAY_SOAK_CYCLES, 2, 0, 20);
+const credentialMode = process.env.LOCALBUDDY_GRAY_CREDENTIAL_MODE ?? "system";
+if (credentialMode !== "system" && credentialMode !== "environment") {
+  throw new Error("LOCALBUDDY_GRAY_CREDENTIAL_MODE must be system or environment");
+}
 const temporaryRoot = await mkdtemp(join(tmpdir(), "localbuddy-windows-gray-"));
 const userData = join(temporaryRoot, "user data");
 const workspace = join(temporaryRoot, "Windows 灰度 工作区");
@@ -42,10 +46,14 @@ await writeFile(
 );
 assert.ok((await stat(executable)).isFile(), `Installed executable is missing: ${executable}`);
 
-const credentialStore = await import("../dist/src/credential-store.js");
-const existingCredential = await credentialStore.inspectProviderCredential("openai", {});
-if (existingCredential.available) {
-  throw new Error("Refusing to overwrite an existing OpenAI system credential");
+const credentialStore = credentialMode === "system"
+  ? await import("../dist/src/credential-store.js")
+  : undefined;
+if (credentialStore !== undefined) {
+  const existingCredential = await credentialStore.inspectProviderCredential("openai", {});
+  if (existingCredential.available) {
+    throw new Error("Refusing to overwrite an existing OpenAI system credential");
+  }
 }
 
 const mockProvider = await startWindowsGrayMockProvider(FIXTURE_KEY);
@@ -119,14 +127,17 @@ try {
     architecture: process.arch,
     installedExecutable: basename(executable),
     fixtureProvider: "loopback-openai-compatible",
-    credentialSource: "windows-credential-manager",
+    credentialSource: credentialMode === "system" ? "system-secure-store" : "environment",
     faultMatrix,
     soakCycles,
     checks: {
-      cleanFirstLaunch: "passed",
-      credentialWriteAndReload: "passed",
+      cleanFirstLaunch: credentialMode === "system" ? "passed" : "not_applicable",
+      isolatedFirstLaunch: "passed",
+      credentialWriteAndReload: credentialMode === "system" ? "passed" : "not_applicable",
+      environmentCredentialReload: credentialMode === "environment" ? "passed" : "not_applicable",
       modelProbe: "passed",
       installedResearchRun: "passed",
+      planReviewGate: "passed",
       cancellation: "passed",
       twoActiveRuns: "passed",
       checkpointRecovery: "passed",
@@ -145,7 +156,7 @@ try {
 } finally {
   if (activeApp !== undefined) await closeInstalledApp(activeApp).catch(() => undefined);
   let cleanupFailure;
-  if (credentialStored) {
+  if (credentialStored && credentialStore !== undefined) {
     try {
       await credentialStore.deleteProviderApiKey("openai");
       assert.equal((await credentialStore.inspectProviderCredential("openai", {})).available, false);
@@ -170,12 +181,19 @@ async function assertCleanFirstLaunch(page) {
   await dialog.waitFor({ state: "visible" });
   assert.match(await dialog.innerText(), /DeepSeek/);
   assert.match(await dialog.innerText(), /OpenAI/);
-  assert.match(await dialog.innerText(), /尚未保存 API Key/);
+  assert.match(
+    await dialog.innerText(),
+    credentialMode === "system" ? /尚未保存 API Key/ : /由当前进程环境变量提供/,
+  );
 }
 
 async function configureProvider(page) {
   const dialog = page.locator(".provider-settings-dialog");
   await dialog.locator(".provider-choice-grid button").filter({ hasText: "OpenAI" }).click();
+  if (credentialMode === "environment") {
+    await waitForText(dialog.locator(".provider-credential-summary"), /环境变量可用/);
+    return;
+  }
   await dialog.locator('input[type="password"]').fill(FIXTURE_KEY);
   await dialog.getByRole("button", { name: "安全保存" }).click();
   await waitForText(dialog.locator(".provider-settings-status"), /系统安全存储/);
@@ -235,7 +253,10 @@ async function startRunAndWait(page, goal, expectedStatus) {
 
 async function startRun(page, goal) {
   const priorRuns = await listRuns(page);
-  await page.locator(".composer textarea").fill(goal);
+  await page.locator(".goal-outcome-field textarea").fill(goal);
+  await page.locator(".goal-contract-grid textarea").nth(1).fill(
+    "The deterministic fixture artifact is registered and auditable",
+  );
   await page.getByLabel("Run 并发").selectOption("1");
   await poll(
     () => page.locator(".start-button").isEnabled(),
@@ -248,8 +269,20 @@ async function startRun(page, goal) {
     const runs = await listRuns(page);
     return runs.find((candidate) => !priorRuns.some((prior) => prior.runId === candidate.runId));
   }, (candidate) => candidate !== undefined, 20_000, "new Run was not created");
+  const pending = await poll(async () => {
+    const runs = await listRuns(page);
+    return runs.find((candidate) => candidate.runId === run.runId);
+  }, (candidate) => candidate?.status === "awaiting_plan_approval"
+    && candidate.planReview?.status === "pending", 20_000, "Run did not enter Plan Review");
+  assert.equal(pending.tasks.some((task) => task.status === "running"), false);
+  await page.locator(".plan-review-panel").waitFor({ state: "visible" });
+  await page.locator(".approve-plan-button").click();
+  await poll(async () => {
+    const runs = await listRuns(page);
+    return runs.find((candidate) => candidate.runId === run.runId);
+  }, (candidate) => candidate?.planReview?.status === "approved", 20_000, "Plan approval was not persisted");
   await poll(
-    () => page.locator(".composer textarea").inputValue(),
+    () => page.locator(".goal-outcome-field textarea").inputValue(),
     (value) => value.length === 0,
     10_000,
     "Composer was not cleared after the Run started",
@@ -261,7 +294,7 @@ async function startConcurrentRunsAndCancel(page) {
   const first = await startRun(page, "WINDOWS_GRAY_CANCEL_ONE");
   await poll(
     () => listRuns(page),
-    (runs) => runs.some((run) => run.runId === first.runId && ["planning", "running"].includes(run.status)),
+    (runs) => runs.some((run) => run.runId === first.runId && ["planning", "awaiting_plan_approval", "running"].includes(run.status)),
     20_000,
     "First concurrent Run did not become active",
   );
@@ -270,7 +303,7 @@ async function startConcurrentRunsAndCancel(page) {
   await poll(
     () => listRuns(page),
     (runs) => [first.runId, second.runId].every((runId) =>
-      runs.some((run) => run.runId === runId && ["starting", "planning", "running"].includes(run.status))),
+      runs.some((run) => run.runId === runId && ["starting", "planning", "awaiting_plan_approval", "running"].includes(run.status))),
     20_000,
     "Two installed-app Runs were not active together",
   );
@@ -302,7 +335,10 @@ async function assertPersistedState(page, succeededRunId) {
   );
   await page.locator(".provider-entry").click();
   await page.locator(".provider-choice-grid button").filter({ hasText: "OpenAI" }).click();
-  await waitForText(page.locator(".provider-credential-summary"), /系统凭据已配置/);
+  await waitForText(
+    page.locator(".provider-credential-summary"),
+    credentialMode === "system" ? /系统凭据已配置/ : /环境变量可用/,
+  );
   await page.locator(".provider-settings-dialog").getByRole("button", { name: "完成" }).click();
 }
 
@@ -328,6 +364,7 @@ async function launchInstalledApp() {
       && normalized !== "OPENAI_API_KEY"
       && normalized !== "LOCALBUDDY_SCREENSHOT_PATH";
   }));
+  if (credentialMode === "environment") environment.OPENAI_API_KEY = FIXTURE_KEY;
   const child = spawn(executable, [
     `--user-data-dir=${userData}`,
     `--remote-debugging-port=${port}`,

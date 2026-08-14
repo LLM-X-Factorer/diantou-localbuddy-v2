@@ -22,6 +22,7 @@ import {
 const ACTIVE_STATUSES = new Set<DesktopRunStatus>([
   "starting",
   "planning",
+  "awaiting_plan_approval",
   "running",
   "cancelling",
 ]);
@@ -47,6 +48,8 @@ export function App() {
   const [runs, setRuns] = useState<readonly DesktopRunView[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string>();
   const [goal, setGoal] = useState("");
+  const [goalConstraints, setGoalConstraints] = useState("");
+  const [verificationCriteria, setVerificationCriteria] = useState("");
   const [sourcePaths, setSourcePaths] = useState<readonly string[]>([]);
   const [concurrency, setConcurrency] = useState(3);
   const [mode, setMode] = useState<DesktopRunMode>("research");
@@ -71,6 +74,7 @@ export function App() {
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [resolvingApprovalId, setResolvingApprovalId] = useState<string>();
+  const [resolvingPlanReview, setResolvingPlanReview] = useState(false);
   const [integrationDiff, setIntegrationDiff] = useState<DesktopIntegrationDiffView>();
   const [loadingIntegrationDiff, setLoadingIntegrationDiff] = useState(false);
   const [exportingDiagnostics, setExportingDiagnostics] = useState(false);
@@ -155,6 +159,8 @@ export function App() {
     setRecentWorkspaces((current) => promoteRecentWorkspace(current, selected));
     setWorkspaceReadiness(readiness);
     setGoal("");
+    setGoalConstraints("");
+    setVerificationCriteria("");
     setSourcePaths([]);
     setGuideStatus(guideVisible ? "运行位置已更换。编辑器和本次资料已经清空；请选择合适的模板。" : undefined);
   }
@@ -230,7 +236,9 @@ export function App() {
     setMode(template.mode);
     setTrustProfile(template.trustProfile);
     setGoal(template.goal);
-    setGuideStatus("模板已填入下方编辑器。请先检查内容；只有点击“开始任务”后才会调用 Provider。");
+    setGoalConstraints(template.constraints.join("\n"));
+    setVerificationCriteria(template.verificationCriteria.join("\n"));
+    setGuideStatus("模板已填入下方编辑器。请先检查内容；点击“生成计划”才会调用 Provider，Worker 仍需你批准计划后才开始。");
     setTimeout(() => document.querySelector<HTMLTextAreaElement>(".composer textarea")?.focus(), 0);
   }
 
@@ -263,6 +271,8 @@ export function App() {
       const run = await window.localbuddy.startRun({
         workspace,
         goal,
+        goalConstraints: lineValues(goalConstraints),
+        verificationCriteria: lineValues(verificationCriteria),
         concurrency,
         mode,
         sourcePaths: mode === "research" ? sourcePaths : [],
@@ -284,11 +294,34 @@ export function App() {
       setRuns((current) => upsertRun(current, run));
       setSelectedRunId(run.runId);
       setGoal("");
+      setGoalConstraints("");
+      setVerificationCriteria("");
       setSourcePaths([]);
       setGuideVisible(false);
       setGuideStatus(undefined);
     } catch (cause) {
       setError(toMessage(cause));
+    }
+  }
+
+  async function resolveSelectedPlanReview(decision: "approve" | "reject") {
+    if (selectedRun?.planReview?.status !== "pending") return;
+    if (decision === "reject" && !window.confirm(
+      "拒绝计划会结束这个 Run，但会保留 Goal、计划和审计记录。确认拒绝吗？",
+    )) return;
+    setError(undefined);
+    setResolvingPlanReview(true);
+    try {
+      const updated = await window.localbuddy.resolvePlanReview({
+        workspace,
+        runId: selectedRun.runId,
+        decision,
+      });
+      setRuns((current) => upsertRun(current, updated));
+    } catch (cause) {
+      setError(toMessage(cause));
+    } finally {
+      setResolvingPlanReview(false);
     }
   }
 
@@ -430,7 +463,7 @@ export function App() {
     setMode(selectedRun.mode);
     setGoal([
       `基于上一 Run 的已验证产物 ${artifactPreview.fileName} 继续。`,
-      "以下内容只会在我点击“开始任务”后发送给所选 Provider：",
+      "以下内容只会在我点击“生成计划”后发送给所选 Provider：",
       "",
       excerpt,
       artifactPreview.text.length > excerpt.length ? "\n[续写上下文已截断]" : "",
@@ -718,6 +751,14 @@ export function App() {
               />
             </section>
 
+            {selectedRun.planReview && (
+              <PlanReviewPanel
+                run={selectedRun}
+                resolving={resolvingPlanReview}
+                onResolve={resolveSelectedPlanReview}
+              />
+            )}
+
             {selectedRun.status === "failed" && (
               <section className="panel failed-recovery-panel">
                 <div>
@@ -919,7 +960,7 @@ export function App() {
                     </div>
                   </div>
                   <pre>{artifactPreview.text}</pre>
-                  <small>预览在本机完成；只有你点击“开始任务”后，填入编辑器的续写上下文才会发送给 Provider。</small>
+                  <small>预览在本机完成；只有你点击“生成计划”后，填入编辑器的续写上下文才会发送给 Provider。</small>
                 </div>
               )}
             </section>
@@ -1031,11 +1072,39 @@ export function App() {
         )}
 
         <section className="composer">
-          <textarea
-            value={goal}
-            onChange={(event) => setGoal(event.target.value)}
-            placeholder="描述一个需要多个 Agent 协作完成的本地任务…"
-          />
+          <div className="goal-contract-heading">
+            <div>
+              <strong>目标说明</strong>
+              <small>先写清结果和验收办法；LocalBuddy 会先生成计划，批准后 Worker 才开始。</small>
+            </div>
+            <span>GOAL CONTRACT</span>
+          </div>
+          <label className="goal-outcome-field">
+            <span>希望得到什么结果</span>
+            <textarea
+              value={goal}
+              onChange={(event) => setGoal(event.target.value)}
+              placeholder="例如：整理三类政策发言，按主题、时间、原始出处形成可核验报告。"
+            />
+          </label>
+          <div className="goal-contract-grid">
+            <label>
+              <span>约束 <small>每行一条，可选</small></span>
+              <textarea
+                value={goalConstraints}
+                onChange={(event) => setGoalConstraints(event.target.value)}
+                placeholder={"只采用官方或权威来源\n不要扫描未明确添加的本地目录"}
+              />
+            </label>
+            <label>
+              <span>完成标准 <small>每行一条，至少一条</small></span>
+              <textarea
+                value={verificationCriteria}
+                onChange={(event) => setVerificationCriteria(event.target.value)}
+                placeholder={"每项结论附原始出处\n明确区分原文、概括与推断"}
+              />
+            </label>
+          </div>
           {mode === "research" && (
             <div className="research-sources">
               <div className="research-sources-heading">
@@ -1139,13 +1208,14 @@ export function App() {
                 onClick={startRun}
                 disabled={
                   goal.trim().length === 0
+                  || lineValues(verificationCriteria).length === 0
                   || workspace.length === 0
                   || activeRuns.length >= 2
                   || (allowBrowserActions && csvValues(browserOrigins).length === 0)
                   || !selectedProviderCredential.available
                 }
               >
-                开始任务 <span>→</span>
+                生成计划 <span>→</span>
               </button>
             </div>
           </div>
@@ -1209,7 +1279,7 @@ export function App() {
           <p>
             {guideVisible ? "不会读取工作区、调用模型或启动任务" : "跨 Run 全局并发 3"}<br />
             {guideVisible
-              ? "模板只预填，执行必须由你点击开始"
+              ? "模板只预填；生成并批准计划后才执行"
               : selectedRun?.extensions === undefined
               ? "扩展按 Run 显式启用"
               : `${selectedRun.extensions.skillIds.length} Skills · ${selectedRun.extensions.mcpServerIds.length} MCP · ${selectedRun.extensions.browserOrigins.length > 0 ? "Browser" : "No Browser"}`}
@@ -1450,7 +1520,7 @@ function FirstRunGuide({
             <div className="capability-top"><span>资料研究</span><i>{readiness.selected ? "可准备" : "先选工作区"}</i></div>
             <h3>把自己的本地资料整理成简报</h3>
             <p>Worker 并行阅读，Integrator 区分事实、未知与建议，再交付验证产物。</p>
-            <ul><li>输入：你选择的资料目录</li><li>输出：带来源文件名的报告</li><li>控制：点击开始后才发送必要上下文</li></ul>
+            <ul><li>输入：你选择的资料目录</li><li>输出：带来源文件名的报告</li><li>控制：生成计划后还需人工批准</li></ul>
             <button onClick={() => onApplyTemplate("workspace-research")} disabled={!readiness.selected}>预填研究模板</button>
           </article>
           <article className={!readiness.isGitRepository ? "capability-card unavailable" : "capability-card"}>
@@ -1469,13 +1539,120 @@ function FirstRunGuide({
           <div><h3>一次真实 Run 会展示什么？</h3><p>提示由审计状态驱动，不是预制假运行。</p></div>
         </div>
         <div className="mechanics-grid">
-          <div><span>PLAN</span><strong>任务图</strong><p>看到 Orchestrator 如何拆解任务，以及 Worker 的依赖和并发。</p></div>
+          <div><span>PLAN</span><strong>先看计划</strong><p>核对目标、资料范围、任务拆分和验收办法；批准前 Worker 不启动。</p></div>
           <div><span>TRACE</span><strong>运行轨迹</strong><p>每次模型、工具、审批和产物动作都留下可审计事件。</p></div>
           <div><span>GATE</span><strong>人工控制</strong><p>外部副作用逐次批准，代码写回前必须查看并批准 Diff。</p></div>
           <div><span>RECOVER</span><strong>失败恢复</strong><p>安全 checkpoint 可复用已完成 Task，只继续未完成任务链。</p></div>
         </div>
       </section>
     </div>
+  );
+}
+
+function PlanReviewPanel({
+  run,
+  resolving,
+  onResolve,
+}: {
+  run: DesktopRunView;
+  resolving: boolean;
+  onResolve(decision: "approve" | "reject"): void;
+}) {
+  const review = run.planReview;
+  if (review === undefined) return null;
+  return (
+    <section className={`panel plan-review-panel ${review.status}`}>
+      <div className="panel-heading plan-review-heading">
+        <div>
+          <span className="section-index">00</span>
+          <div>
+            <h2>执行前确认计划</h2>
+            <p>
+              {review.status === "pending"
+                ? "Orchestrator 已经完成规划；Worker 和代码工作树尚未启动。"
+                : `这份计划已经${planReviewStatusLabel(review.status)}，决定和计划都会保留在本地审计记录中。`}
+            </p>
+          </div>
+        </div>
+        <span className={`plan-review-status ${review.status}`}>{planReviewStatusLabel(review.status)}</span>
+      </div>
+
+      <div className="plan-review-contract">
+        <div className="plan-review-outcome">
+          <span>要交付的结果</span>
+          <strong>{review.goalContract.outcome}</strong>
+        </div>
+        <div>
+          <span>约束</span>
+          <ul>
+            {(review.goalContract.constraints.length > 0
+              ? review.goalContract.constraints
+              : ["没有额外约束"]
+            ).map((item) => <li key={item}>{item}</li>)}
+          </ul>
+        </div>
+        <div>
+          <span>完成标准</span>
+          <ul>
+            {(review.goalContract.verificationCriteria.length > 0
+              ? review.goalContract.verificationCriteria
+              : ["沿用旧请求：没有单独填写完成标准"]
+            ).map((item) => <li key={item}>{item}</li>)}
+          </ul>
+        </div>
+      </div>
+
+      <div className="plan-review-scope">
+        <span>任务类型：{review.plan.mode === "code" ? "代码隔离" : "研究"}</span>
+        <span>本地资料：{review.scope.sourceCount} 项</span>
+        <span>信任档位：{trustProfileLabel(review.scope.trustProfile)}</span>
+        <span>扩展：{review.scope.extensionCount} 项</span>
+      </div>
+
+      <div className="plan-review-tasks">
+        {review.plan.tasks.map((task, index) => (
+          <article key={task.id}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <div>
+              <strong>{task.title}</strong>
+              <p>{task.instructions}</p>
+              {task.ownedPaths.length > 0 && <small>允许改动：{task.ownedPaths.join(" · ")}</small>}
+            </div>
+          </article>
+        ))}
+        <article className="plan-review-integration">
+          <span>✓</span>
+          <div>
+            <strong>整合与验收 · {review.plan.integration.fileName}</strong>
+            <p>{review.plan.integration.instructions}</p>
+            {review.plan.integration.verificationCommands.length > 0 && (
+              <small>检查：{review.plan.integration.verificationCommands.join(" · ")}</small>
+            )}
+          </div>
+        </article>
+      </div>
+
+      <div className="plan-review-footer">
+        <small title={review.approvalSha256}>计划指纹 {review.approvalSha256.slice(0, 16)}</small>
+        {review.status === "pending" && run.status === "awaiting_plan_approval" && (
+          <div>
+            <button
+              className="reject-plan-button"
+              disabled={resolving}
+              onClick={() => onResolve("reject")}
+            >拒绝并结束</button>
+            <button
+              className="approve-plan-button"
+              disabled={resolving}
+              onClick={() => onResolve("approve")}
+            >{resolving ? "处理中…" : "批准，开始 Worker"}</button>
+          </div>
+        )}
+        {review.status === "pending" && run.status !== "awaiting_plan_approval" && (
+          <small>正在恢复计划审批闸门；进入“等待批准计划”后才可决定。</small>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -1494,13 +1671,16 @@ function GuideEventRail() {
   return (
     <div className="guide-event-rail">
       <div className="event-item"><span className="event-icon">1</span><div><strong>选择明确工作区</strong><p>不默认读取私人目录</p><small>本地准备</small></div></div>
-      <div className="event-item"><span className="event-icon model">2</span><div><strong>检查并启动模板</strong><p>点击开始后才调用 Provider</p><small>用户决定</small></div></div>
+      <div className="event-item"><span className="event-icon model">2</span><div><strong>生成并批准计划</strong><p>批准前 Worker 不会启动</p><small>用户决定</small></div></div>
       <div className="event-item"><span className="event-icon artifact">3</span><div><strong>核验真实产物</strong><p>查看来源、哈希与审计轨迹</p><small>可信结果</small></div></div>
     </div>
   );
 }
 
 function runGuideHint(run: DesktopRunView): { title: string; detail: string } {
+  if (run.status === "awaiting_plan_approval") {
+    return { title: "Worker 还没有开始", detail: "先核对目标、资料范围、任务拆分和验收办法。只有你批准这份计划，Worker 才会执行。" };
+  }
   if (run.pendingApprovals.length > 0) {
     return { title: "Agent 正在等待你决定", detail: "批准只对当前一次、当前参数哈希的调用生效；不确定时可以拒绝。" };
   }
@@ -1524,6 +1704,10 @@ function runGuideHint(run: DesktopRunView): { title: string; detail: string } {
 
 function csvValues(value: string): string[] {
   return [...new Set(value.split(",").map((item) => item.trim()).filter(Boolean))];
+}
+
+function lineValues(value: string): string[] {
+  return [...new Set(value.split(/\r?\n/u).map((item) => item.trim()).filter(Boolean))];
 }
 
 function extensionCount(skills: string, servers: string, origins: string): number {
@@ -1612,7 +1796,7 @@ function joinLocalPath(root: string, fileName: string) {
 
 function statusLabel(status: string) {
   return ({
-    starting: "启动中", planning: "规划中", queued: "排队中", running: "运行中",
+    starting: "启动中", planning: "规划中", awaiting_plan_approval: "等待批准计划", queued: "排队中", running: "运行中",
     succeeded: "已完成", failed: "失败", blocked: "已阻塞", cancelling: "停止中", cancelled: "已取消", interrupted: "已中断",
   } as Record<string, string>)[status] ?? status;
 }
@@ -1620,7 +1804,7 @@ function statusLabel(status: string) {
 function eventLabel(type: string) {
   const [owner, action] = type.split(".");
   const ownerLabels: Record<string, string> = { run: "运行", plan: "规划", task: "任务", model: "模型", tool: "工具", approval: "审批", artifact: "产物", workspace: "隔离区", integration: "集成", checkpoint: "检查点" };
-  const actionLabels: Record<string, string> = { started: "开始", resumed: "恢复执行", queued: "排队", requested: "请求", resolved: "已决策", approved: "获准", completed: "完成", succeeded: "成功", failed: "失败", blocked: "阻塞", created: "生成", restored: "状态恢复", resume_blocked: "恢复阻断", reused: "结果复用", denied: "拒绝", cancelled: "取消", interrupted: "意外中断", restarted: "已重放", removed: "已清理", diff_captured: "补丁已捕获", preflight_started: "组合预检", preflight_failed: "预检失败", awaiting_approval: "等待批准", applying: "写回中", applied: "已写回", committed: "已提交", reverted: "已撤销", revert_committed: "反向提交完成", revert_failed: "反向提交失败", recovery_required: "需要恢复" };
+  const actionLabels: Record<string, string> = { started: "开始", resumed: "恢复执行", queued: "排队", requested: "请求", review_requested: "等待确认", resolved: "已决策", approved: "获准", rejected: "被拒绝", completed: "完成", succeeded: "成功", failed: "失败", blocked: "阻塞", created: "生成", restored: "状态恢复", resume_blocked: "恢复阻断", reused: "结果复用", denied: "拒绝", cancelled: "取消", interrupted: "意外中断", restarted: "已重放", removed: "已清理", diff_captured: "补丁已捕获", preflight_started: "组合预检", preflight_failed: "预检失败", awaiting_approval: "等待批准", applying: "写回中", applied: "已写回", committed: "已提交", reverted: "已撤销", revert_committed: "反向提交完成", revert_failed: "反向提交失败", recovery_required: "需要恢复" };
   if (owner === "integration" && action === "approved") return "集成 · 人工批准";
   return `${ownerLabels[owner ?? ""] ?? owner} · ${actionLabels[action ?? ""] ?? action}`;
 }
@@ -1633,7 +1817,16 @@ function eventGlyph(type: string) {
   if (type.startsWith("workspace.")) return "W";
   if (type.startsWith("integration.")) return "✓";
   if (type.startsWith("task.")) return "T";
+  if (type.startsWith("plan.")) return "P";
   return "•";
+}
+
+function planReviewStatusLabel(status: "pending" | "approved" | "rejected" | "cancelled") {
+  return ({ pending: "等待你确认", approved: "批准", rejected: "拒绝", cancelled: "取消" })[status];
+}
+
+function trustProfileLabel(profile: DesktopTrustProfile) {
+  return ({ strict: "严格审批", balanced: "平衡", automation: "自动化" })[profile];
 }
 
 function formatTime(value?: string) {

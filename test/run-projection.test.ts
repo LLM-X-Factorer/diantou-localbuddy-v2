@@ -89,6 +89,24 @@ test("projects the persisted provider and M4 extension selection", () => {
   });
 });
 
+test("projects the Plan Review gate before Worker execution", () => {
+  const workspace = "/tmp/localbuddy-plan-review-projection";
+  const baseEvents: RuntimeEvent[] = [
+    event(1, "run.started"),
+    event(2, "plan.created", { taskId: "orchestrate" }),
+    event(3, "plan.review_requested", { taskId: "orchestrate" }),
+  ];
+  assert.equal(projectRun("run-plan", workspace, baseEvents).status, "awaiting_plan_approval");
+  assert.equal(projectRun("run-plan", workspace, [
+    ...baseEvents,
+    event(4, "plan.approved", { taskId: "orchestrate" }),
+  ]).status, "running");
+  assert.equal(projectRun("run-plan", workspace, [
+    ...baseEvents,
+    event(4, "plan.rejected", { taskId: "orchestrate" }),
+  ]).status, "cancelling");
+});
+
 test("rebuilds desktop history from a persisted JSONL event log", async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "localbuddy-history-"));
   context.after(async () => rm(workspace, { recursive: true, force: true }));

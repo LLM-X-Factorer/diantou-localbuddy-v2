@@ -29,6 +29,7 @@ const CHANNELS = {
   loadArtifactPreview: "localbuddy:load-artifact-preview",
   exportDiagnostics: "localbuddy:export-diagnostics",
   resolveToolApproval: "localbuddy:resolve-tool-approval",
+  resolvePlanReview: "localbuddy:resolve-plan-review",
   openArtifact: "localbuddy:open-artifact",
   runUpdated: "localbuddy:run-updated",
 } as const;
@@ -55,6 +56,7 @@ const api: DesktopApi = {
   loadArtifactPreview: (request) => ipcRenderer.invoke(CHANNELS.loadArtifactPreview, request),
   exportDiagnostics: (request) => ipcRenderer.invoke(CHANNELS.exportDiagnostics, request),
   resolveToolApproval: (request) => ipcRenderer.invoke(CHANNELS.resolveToolApproval, request),
+  resolvePlanReview: (request) => ipcRenderer.invoke(CHANNELS.resolvePlanReview, request),
   openArtifact: (request) => ipcRenderer.invoke(CHANNELS.openArtifact, request),
   onRunUpdate(listener) {
     const wrapped = (_event: Electron.IpcRendererEvent, run: DesktopRunView) => listener(run);
