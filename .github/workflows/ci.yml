@@ -17,11 +17,11 @@ jobs:
     name: Windows full check
     runs-on: windows-2025
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           version: 9.15.9
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -33,11 +33,11 @@ jobs:
     name: macOS regression check
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           version: 9.15.9
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -49,11 +49,11 @@ jobs:
     name: Windows Setup clean first launch
     runs-on: windows-2025
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           version: 9.15.9
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -64,7 +64,7 @@ jobs:
         run: pnpm verify:first-run-windows-installer
       - name: Upload installed clean first-launch evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: localbuddy-installed-clean-first-launch-windows-2025
           path: .localbuddy/first-run-smoke/win32-installer/**
@@ -80,7 +80,7 @@ jobs:
             ForEach-Object { Copy-Item $_.FullName -Destination ci-assets/$($_.Name) }
       - name: Upload Windows distributables on main only
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: localbuddy-windows-main
           path: ci-assets/**

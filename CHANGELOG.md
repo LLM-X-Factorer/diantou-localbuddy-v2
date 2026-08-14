@@ -4,7 +4,9 @@
 
 ## Unreleased
 
-暂无。
+### Changed
+
+- 将 GitHub Actions 升级到声明 Node 24 runtime 的当前主版本，关闭 `v0.11.2` Release Gate 中旧 Action 被 Runner 强制从 Node 20 切到 Node 24 的兼容性告警；发布 Tag 与既有资产保持不变。
 
 ## 0.11.2 — 2026-08-14
 

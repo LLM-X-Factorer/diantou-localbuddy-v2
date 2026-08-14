@@ -16,11 +16,11 @@ jobs:
       LOCALBUDDY_GRAY_FAULT_MATRIX: "1"
       LOCALBUDDY_GRAY_SOAK_CYCLES: "3"
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           version: 9.15.9
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -34,7 +34,7 @@ jobs:
         run: pnpm verify:windows-gray-installer
       - name: Upload sanitized installed-app evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: localbuddy-windows-gray-evidence-${{ github.ref_name }}
           path: .localbuddy/windows-gray/win32-installer/**
@@ -63,7 +63,7 @@ jobs:
             (($checksumLines -join "`n") + "`n"),
             $utf8WithoutBom
           )
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: localbuddy-windows-${{ github.ref_name }}
           path: release-assets/**
@@ -73,8 +73,8 @@ jobs:
     needs: [windows-release]
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: localbuddy-windows-${{ github.ref_name }}
           path: release-assets

@@ -13,11 +13,11 @@ jobs:
     name: Weekly non-release Linux package check
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           version: 9.15.9
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -47,7 +47,7 @@ jobs:
           mkdir -p linux-assets
           find .localbuddy/forge-out/make -type f -name '*.deb' -exec cp {} linux-assets/ \;
           test -n "$(find linux-assets -type f -name '*.deb' -print -quit)"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: localbuddy-linux-weekly-${{ github.run_id }}
           path: linux-assets/**
