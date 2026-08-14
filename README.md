@@ -4,7 +4,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 
 这不是 Craft Agents 的分支，也不包含腾讯 WorkBuddy 的私有实现。仓库只参考公开产品行为、通用 Agent 架构模式，以及我们自行定义的验收契约。
 
-> **产品判断（2026-08-14）**：`v0.11.2 / M10.4 Explicit Research Sources` 仍是当前私有 Engineering Alpha Release；main 上的 `v0.12.0 / M11.1 Goal Contract + Plan Review` 已完成本机候选实现，发布门禁尚未全部关闭。Desktop 现在会先生成计划并等待人工批准，批准前 Worker 不启动。Windows 11 真人灰度和真实 Provider 连续试用仍开放；它不是公开分发版，也不是与 WorkBuddy 功能对等的商业产品。
+> **产品判断（2026-08-14）**：`v0.11.2 / M10.4 Explicit Research Sources` 仍是当前私有 Engineering Alpha Release；main 上的 `v0.12.1 / M11.1 Goal Contract + Plan Review` 已完成本机候选实现，发布门禁尚未全部关闭。Desktop 现在会先生成计划并等待人工批准，批准前 Worker 不启动。Windows 11 真人灰度和真实 Provider 连续试用仍开放；它不是公开分发版，也不是与 WorkBuddy 功能对等的商业产品。
 
 ## 一页状态
 
@@ -18,7 +18,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 | 代码写回 | 独立 worktree、组合预检、人工 Gate、apply/commit/revert commit |
 | 恢复 | Research/Coding 同 Run checkpoint resume；失败 Run 可恢复未完成 Task 链，并保留 replay 兜底 |
 | 扩展 | 本地/签名 Skill、MCP stdio/HTTP/OAuth、受限 Playwright Browser |
-| 分发 | macOS `0.12.0` 候选 DMG/ZIP 已完成包、Goal UI 与最终 App 合成灰度；Windows 当前发布版仍为 `v0.11.2`，`v0.12.0` Tag Gate 待运行；Linux 仅维护 |
+| 分发 | macOS `0.12.1` 候选 DMG/ZIP 已完成包、Goal UI 与最终 App 合成灰度；Windows 当前发布版仍为 `v0.11.2`，`v0.12.1` Tag Gate 待运行；Linux 仅维护 |
 | 当前主动暂缓 | Developer ID、生产 Hardened Runtime、notarization、公开 Gatekeeper |
 
 M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M10.3 继续补齐它的必要前置条件：Provider 不再藏在扩展折叠区，凭据状态、管理动作、显式连接检查和启动门禁形成单一纵向闭环。保存不会自动联网；验证连接会明确把凭据发送到所示 Provider/Base URL 并只请求模型列表；真实 Run 仍必须由用户点击开始。连续真实 dogfooding 仍是开放验证门。
@@ -202,7 +202,7 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 - Windows 托管 Runner 已运行版本对应的 Squirrel Setup，从实际安装目录验证无 Provider 首启并调用卸载清理；安装/更新/卸载生命周期由标准 Squirrel 处理器提前收口；
 - 规格与验收见 [`docs/M10.3-SPEC.md`](docs/M10.3-SPEC.md) 和 [`docs/M10.3-VALIDATION.md`](docs/M10.3-VALIDATION.md)。
 
-当前主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。`0.12.0` 必须重新通过 Windows 安装级无凭据首启和完整安装版合成灰度后才会发布 Windows Setup/ZIP 与 SHA-256 清单。终端用户 Windows 11、真实 Provider 和第三方生产 MCP OAuth 仍需外部验收，不能用托管 Runner 或本地夹具冒充。Linux 当前不进入发布门禁。
+当前主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。`0.12.1` 必须重新通过 Windows 安装级无凭据首启和完整安装版合成灰度后才会发布 Windows Setup/ZIP 与 SHA-256 清单。终端用户 Windows 11、真实 Provider 和第三方生产 MCP OAuth 仍需外部验收，不能用托管 Runner 或本地夹具冒充。Linux 当前不进入发布门禁。
 
 ## 核心模型
 

@@ -2,7 +2,21 @@
 
 本文件记录已经发布或准备发布的产品版本。里程碑范围和证据分别以 [`docs/ROADMAP.md`](docs/ROADMAP.md) 与对应的 `docs/M*-VALIDATION.md` 为准。
 
-## 0.12.0 — 2026-08-14
+## 0.12.1 — 2026-08-14
+
+M11.1 Goal Contract + Plan Review 的发布候选。`v0.12.0` Tag Gate 在 Windows 全量测试的临时目录清理阶段遇到一次 `runtime-lock` 释放竞态，停止于打包前，因此没有创建 GitHub Release 或发布资产；Tag 保留为失败审计记录，不移动、不复用。
+
+### Fixed
+
+- 大目录 checkpoint 恢复测试在断言终态后显式等待 Desktop manager 完全 idle，再由测试框架删除临时工作区，避免 Windows 偶发 `EPERM` 清理失败；产品锁的所有权和释放语义不变。
+
+### Evidence
+
+- `pnpm check`：152 项；macOS 本机 150 passed、2 项 Windows-only 合同按平台跳过、0 failed；批准、拒绝、重启恢复、批准指纹、决定审计修复和旧 checkpoint 兼容矩阵通过；
+- macOS 源码 Electron 界面已实际读回 Goal Contract 三个输入区、完成标准启动门禁和 Guide 的“批准前 Worker 不启动”；本次未点击生成计划，没有真实 Provider 调用；
+- macOS `0.12.1` DMG/ZIP 已通过版本、DMG 完整性、ad-hoc 签名、Fuse、ASAR、内置浏览器和无凭据首启；最终 App 还通过回环合成 Provider 的计划展示/批准、成功、双 Run 取消、checkpoint 恢复、重启历史和凭据脱敏矩阵，生产依赖审计无已知漏洞。
+
+## 0.12.0 — not released
 
 ### Added
 
@@ -15,12 +29,6 @@
 - 将 GitHub Actions 升级到声明 Node 24 runtime 的当前主版本，关闭 `v0.11.2` Release Gate 中旧 Action 被 Runner 强制从 Node 20 切到 Node 24 的兼容性告警；发布 Tag 与既有资产保持不变。
 - CLI/Core 保持非交互执行，Desktop Main 才默认要求 Plan Review；旧只含裸 goal 的调用继续使用原执行文本，避免破坏 v1-v4 checkpoint 身份；
 - Windows 安装版合成灰度新增真实 Plan Review 页面批准，并停止把没有显式添加的本地文件冒充为已读取资料。
-
-### Evidence
-
-- `pnpm check`：152 项；macOS 本机 150 passed、2 项 Windows-only 合同按平台跳过、0 failed；批准、拒绝、重启恢复、批准指纹、决定审计修复和旧 checkpoint 兼容矩阵通过；
-- macOS 源码 Electron 界面已实际读回 Goal Contract 三个输入区、完成标准启动门禁和 Guide 的“批准前 Worker 不启动”；本次未点击生成计划，没有真实 Provider 调用。
-- macOS `0.12.0` DMG/ZIP 已通过版本、DMG 完整性、ad-hoc 签名、Fuse、ASAR、内置浏览器和无凭据首启；最终 App 还通过回环合成 Provider 的计划展示/批准、成功、双 Run 取消、checkpoint 恢复、重启历史和凭据脱敏矩阵，生产依赖审计无已知漏洞。
 
 ## 0.11.2 — 2026-08-14
 

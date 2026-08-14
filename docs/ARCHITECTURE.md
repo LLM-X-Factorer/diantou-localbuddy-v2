@@ -1,6 +1,6 @@
 # LocalBuddy V2 Architecture
 
-> **状态基线**：2026-08-14，`v0.11.2 / M10.4` 是当前私有 Engineering Alpha Release；本文同时描述 main 上的 `v0.12.0 / M11.1` 发布候选架构。各历史 Validation 保留对应阶段当时的证据边界。
+> **状态基线**：2026-08-14，`v0.11.2 / M10.4` 是当前私有 Engineering Alpha Release；本文同时描述 main 上的 `v0.12.1 / M11.1` 发布候选架构。各历史 Validation 保留对应阶段当时的证据边界。
 
 ## 1. 产品判断
 

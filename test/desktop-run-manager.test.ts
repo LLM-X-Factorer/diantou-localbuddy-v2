@@ -660,6 +660,7 @@ test("resumes a failed research Run even when its run directory has over one tho
   const resumed = await manager.resumeRun({ workspace, runId });
   assert.equal(resumed.runId, runId);
   assert.equal((await terminal).status, "succeeded");
+  await manager.waitForIdle();
 });
 
 test("resumes a Coding Run after an isolated write completed before its message cursor", {
