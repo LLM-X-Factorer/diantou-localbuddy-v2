@@ -7,6 +7,7 @@
 ### Fixed
 
 - Canary 版本现在会与最新稳定 Release 比较；发布后的下一次 `main` 构建自动进入下一 patch 的 prerelease 线，避免 Squirrel 把同号 `X.Y.Z-canary.*` 识别为低于已经安装的稳定 `X.Y.Z`。
+- 修复 CI `31784118614` 已在 Windows Server 2025 实测 `v0.12.2 -> 0.12.3-canary.39` 原地升级且 `profilePreserved=true`，同时通过 157 项 Windows/macOS 合同、干净安装和两类 Canary artifact 上传。
 
 ## 0.12.2 — 2026-08-14
 

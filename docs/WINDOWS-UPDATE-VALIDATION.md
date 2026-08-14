@@ -18,7 +18,7 @@
 |---|---|---|
 | TypeScript/静态合同 | 通过 | `pnpm check` 共 157 项：155 passed、2 项 Windows-only 跳过、0 failed；覆盖构建身份、Canary 高于最新稳定版、更新状态机、不安全 feed、忙碌重启阻断和 workflow/PowerShell 合同 |
 | macOS 本机开发构建 | 通过 | `pnpm build` 通过；`0.12.2` App/ZIP/DMG、ad-hoc 签名、DMG 完整性、Fuse、ASAR、内置浏览器和真实 Renderer 首启通过。首次回归还发现本地脏工作区只显示旧 HEAD 的歧义，现已改为显式 `+dirty`；不能运行 Windows Squirrel |
-| Windows Server 2025 原生 CI | 通过 | CI `31780762643`：macOS/Windows 全量检查、Canary Setup/ZIP、干净安装首启、`v0.12.1 -> 0.12.2-canary.35` 原地升级、profile 保留和两类 Canary artifact 全部通过 |
+| Windows Server 2025 原生 CI | 通过 | CI `31784118614`：macOS/Windows 157 项合同、`0.12.3-canary.39` Setup/ZIP、干净安装首启、`v0.12.2 -> 0.12.3-canary.39` 原地升级、profile 保留和两类 Canary artifact 全部通过 |
 | Windows Tag Release | 通过 | Gate `31781917106`：生产依赖审计、156 项合同、安装版合成灰度、`v0.12.1 -> v0.12.2` 原地升级/profile 保留、五项 Release 资产和发布作业全部通过 |
 | Windows 11 真机 | 未验收 | Canary 同步、稳定安装升级、Credential Manager、SmartScreen/UAC、真实 Provider |
 | 生产更新源 | 未配置 | 没有可宣称上线的应用内自动更新服务 |
@@ -28,6 +28,8 @@
 首次 `main` CI `31779620641` 保留为失败证据：macOS 与 Windows 全量检查通过，Windows Setup 完成构建；干净首启烟测在较慢的 Windows bootstrap 返回前读取到 Renderer 默认 `unknown` 构建身份，严格断言因此停止。烟测随后改为等待 bootstrap 返回的非 `unknown` 身份，没有放宽真实性断言。
 
 发布后的文档提交 CI `31783524153` 也保留为失败证据：全量 Windows/macOS 合同、Canary 构建和干净安装均通过，但流水线把已经发布的 `0.12.2` 生成成 `0.12.2-canary.38`，Squirrel 正确拒绝把稳定版降级为同号 prerelease。修复不是跳过升级门禁，而是让 CI 读取最新稳定 Tag：仓库版本不高于稳定版时，Canary 自动进入下一 patch 线，并新增 `0.12.2 + v0.12.2 -> 0.12.3-canary.38` 回归合同。
+
+修复 CI `31784118614` 已完成发布后场景复验：干净安装与 UI 启动通过，`LocalBuddy-0.12.2-Setup.exe -> app-0.12.3-canary39` 原地升级通过，脱敏升级摘要记录 `targetVersion=0.12.3-canary.39`、`profilePreserved=true`，随后分发包和 Squirrel feed artifact 均上传成功。
 
 修复后的 `main` CI `31780762643` 已复验完整链路：干净安装 UI 读回 `CANARY / v0.12.2-canary.35 / 5251353f`；随后从 `LocalBuddy-0.12.1-Setup.exe` 安装的稳定版通过本地 Squirrel feed 升级，新版本 UI 再次读回同一身份，非敏感 profile 标记保留。GitHub 保存了 120,114-byte 干净首启证据、244,068-byte 升级证据、540,102,786-byte Canary 分发 artifact 和 265,242,749-byte feed artifact。
 
