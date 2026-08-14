@@ -39,6 +39,7 @@ test("declares Windows-first CI plus low-frequency Linux maintenance boundaries"
   assert.match(upgradeVerification, /--update/);
   assert.match(upgradeVerification, /User profile marker was lost during the in-place update/);
   assert.match(upgradeVerification, /buildIdentity/);
+  assert.match(upgradeVerification, /upgrade-summary\.json/);
   const workflow = await readFile(resolve(repository, ".github", "workflows", "ci.yml"), "utf8");
   assert.match(workflow, /windows-2025/);
   assert.match(workflow, /macos-15/);

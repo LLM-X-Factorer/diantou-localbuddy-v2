@@ -73,15 +73,22 @@ try {
     throw "Updated UI does not report the expected build version $targetVersion"
   }
 
-  [ordered]@{
+  $summary = [ordered]@{
     schemaVersion = 1
     baseSetup = [IO.Path]::GetFileName($baseSetupPath)
     targetVersion = $targetVersion
-    targetExecutable = $targetExecutable
+    targetInstallDirectory = $targetExecutables[0].Directory.Name
     profilePreserved = $true
-    beforeScreenshot = $beforeScreenshot
-    afterScreenshot = $afterScreenshot
-  } | ConvertTo-Json -Depth 4
+    beforeScreenshot = [IO.Path]::GetFileName($beforeScreenshot)
+    afterScreenshot = [IO.Path]::GetFileName($afterScreenshot)
+  }
+  $summaryJson = ($summary | ConvertTo-Json -Depth 4) + "`n"
+  [System.IO.File]::WriteAllText(
+    (Join-Path $evidenceRoot "upgrade-summary.json"),
+    $summaryJson,
+    [System.Text.UTF8Encoding]::new($false)
+  )
+  $summaryJson
 } finally {
   if ($hadScreenshot) { $env:LOCALBUDDY_SCREENSHOT_PATH = $originalScreenshot } else { Remove-Item Env:LOCALBUDDY_SCREENSHOT_PATH -ErrorAction SilentlyContinue }
   if ($hadCoordination) { $env:LOCALBUDDY_SHARED_COORDINATION = $originalCoordination } else { Remove-Item Env:LOCALBUDDY_SHARED_COORDINATION -ErrorAction SilentlyContinue }

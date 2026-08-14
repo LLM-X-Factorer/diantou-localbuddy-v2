@@ -24,7 +24,7 @@ Windows Canary 与安全原地更新候选。本版本把高频开发同步、�
 
 - `pnpm check` 共 156 项：macOS 本机 154 passed、2 项 Windows-only 跳过、0 failed；生产依赖审计无已知漏洞；
 - `0.12.2` macOS App/ZIP/DMG、ad-hoc 签名、DMG 完整性、Fuse、ASAR、内置浏览器和真实 Renderer 首启通过，UI 读回可追踪构建身份；
-- 首次 Windows CI `31779620641` 的全量检查和 Canary Setup 构建通过，但首启烟测在较慢的 bootstrap 返回前读到默认构建身份并停止，原地升级未执行；烟测已改为等待真实身份且不放宽断言，等待下一次 Windows CI 复验。动态证据见 [`docs/WINDOWS-UPDATE-VALIDATION.md`](docs/WINDOWS-UPDATE-VALIDATION.md)。
+- 首次 Windows CI `31779620641` 的全量检查和 Canary Setup 构建通过，但首启烟测在 bootstrap 前读到默认身份并停止；严格等待真实身份后，CI `31780762643` 的 macOS/Windows 全量检查、Canary 干净安装、`v0.12.1 -> 0.12.2-canary.35` 原地升级、profile 保留以及分发/feed artifacts 全部通过。动态证据见 [`docs/WINDOWS-UPDATE-VALIDATION.md`](docs/WINDOWS-UPDATE-VALIDATION.md)。
 
 ## 0.12.1 — 2026-08-14
 
