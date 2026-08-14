@@ -18,11 +18,13 @@
 |---|---|---|
 | TypeScript/静态合同 | 通过 | `pnpm check` 共 156 项：154 passed、2 项 Windows-only 跳过、0 failed；覆盖构建身份、更新状态机、不安全 feed、忙碌重启阻断和 workflow/PowerShell 合同 |
 | macOS 本机开发构建 | 通过 | `pnpm build` 通过；`0.12.2` App/ZIP/DMG、ad-hoc 签名、DMG 完整性、Fuse、ASAR、内置浏览器和真实 Renderer 首启通过。首次回归还发现本地脏工作区只显示旧 HEAD 的歧义，现已改为显式 `+dirty`；不能运行 Windows Squirrel |
-| Windows Server 2025 原生 CI | 待首次 `0.12.2` main CI | 需要读取干净安装、上一稳定版升级和 Canary artifacts |
+| Windows Server 2025 原生 CI | 首次失败，修复后待复验 | CI `31779620641` 的 Windows 全量检查和 Canary Setup 构建通过；首启烟测在 bootstrap 完成前读到默认构建身份并停止，原地升级未执行 |
 | Windows 11 真机 | 未验收 | Canary 同步、稳定安装升级、Credential Manager、SmartScreen/UAC、真实 Provider |
 | 生产更新源 | 未配置 | 没有可宣称上线的应用内自动更新服务 |
 
 生产依赖审计未发现已知漏洞。完整开发依赖审计仍命中 Electron Forge 打包链中的 `extract-zip <= 2.0.1` symlink path traversal 公告；上游没有已修复版本。当前继续只在干净受控 Runner 打包，并保留该已知 Engineering Alpha 风险，不做静默 ignore。
+
+首次 `main` CI `31779620641` 保留为失败证据：macOS 与 Windows 全量检查通过，Windows Setup 完成构建；干净首启烟测在较慢的 Windows bootstrap 返回前读取到 Renderer 默认 `unknown` 构建身份，严格断言因此停止。烟测现改为等待 bootstrap 返回的非 `unknown` 身份，不放宽真实性断言，等待下一次 Windows CI 复验。
 
 ## Windows 11 手工验收清单
 

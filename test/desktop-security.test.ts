@@ -43,6 +43,7 @@ test("desktop runtime uses the privileged local protocol and Electron isolation 
   assert.match(main, /providerDialogVisible/);
   assert.match(main, /verifyDisabled/);
   assert.match(main, /startDisabled/);
+  assert.match(main, /!element\.innerText\.includes\('unknown'\)/);
   assert.match(main, /electron-squirrel-startup/);
   assert.match(main, /requireForSquirrel/);
   assert.match(main, /LOCALBUDDY_UPDATE_FEED_URL/);

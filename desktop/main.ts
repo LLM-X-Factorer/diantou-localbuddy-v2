@@ -823,15 +823,16 @@ async function captureSmokeScreenshotIfRequested(window: BrowserWindow): Promise
     return;
   }
   const diagnostics = await window.webContents.executeJavaScript(`(async () => {
-    const waitFor = async (selector) => {
+    const waitFor = async (selector, ready = () => true) => {
       const deadline = Date.now() + 10_000;
       while (Date.now() < deadline) {
         const element = document.querySelector(selector);
-        if (element !== null) return element;
+        if (element !== null && ready(element)) return element;
         await new Promise((resolvePromise) => setTimeout(resolvePromise, 50));
       }
       throw new Error('Timed out waiting for ' + selector);
     };
+    const buildIdentity = await waitFor('.build-identity', (element) => !element.innerText.includes('unknown'));
     const providerEntry = await waitFor('.provider-entry');
     const startButton = await waitFor('.start-button');
     const goalContract = await waitFor('.goal-contract-heading');
@@ -852,7 +853,7 @@ async function captureSmokeScreenshotIfRequested(window: BrowserWindow): Promise
       goalFieldCount: goalFields.length,
       planReviewGuideVisible,
       startButtonText: startButton.innerText.trim(),
-      buildIdentity: document.querySelector('.build-identity')?.innerText.trim() ?? '',
+      buildIdentity: buildIdentity.innerText.trim(),
       providerEntry: providerEntry.innerText.trim(),
       providerDialogVisible: providerDialog !== null,
       providerChoices,
