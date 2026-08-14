@@ -1,13 +1,13 @@
 # LocalBuddy V2 Internal Quickstart
 
-> 适用版本：`v0.11.2 / M10.4 Explicit Research Sources` 私有 Engineering Alpha Release。当前灰度与发布优先 Windows；macOS 保留回归，Linux 降为维护。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
+> 适用版本：`v0.12.1 / M11.1 Goal Contract + Plan Review` 私有 Engineering Alpha Release。当前灰度与发布优先 Windows；macOS 保留回归，Linux 降为维护。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
 
 ## 1. 选择可用入口
 
 | 平台 | 当前可用入口 | 已证明范围 |
 |---|---|---|
 | macOS arm64 | 从仓库执行 `pnpm desktop`，或使用本机生成的 ad-hoc ZIP/DMG | 本机 Renderer、Fuse、ASAR、内置浏览器和包完整性烟测 |
-| Windows x64 | 使用私有 [`v0.11.2` Release](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.11.2) 的 Setup/ZIP | Release Runner 已完成合同、Setup 构建、静默安装、无凭据首启、合成灰度和卸载；终端用户设备仍待验收 |
+| Windows x64 | 使用私有 [`v0.12.1` Release](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.1) 的 Setup/ZIP | Release Runner 已完成合同、Setup 构建、静默安装、无凭据首启、Plan Review 合成灰度和卸载；终端用户设备仍待验收 |
 | Linux x64 | 当前不提供新 Release | 每周/手动构建维护；真实图形桌面验收暂不优先 |
 
 Windows 包未签名。只有明确获准参与内部测试时才下载；不要把 SmartScreen 提示解释为已完成发布信誉或代码签名。
@@ -31,9 +31,10 @@ pnpm desktop
 
 1. 没有安全测试目录时，点击“创建教程工作区并预填”；
 2. LocalBuddy 会在应用数据目录创建三份虚构材料，不会触碰 Documents 或已有工作区；
-3. 检查编辑器中的目标、Provider、信任档和模式；
-4. 只有点击“开始任务”才会把必要上下文发送给所选 Provider；
-5. 完成后依次查看任务图、运行轨迹和经过哈希验证的 Artifact。
+3. 分别填写预期结果、约束和至少一条完成标准，并检查 Provider、信任档和模式；
+4. 点击“生成计划”后会产生一次 Orchestrator 模型调用；检查计划中的任务、路径、整合产物和检查命令；
+5. 只有批准计划后 Worker 才会启动；不接受时可拒绝并结束本次 Run；
+6. 完成后依次查看任务图、运行轨迹和经过哈希验证的 Artifact。
 
 Guide 本身不调用模型，也不生成假 Run。用户可以进入工作台，并随时从侧边栏重新打开。
 
@@ -50,7 +51,7 @@ Guide 本身不调用模型，也不生成假 Run。用户可以进入工作台�
 
 Linux DEB 声明 `libsecret-tools` 依赖以提供 `secret-tool`；系统仍必须运行可用的 Secret Service/桌面 Keyring。没有该会话时，应用应报告系统凭据不可用，而不是回退到明文文件。
 
-保存本身不会联网。只有点击“验证连接”或“开始任务”才会把凭据发送到界面所示端点。没有所选 Provider 的可用凭据时，“开始任务”会保持禁用并提供直达设置入口。
+保存本身不会联网。只有点击“验证连接”或“生成计划”才会把凭据发送到界面所示端点。没有所选 Provider 的可用凭据时，“生成计划”会保持禁用并提供直达设置入口。
 
 ## 4. 完成第一个 Research Run
 
@@ -59,8 +60,9 @@ Linux DEB 声明 `libsecret-tools` 依赖以提供 `secret-tool`；系统仍必�
 3. 信任档先使用“平衡（推荐）”；
 4. 并发选择 2 或 3；
 5. 在“本次资料”中明确添加允许 Agent 读取的文件或资料文件夹；不添加时运行位置不会自动成为资料库；
-6. 输入明确目标，例如“读取本次添加的会议记录，生成一份标注来源文件的行动清单”；
-7. 启动后观察 Task Graph、事件轨迹、审批请求和最终 Artifact。
+6. 填写明确结果，例如“读取本次添加的会议记录，生成一份标注来源文件的行动清单”，并给出至少一条可检查的完成标准；
+7. 生成计划后核对范围与任务，确认无误再点击“批准，开始 Worker”；
+8. 执行后观察 Task Graph、事件轨迹、审批请求和最终 Artifact。
 
 默认不会让 Browser/MCP 执行外部副作用。启用扩展时必须填写精确 Skill ID、MCP Server ID 或 Browser Origin；允许动作只代表调用可以进入逐次审批，不代表预先批准。
 

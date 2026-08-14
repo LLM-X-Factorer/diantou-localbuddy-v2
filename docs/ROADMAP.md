@@ -1,10 +1,10 @@
 # LocalBuddy V2 Roadmap after M11.1
 
-> **状态真源**：2026-08-14。当前私有 Release 仍为 `v0.11.2 / M10.4`；`v0.12.1 / M11.1 Goal Contract + Plan Review` 已完成本机实现和自动化验证，正处于发布候选。`v0.12.0` Tag Gate 在打包前因 Windows 测试清理竞态停止，没有 Release 或资产。后续灰度与发布保持 Windows-first，Linux 只做每周/手动维护。阶段内证据以对应 Validation 和 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 为准。
+> **状态真源**：2026-08-14。当前私有 Release 为 `v0.12.1 / M11.1 Goal Contract + Plan Review`；本机验证、Windows 原生 CI、安装版合成灰度、Release 和资产回下载均已完成。`v0.12.0` Tag Gate 在打包前因 Windows 测试清理竞态停止，没有 Release 或资产。后续灰度保持 Windows-first，Linux 只做每周/手动维护。阶段内证据以对应 Validation 和 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 为准。
 
 ## 当前里程碑
 
-### v0.12.1 · M11.1 Goal Contract + Plan Review — release candidate
+### v0.12.1 · M11.1 Goal Contract + Plan Review — private Engineering Alpha
 
 - Desktop 将自由文本目标拆为 outcome、constraints 和 verification criteria，并以 Run Request v5 持久化；
 - Orchestrator 计划生成后进入 `awaiting_plan_approval`，页面显示 Goal、范围、Worker 任务、owned paths、整合产物和检查命令；
@@ -12,7 +12,7 @@
 - Goal、计划和 Run scope 由审批指纹绑定；pending 与 approved 状态可跨应用重启和 same-Run resume；
 - CLI/Core 保持非交互兼容，旧单段 goal 和 v1-v4 checkpoint 身份不变；
 - 本机 `pnpm check` 为 152 项：150 passed、2 项 Windows-only 合同按平台跳过、0 failed；macOS 源码 UI 与最终 App 合成灰度均已实际读回；
-- macOS `0.12.1` DMG/ZIP、包完整性、无凭据首启和最终 App 回环合成灰度已通过；Windows 安装版灰度、Tag Release 和资产回下载仍是开放门禁。
+- macOS `0.12.1` DMG/ZIP、包完整性、无凭据首启和最终 App 回环合成灰度已通过；Windows 原生 CI、安装版灰度、Tag Release 和资产回下载也已通过。
 
 规格与本机证据见 [`M11.1-SPEC.md`](M11.1-SPEC.md) 和 [`M11.1-VALIDATION.md`](M11.1-VALIDATION.md)。本增量不包含计划编辑、Goal revision 2+、steering、独立 Reviewer 或完整 Eval 系统。
 

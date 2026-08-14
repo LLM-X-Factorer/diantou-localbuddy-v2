@@ -1,6 +1,6 @@
 # LocalBuddy V2 Dogfood Plan
 
-> 状态：`active`。当前源码版本为 `v0.11.2 / M10.4 Explicit Research Sources` 私有 Engineering Alpha Release。macOS arm64 的新资料选择 UI、原生文件选择器和包完整性已完成本机验收；大目录 deterministic resume 已通过；Windows Tag 自动门禁已完成原生构建、安装版合成灰度、恢复/重启矩阵和资产回下载校验。v4 explicit-sources 的真实 Provider Run、连续 7-14 天使用和 Windows 11 真人灰度仍是独立门禁。Windows 自动化边界见 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md)。本文不把单元测试、旧 v3 Run、静态 Guide、CI 产物或 workflow 配置重复计作新合同的真人 dogfooding。
+> 状态：`active`。当前源码版本为 `v0.12.1 / M11.1 Goal Contract + Plan Review` 私有 Engineering Alpha Release。macOS arm64 最终 App 与 Windows 安装版均已完成确定性 Plan Review 合成灰度；Windows Tag 自动门禁也已完成原生构建、恢复/重启矩阵和资产回下载校验。真实 Provider Goal Contract Run、连续 7-14 天使用和 Windows 11 真人灰度仍是独立门禁。Windows 自动化边界见 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md)。本文不把单元测试、静态 Guide、CI 产物或合成 Provider 重复计作真人 dogfooding。
 
 ## 目标
 
@@ -17,7 +17,7 @@
 
 | 场景 | 核心验收 |
 |---|---|
-| 本地资料研究 | 运行位置不被扫描；只搜索/读取明确添加的资料，多 Worker 引用逻辑 source path，Integrator 生成登记 Artifact |
+| 本地资料研究 | 运行位置不被扫描；只搜索/读取明确添加的资料；计划需在 Worker 前由用户核对批准；Integrator 生成登记 Artifact |
 | 两个并发 Run | 全局容量不超限，两个 Run 可分别取消和恢复 |
 | Coding 双 Worker | owned paths 不重叠，主工作区在批准前不变 |
 | Integration Gate | inline diff 哈希有效，批准、commit/revert 路径可证明 |
@@ -33,7 +33,7 @@
 
 当前基线为提交 `d686cd6`：[`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610) 已完成完整故障矩阵和 5 次额外重启，脱敏摘要 9 项检查全部通过；配套 [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 的 Windows 合同、macOS 回归和 Setup 无凭据首启也全部通过。
 
-`v0.11.2` 的固定发布基线为提交 `c9a7e4ab979ea7ef9760681f66e0e4a8a5962a8a`：[`Release Gate 31767365053`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31767365053) 已重新完成 Windows 原生 Setup/ZIP、安装版合成灰度、checkpoint 恢复、重启持久化、SHA-256 和发布；三项 Release 资产已回下载核验。该证据仍不等于 Windows 11 真人或真实 Provider dogfood。
+`v0.12.1` 的固定发布基线为提交 `7bd6e368c0e66770e8f6ff694754ed607b0a9acd`：[`Release Gate 31775672269`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31775672269) 已完成 Windows 原生 Setup/ZIP、真实页面 Plan Review 批准、安装版合成灰度、checkpoint 恢复、重启持久化、SHA-256 和发布；三项 Release 资产已回下载核验。该证据仍不等于 Windows 11 真人或真实 Provider dogfood。
 
 该阶段不使用真实 Provider Key，不产生模型费用，也不能证明 Windows 11 消费者桌面环境。
 
