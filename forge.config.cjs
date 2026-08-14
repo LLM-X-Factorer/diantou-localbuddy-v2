@@ -4,7 +4,8 @@ const { MakerSquirrel } = require("@electron-forge/maker-squirrel");
 const { MakerZIP } = require("@electron-forge/maker-zip");
 const { FusesPlugin } = require("@electron-forge/plugin-fuses");
 const { FuseV1Options, FuseVersion } = require("@electron/fuses");
-const { version: packageVersion } = require("./package.json");
+const { version: sourcePackageVersion } = require("./package.json");
+const packageVersion = process.env.LOCALBUDDY_BUILD_VERSION || sourcePackageVersion;
 
 if (typeof packageVersion !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(packageVersion)) {
   throw new Error("package.json contains an invalid package version");
@@ -31,6 +32,7 @@ module.exports = {
     appBundleId: "com.diantou.localbuddy",
     appCategoryType: "public.app-category.developer-tools",
     icon: brandIcon,
+    appVersion: packageVersion,
     asar: true,
     prune: true,
     osxSign: {
@@ -55,8 +57,15 @@ module.exports = {
     new MakerSquirrel(
       {
         name: "LocalBuddy",
+        version: packageVersion,
         setupExe: `LocalBuddy-${packageVersion}-Setup.exe`,
         setupIcon: windowsBrandIcon,
+        ...(process.env.LOCALBUDDY_SQUIRREL_REMOTE_RELEASES
+          ? { remoteReleases: process.env.LOCALBUDDY_SQUIRREL_REMOTE_RELEASES }
+          : {}),
+        ...(process.env.LOCALBUDDY_SQUIRREL_REMOTE_TOKEN
+          ? { remoteToken: process.env.LOCALBUDDY_SQUIRREL_REMOTE_TOKEN }
+          : {}),
       },
       ["win32"],
     ),

@@ -1,6 +1,6 @@
 # LocalBuddy V2 Internal Quickstart
 
-> 适用版本：`v0.12.1 / M11.1 Goal Contract + Plan Review` 私有 Engineering Alpha Release。当前灰度与发布优先 Windows；macOS 保留回归，Linux 降为维护。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
+> 适用版本：当前私有 Release `v0.12.1`，以及源码中的 `0.12.2` Windows 更新候选。当前灰度与发布优先 Windows；macOS 保留回归，Linux 降为维护。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
 
 ## 1. 选择可用入口
 
@@ -11,6 +11,17 @@
 | Linux x64 | 当前不提供新 Release | 每周/手动构建维护；真实图形桌面验收暂不优先 |
 
 Windows 包未签名。只有明确获准参与内部测试时才下载；不要把 SmartScreen 提示解释为已完成发布信誉或代码签名。
+
+### Windows 日常更新开发包
+
+开发测试不需要每次卸载稳定版。代码合入 `main` 且 CI 成功后，在 Windows 仓库目录执行：
+
+```powershell
+gh auth status
+pnpm windows:canary
+```
+
+它下载最新便携 Canary，按 Git SHA 并存并使用独立 Electron user-data 启动，不触碰稳定版安装。Canary 仍会使用系统 Credential Manager 和所选工作区中的 `.localbuddy/`，因此请使用测试工作区。完整边界和固定历史 Run 的方法见 [`WINDOWS-UPDATES.md`](WINDOWS-UPDATES.md)。
 
 ## 2. 从源码启动
 

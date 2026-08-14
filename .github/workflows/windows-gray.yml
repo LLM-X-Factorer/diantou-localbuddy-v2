@@ -32,6 +32,8 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 45
     env:
+      LOCALBUDDY_BUILD_CHANNEL: canary
+      LOCALBUDDY_BUILD_SHA: ${{ github.sha }}
       LOCALBUDDY_GRAY_FAULT_MATRIX: ${{ (github.event_name != 'workflow_dispatch' || inputs.fault_matrix) && '1' || '0' }}
       LOCALBUDDY_GRAY_SOAK_CYCLES: ${{ github.event_name == 'workflow_dispatch' && inputs.soak_cycles || '5' }}
     steps:

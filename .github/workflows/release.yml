@@ -15,6 +15,8 @@ jobs:
     env:
       LOCALBUDDY_GRAY_FAULT_MATRIX: "1"
       LOCALBUDDY_GRAY_SOAK_CYCLES: "3"
+      LOCALBUDDY_BUILD_CHANNEL: "stable"
+      LOCALBUDDY_BUILD_SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -32,6 +34,22 @@ jobs:
         run: pnpm make:win
       - name: Install and exercise LocalBuddy with a local deterministic Provider
         run: pnpm verify:windows-gray-installer
+      - name: Download previous stable Setup
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          New-Item -ItemType Directory -Force previous-release | Out-Null
+          $tag = gh release view --repo $env:GITHUB_REPOSITORY --json tagName --jq .tagName
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($tag)) { throw "Could not resolve previous stable Release" }
+          gh release download $tag --repo $env:GITHUB_REPOSITORY --pattern "LocalBuddy-*-Setup.exe" --dir previous-release
+          if ($LASTEXITCODE -ne 0) { throw "Could not download previous stable Setup" }
+          $setups = @(Get-ChildItem previous-release -File -Filter "LocalBuddy-*-Setup.exe")
+          if ($setups.Count -ne 1) { throw "Expected exactly one previous stable Setup" }
+          "LOCALBUDDY_UPGRADE_BASE_SETUP=$($setups[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Verify previous stable to current stable in-place upgrade
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -File scripts/verify-windows-installer-upgrade.ps1 -BaseSetup $env:LOCALBUDDY_UPGRADE_BASE_SETUP
       - name: Upload sanitized installed-app evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -40,14 +58,25 @@ jobs:
           path: .localbuddy/windows-gray/win32-installer/**
           if-no-files-found: warn
           retention-days: 90
+      - name: Upload sanitized installed-upgrade evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: localbuddy-windows-upgrade-evidence-${{ github.ref_name }}
+          path: .localbuddy/upgrade-smoke/windows/**
+          if-no-files-found: warn
+          retention-days: 90
       - name: Collect release assets and checksums
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force release-assets | Out-Null
           $assets = Get-ChildItem .localbuddy/forge-out/make -Recurse -File |
-            Where-Object { $_.Extension -in @(".exe", ".zip") }
-          if ($assets.Count -lt 2) {
-            throw "Expected both a Windows installer and portable ZIP"
+            Where-Object { $_.Extension -in @(".exe", ".zip", ".nupkg") -or $_.Name -eq "RELEASES" }
+          if (@($assets | Where-Object { $_.Extension -eq ".exe" }).Count -ne 1 -or
+              @($assets | Where-Object { $_.Extension -eq ".zip" }).Count -ne 1 -or
+              @($assets | Where-Object { $_.Extension -eq ".nupkg" -and $_.Name -like "*-full.nupkg" }).Count -ne 1 -or
+              @($assets | Where-Object { $_.Name -eq "RELEASES" }).Count -ne 1) {
+            throw "Expected Setup, portable ZIP, full nupkg, and RELEASES metadata"
           }
           foreach ($asset in $assets) {
             Copy-Item $asset.FullName -Destination release-assets/$($asset.Name)

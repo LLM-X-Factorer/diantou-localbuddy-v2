@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import {
   type DesktopApi,
   type DesktopRunView,
+  type DesktopUpdateView,
 } from "../src/desktop-contract.js";
 
 // Keep the sandboxed preload runtime dependent on Electron only. The values
@@ -17,6 +18,8 @@ const CHANNELS = {
   storeProviderCredential: "localbuddy:store-provider-credential",
   deleteProviderCredential: "localbuddy:delete-provider-credential",
   verifyProviderConnection: "localbuddy:verify-provider-connection",
+  checkForUpdates: "localbuddy:check-for-updates",
+  quitAndInstallUpdate: "localbuddy:quit-and-install-update",
   listRuns: "localbuddy:list-runs",
   startRun: "localbuddy:start-run",
   cancelRun: "localbuddy:cancel-run",
@@ -32,6 +35,7 @@ const CHANNELS = {
   resolvePlanReview: "localbuddy:resolve-plan-review",
   openArtifact: "localbuddy:open-artifact",
   runUpdated: "localbuddy:run-updated",
+  updateUpdated: "localbuddy:update-updated",
 } as const;
 
 const api: DesktopApi = {
@@ -44,6 +48,8 @@ const api: DesktopApi = {
   storeProviderCredential: (request) => ipcRenderer.invoke(CHANNELS.storeProviderCredential, request),
   deleteProviderCredential: (request) => ipcRenderer.invoke(CHANNELS.deleteProviderCredential, request),
   verifyProviderConnection: (request) => ipcRenderer.invoke(CHANNELS.verifyProviderConnection, request),
+  checkForUpdates: () => ipcRenderer.invoke(CHANNELS.checkForUpdates),
+  quitAndInstallUpdate: () => ipcRenderer.invoke(CHANNELS.quitAndInstallUpdate),
   listRuns: (workspace) => ipcRenderer.invoke(CHANNELS.listRuns, workspace),
   startRun: (request) => ipcRenderer.invoke(CHANNELS.startRun, request),
   cancelRun: (runId) => ipcRenderer.invoke(CHANNELS.cancelRun, runId),
@@ -62,6 +68,11 @@ const api: DesktopApi = {
     const wrapped = (_event: Electron.IpcRendererEvent, run: DesktopRunView) => listener(run);
     ipcRenderer.on(CHANNELS.runUpdated, wrapped);
     return () => ipcRenderer.removeListener(CHANNELS.runUpdated, wrapped);
+  },
+  onUpdateUpdate(listener) {
+    const wrapped = (_event: Electron.IpcRendererEvent, update: DesktopUpdateView) => listener(update);
+    ipcRenderer.on(CHANNELS.updateUpdated, wrapped);
+    return () => ipcRenderer.removeListener(CHANNELS.updateUpdated, wrapped);
   },
 };
 

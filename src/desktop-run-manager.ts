@@ -95,6 +95,7 @@ export class DesktopRunManager {
   readonly #active = new Map<string, ActiveRun>();
   readonly #launching = new Set<string>();
   readonly #listeners = new Set<(run: DesktopRunView) => void>();
+  #mutatingIntegrations = 0;
 
   constructor(options: DesktopRunManagerOptions) {
     this.#createProvider = options.createProvider;
@@ -783,46 +784,57 @@ export class DesktopRunManager {
     await Promise.all([...this.#active.values()].map((active) => active.execution));
   }
 
+  isIdle(): boolean {
+    return this.#active.size === 0
+      && this.#launching.size === 0
+      && this.#mutatingIntegrations === 0;
+  }
+
   async #mutateIntegration(
     workspaceInput: string,
     runId: string,
     operation: (manager: IntegrationManager, proposalPath: string) => Promise<void>,
   ): Promise<DesktopRunView> {
-    validateRunId(runId);
-    const workspace = await realpath(workspaceInput);
-    const lease = await this.#workspaceLocks.acquire(workspace, "desktop-integration");
+    this.#mutatingIntegrations += 1;
     try {
-      const runRoot = resolve(workspace, ".localbuddy", "runs", runId);
-      const persistentStore = new JsonlEventStore(resolve(runRoot, "events.jsonl"));
-      const events = [...await persistentStore.list(runId)];
-      if (events.length === 0) {
-        throw new Error(`Run history does not exist: ${runId}`);
-      }
-      const eventStore = new NotifyingEventStore(persistentStore, (event) => {
-        events.push(event);
-        const view = projectRun(runId, workspace, events);
-        const active = this.#active.get(runId);
-        const decorated = decorateRun(
-          view,
-          active?.approvalBroker?.list(),
-          active?.planReviewBroker?.current,
-        );
-        if (active !== undefined) {
-          active.events = events;
-          active.view = decorated;
+      validateRunId(runId);
+      const workspace = await realpath(workspaceInput);
+      const lease = await this.#workspaceLocks.acquire(workspace, "desktop-integration");
+      try {
+        const runRoot = resolve(workspace, ".localbuddy", "runs", runId);
+        const persistentStore = new JsonlEventStore(resolve(runRoot, "events.jsonl"));
+        const events = [...await persistentStore.list(runId)];
+        if (events.length === 0) {
+          throw new Error(`Run history does not exist: ${runId}`);
         }
-        this.#emit(decorated);
-      });
-      await operation(
-        new IntegrationManager({
-          eventStore,
-          executionCoordinator: this.#executionCoordinator,
-        }),
-        resolve(runRoot, "integration-proposal.json"),
-      );
-      return await this.#withPersistentRunState(projectRun(runId, workspace, events));
+        const eventStore = new NotifyingEventStore(persistentStore, (event) => {
+          events.push(event);
+          const view = projectRun(runId, workspace, events);
+          const active = this.#active.get(runId);
+          const decorated = decorateRun(
+            view,
+            active?.approvalBroker?.list(),
+            active?.planReviewBroker?.current,
+          );
+          if (active !== undefined) {
+            active.events = events;
+            active.view = decorated;
+          }
+          this.#emit(decorated);
+        });
+        await operation(
+          new IntegrationManager({
+            eventStore,
+            executionCoordinator: this.#executionCoordinator,
+          }),
+          resolve(runRoot, "integration-proposal.json"),
+        );
+        return await this.#withPersistentRunState(projectRun(runId, workspace, events));
+      } finally {
+        await lease.release();
+      }
     } finally {
-      await lease.release();
+      this.#mutatingIntegrations -= 1;
     }
   }
 

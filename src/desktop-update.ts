@@ -1,0 +1,148 @@
+import type { DesktopBuildIdentity } from "./build-identity.js";
+
+export type DesktopUpdateStatus =
+  | "disabled"
+  | "ready"
+  | "checking"
+  | "available"
+  | "not_available"
+  | "downloaded"
+  | "installing"
+  | "error";
+
+export interface DesktopUpdateView {
+  supported: boolean;
+  configured: boolean;
+  status: DesktopUpdateStatus;
+  build: DesktopBuildIdentity;
+  releaseName?: string;
+  blockedReason?: string;
+  error?: string;
+}
+
+export type DesktopUpdateTransportEvent =
+  | { type: "available"; releaseName?: string }
+  | { type: "not_available" }
+  | { type: "downloaded"; releaseName?: string }
+  | { type: "error"; error: unknown };
+
+export interface DesktopUpdateTransport {
+  configure(feedUrl: string): void;
+  checkForUpdates(): Promise<void>;
+  quitAndInstall(): void;
+  subscribe(listener: (event: DesktopUpdateTransportEvent) => void): () => void;
+}
+
+export class DesktopUpdateCoordinator {
+  readonly #transport: DesktopUpdateTransport | undefined;
+  readonly #canInstall: () => boolean | Promise<boolean>;
+  readonly #onChange: (view: DesktopUpdateView) => void;
+  readonly #unsubscribe: (() => void) | undefined;
+  #view: DesktopUpdateView;
+
+  constructor(input: {
+    build: DesktopBuildIdentity;
+    supported: boolean;
+    feedUrl?: string;
+    transport?: DesktopUpdateTransport;
+    canInstall: () => boolean | Promise<boolean>;
+    onChange?: (view: DesktopUpdateView) => void;
+  }) {
+    this.#transport = input.transport;
+    this.#canInstall = input.canInstall;
+    this.#onChange = input.onChange ?? (() => undefined);
+    this.#view = {
+      supported: input.supported,
+      configured: false,
+      status: "disabled",
+      build: input.build,
+    };
+    if (!input.supported || input.transport === undefined || input.feedUrl === undefined) return;
+    try {
+      const feedUrl = normalizeDesktopUpdateFeedUrl(input.feedUrl);
+      this.#unsubscribe = input.transport.subscribe((event) => this.#handle(event));
+      input.transport.configure(feedUrl);
+      this.#view = { ...this.#view, configured: true, status: "ready" };
+    } catch (error) {
+      this.#view = { ...this.#view, status: "error", error: safeUpdateError(error) };
+    }
+  }
+
+  get current(): DesktopUpdateView {
+    return { ...this.#view, build: { ...this.#view.build } };
+  }
+
+  async checkForUpdates(): Promise<DesktopUpdateView> {
+    if (!this.#view.supported || !this.#view.configured || this.#transport === undefined) {
+      throw new Error("Windows update feed is not configured for this build");
+    }
+    if (this.#view.status === "checking" || this.#view.status === "available") return this.current;
+    if (this.#view.status === "downloaded" || this.#view.status === "installing") return this.current;
+    this.#set({ status: "checking", error: undefined, blockedReason: undefined });
+    try {
+      await this.#transport.checkForUpdates();
+    } catch (error) {
+      this.#set({ status: "error", error: safeUpdateError(error) });
+    }
+    return this.current;
+  }
+
+  async quitAndInstall(): Promise<DesktopUpdateView> {
+    if (this.#view.status !== "downloaded" || this.#transport === undefined) {
+      throw new Error("No verified Windows update is ready to install");
+    }
+    if (!await this.#canInstall()) {
+      this.#set({ blockedReason: "仍有 Desktop Run 正在执行，请先结束或取消任务。" });
+      return this.current;
+    }
+    this.#set({ status: "installing", blockedReason: undefined, error: undefined });
+    this.#transport.quitAndInstall();
+    return this.current;
+  }
+
+  dispose(): void {
+    this.#unsubscribe?.();
+  }
+
+  #handle(event: DesktopUpdateTransportEvent): void {
+    switch (event.type) {
+      case "available":
+        this.#set({ status: "available", releaseName: event.releaseName, error: undefined });
+        break;
+      case "not_available":
+        this.#set({ status: "not_available", releaseName: undefined, error: undefined });
+        break;
+      case "downloaded":
+        this.#set({ status: "downloaded", releaseName: event.releaseName, error: undefined });
+        break;
+      case "error":
+        this.#set({ status: "error", error: safeUpdateError(event.error) });
+        break;
+    }
+  }
+
+  #set(patch: Partial<DesktopUpdateView>): void {
+    this.#view = { ...this.#view, ...patch };
+    this.#onChange(this.current);
+  }
+}
+
+export function normalizeDesktopUpdateFeedUrl(value: string): string {
+  const url = new URL(value);
+  const loopback = url.hostname === "127.0.0.1" || url.hostname === "localhost" || url.hostname === "::1";
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback)) {
+    throw new Error("Windows update feed must use HTTPS or loopback HTTP");
+  }
+  if (url.username || url.password || url.search || url.hash) {
+    throw new Error("Windows update feed URL contains forbidden credentials or parameters");
+  }
+  return url.toString();
+}
+
+export function safeUpdateError(value: unknown): string {
+  const message = value instanceof Error ? value.message : String(value);
+  return message
+    .replace(/https?:\/\/[^\s)]+/giu, "[update-url]")
+    .replace(/[\r\n\t]+/gu, " ")
+    .slice(0, 300);
+}

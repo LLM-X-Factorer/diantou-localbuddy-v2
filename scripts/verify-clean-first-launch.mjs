@@ -32,6 +32,7 @@ try {
   assert.equal(diagnostics.goalFieldCount, 3);
   assert.equal(diagnostics.planReviewGuideVisible, true);
   assert.match(diagnostics.startButtonText, /生成计划/);
+  assert.match(diagnostics.buildIdentity, /^(DEV|CANARY|BETA|STABLE)\s+v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)? · [a-f0-9]{7,40}(?:\+dirty)?$/);
   assert.equal(diagnostics.providerDialogVisible, true);
   assert.match(diagnostics.providerEntry, /DeepSeek/);
   assert.match(diagnostics.providerEntry, /未配置/);

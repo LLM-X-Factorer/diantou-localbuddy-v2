@@ -45,6 +45,12 @@ test("desktop runtime uses the privileged local protocol and Electron isolation 
   assert.match(main, /startDisabled/);
   assert.match(main, /electron-squirrel-startup/);
   assert.match(main, /requireForSquirrel/);
+  assert.match(main, /LOCALBUDDY_UPDATE_FEED_URL/);
+  assert.match(main, /runManager\.isIdle\(\)/);
+  assert.match(await readFile("src/desktop-run-manager.ts", "utf8"), /#mutatingIntegrations === 0/);
+  assert.match(main, /重启并更新 LocalBuddy/);
+  assert.match(renderer, /build-identity/);
+  assert.match(renderer, /检查更新/);
   assert.doesNotMatch(main, /recentWorkspaces\[0\]\s*\?\? app\.getPath\("documents"\)/);
   assert.match(renderer, /我不会在这里调用模型、读取文件或启动任务/);
   assert.match(renderer, /点击“生成计划”才会调用 Provider，Worker 仍需你批准计划后才开始/);
@@ -98,7 +104,7 @@ test("Forge package is ASAR-only and declares every Electron 43 fuse", async () 
   assert.match(verifyCleanFirstLaunch, /startDisabled/);
   assert.match(verifyWindowsInstaller, /LocalBuddy-\$version-Setup\.exe/);
   assert.match(verifyWindowsInstaller, /--silent/);
-  assert.match(verifyWindowsInstaller, /app-\$version\/LocalBuddy\.exe/);
+  assert.match(verifyWindowsInstaller, /Setup did not install exactly one versioned LocalBuddy\.exe/);
   assert.match(verifyWindowsInstaller, /Refusing to overwrite an existing LocalBuddy installation or user profile/);
   assert.match(verifyWindowsInstaller, /pnpm verify:first-run-package/);
   assert.match(verifyWindowsInstaller, /--uninstall/);

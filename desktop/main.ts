@@ -50,6 +50,13 @@ import {
   OnboardingStateStore,
 } from "../src/onboarding.js";
 import { normalizeTrustProfile } from "../src/tool-runtime.js";
+import {
+  fallbackDesktopBuildIdentity,
+  parseDesktopBuildIdentity,
+  type DesktopBuildIdentity,
+} from "../src/build-identity.js";
+import { DesktopUpdateCoordinator } from "../src/desktop-update.js";
+import { electronDesktopUpdateTransport } from "./update-controller.js";
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url));
 const rendererRoot = resolve(currentDirectory, "..", "renderer");
@@ -75,6 +82,8 @@ if (app.isPackaged && process.env.PLAYWRIGHT_BROWSERS_PATH === undefined) {
 let mainWindow: BrowserWindow | null = null;
 let recentWorkspaceStore: RecentWorkspaceStore | undefined;
 let onboardingStateStore: OnboardingStateStore | undefined;
+let buildIdentity: DesktopBuildIdentity = fallbackDesktopBuildIdentity(app.getVersion(), app.isPackaged);
+let updateCoordinator: DesktopUpdateCoordinator | undefined;
 const runManager = new DesktopRunManager({
   requirePlanReview: true,
   createProvider(selection) {
@@ -97,6 +106,34 @@ function desktopEnvironmentInteger(name: string, fallback: number): number {
   if (value === undefined) return fallback;
   if (!/^\d+$/.test(value)) throw new Error(`${name} must be a non-negative integer`);
   return Number.parseInt(value, 10);
+}
+
+async function initializeBuildAndUpdates(): Promise<void> {
+  try {
+    const raw = JSON.parse(await readFile(resolve(currentDirectory, "..", "build-metadata.json"), "utf8")) as unknown;
+    buildIdentity = parseDesktopBuildIdentity(raw, app.getVersion(), app.isPackaged);
+  } catch {
+    buildIdentity = fallbackDesktopBuildIdentity(app.getVersion(), app.isPackaged);
+  }
+  const supported = process.platform === "win32" && app.isPackaged;
+  const feedUrl = process.env.LOCALBUDDY_UPDATE_FEED_URL?.trim() || undefined;
+  updateCoordinator = new DesktopUpdateCoordinator({
+    build: buildIdentity,
+    supported,
+    feedUrl,
+    transport: supported ? electronDesktopUpdateTransport() : undefined,
+    canInstall: () => runManager.isIdle(),
+    onChange(update) {
+      if (mainWindow !== null && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send(DESKTOP_CHANNELS.updateUpdated, update);
+      }
+    },
+  });
+}
+
+function getUpdateCoordinator(): DesktopUpdateCoordinator {
+  if (updateCoordinator === undefined) throw new Error("Desktop update controller is not initialized");
+  return updateCoordinator;
 }
 
 async function createWindow(): Promise<void> {
@@ -214,6 +251,7 @@ function registerIpcHandlers(): void {
       providerAvailability: { deepseek: deepseekCredential, openai: openaiCredential },
       workspaceReadiness,
       onboarding,
+      update: getUpdateCoordinator().current,
     };
   });
 
@@ -333,6 +371,31 @@ function registerIpcHandlers(): void {
       id: providerId,
       baseUrl: expectOptionalString(record.baseUrl, "baseUrl"),
     });
+  });
+
+  ipcMain.handle(DESKTOP_CHANNELS.checkForUpdates, async (event) => {
+    assertTrustedSender(event);
+    return getUpdateCoordinator().checkForUpdates();
+  });
+
+  ipcMain.handle(DESKTOP_CHANNELS.quitAndInstallUpdate, async (event) => {
+    assertTrustedSender(event);
+    const coordinator = getUpdateCoordinator();
+    if (!runManager.isIdle()) return coordinator.quitAndInstall();
+    const options: Electron.MessageBoxOptions = {
+      type: "info",
+      title: "重启并更新 LocalBuddy",
+      message: "确认关闭 LocalBuddy 并安装已经下载的新版本吗？",
+      detail: "当前没有正在执行的 Desktop Run。应用会退出，由 Squirrel 完成版本切换，然后重新启动。",
+      buttons: ["稍后", "重启并更新"],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    };
+    const confirmation = mainWindow === null
+      ? await dialog.showMessageBox(options)
+      : await dialog.showMessageBox(mainWindow, options);
+    return confirmation.response === 1 ? coordinator.quitAndInstall() : coordinator.current;
   });
 
   ipcMain.handle(DESKTOP_CHANNELS.listRuns, async (event, workspace: unknown) => {
@@ -789,6 +852,7 @@ async function captureSmokeScreenshotIfRequested(window: BrowserWindow): Promise
       goalFieldCount: goalFields.length,
       planReviewGuideVisible,
       startButtonText: startButton.innerText.trim(),
+      buildIdentity: document.querySelector('.build-identity')?.innerText.trim() ?? '',
       providerEntry: providerEntry.innerText.trim(),
       providerDialogVisible: providerDialog !== null,
       providerChoices,
@@ -816,6 +880,7 @@ if (!hasSingleInstanceLock) {
   });
 
   app.whenReady().then(async () => {
+    await initializeBuildAndUpdates();
     registerRendererProtocol();
     session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
       callback(false);
@@ -835,4 +900,6 @@ if (!hasSingleInstanceLock) {
       app.quit();
     }
   });
+
+  app.on("before-quit", () => updateCoordinator?.dispose());
 }

@@ -1,6 +1,6 @@
 # LocalBuddy V2 Release Runbook
 
-> 当前私有 Release：`v0.12.1 / M11.1 Goal Contract + Plan Review Engineering Alpha`。Git push、Tag 和 Release 都是外部状态变更，必须获得用户明确授权。
+> 当前私有 Release：`v0.12.1 / M11.1 Goal Contract + Plan Review Engineering Alpha`；源码版本 `0.12.2` 是 Windows 更新候选。Git push、Tag 和 Release 都是外部状态变更，必须获得用户明确授权。
 
 ## 1. 发布真源
 
@@ -10,6 +10,7 @@
 - 证据：对应 `M*-VALIDATION.md`；
 - Windows-first 自动发布：`.github/workflows/release.yml`；
 - Windows 合成灰度合同：[`WINDOWS-GRAY.md`](WINDOWS-GRAY.md)；
+- Windows Canary、安装升级与应用内更新合同：[`WINDOWS-UPDATES.md`](WINDOWS-UPDATES.md)；
 - 安装包配置：`forge.config.cjs`。
 
 同一动态状态只在上述 owner 文件维护；README 只提供摘要和入口。
@@ -56,11 +57,12 @@ git push origin vX.Y.Z
 `v*` Tag 必须与 `package.json` 的 `vX.Y.Z` 完全一致，并启动 Windows 原生发布门禁：
 
 1. frozen install、生产依赖高危审计和完整 `pnpm check`；
-2. `pnpm make:win` 构建 Setup/ZIP；
-3. 安装真实 Setup，并执行 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 定义的 Credential Manager、Mock Provider、故障、Research Run、双 Run 取消、硬退出恢复与重启矩阵；
-4. 生成 UTF-8、LF 行尾的 `SHA256SUMS-windows.txt`；
-5. 发布作业复核 Tag/包版本和 Windows SHA-256 后创建或更新 GitHub Release；
-6. `vX.Y.Z-rc.N` 等带预发布后缀的 Tag 自动标记为 prerelease。
+2. `pnpm make:win` 构建 Setup、便携 ZIP、`RELEASES` 和 full `.nupkg`；
+3. 下载上一稳定版 Setup，通过本地 Squirrel feed 原地升级到目标版本，并确认默认 profile 数据与新版本 UI；
+4. 安装真实目标 Setup，并执行 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 定义的 Credential Manager、Mock Provider、故障、Research Run、双 Run 取消、硬退出恢复与重启矩阵；
+5. 为 Setup、便携 ZIP、`RELEASES` 和 full `.nupkg` 生成 UTF-8、LF 行尾的 `SHA256SUMS-windows.txt`；
+6. 发布作业复核 Tag/包版本和 Windows SHA-256 后创建或更新 GitHub Release；
+7. `vX.Y.Z-rc.N` 等带预发布后缀的 Tag 自动标记为 prerelease。
 
 Windows 安装版的脱敏摘要和固定夹具截图作为 Actions artifact 上传；不上传 Run Request、事件日志、工作区或凭据内容。托管 Runner 不依赖固定 Windows 测试机，但仍不能验证 SmartScreen、Defender、标准用户/UAC、DPI、输入法和真实网络。
 
@@ -74,14 +76,14 @@ Linux 不再进入 Tag Release。`.github/workflows/linux-maintenance.yml` 只�
 2. 下载全部资产到新的临时目录；
 3. 用 Release 清单重新计算并验证 SHA-256；
 4. 核对 GitHub asset digest、文件字节数和清单；
-5. 在真实 Windows 11 设备执行安装、启动、凭证、真实 Provider Run、恢复和卸载矩阵；
+5. 在真实 Windows 11 设备执行安装、从上一稳定版升级、启动、凭证、真实 Provider Run、忙碌时更新阻断、恢复和卸载矩阵；
 6. 把真实结果写入 Validation 和 [`DOGFOOD.md`](DOGFOOD.md)。
 
 第 5 步当前未完成，不能由 Windows Server 2025 Runner 替代。Linux 图形桌面当前不属于 Windows-first 发布门禁。
 
 ## 5. 回滚与修复
 
-- 自动更新当前只 staging，因此不会自动覆盖已安装应用；
+- 平台无关的 Ed25519 更新协议仍只 staging；Windows Squirrel updater 在没有显式 feed 时保持关闭，当前没有生产更新源或强制更新；
 - 发现错误资产时停止传播，保留证据并判断是否属于未交付的发布恢复；
 - 已交付版本使用新的 patch 版本修复，不重写 Git 历史；
 - 集成代码回滚使用普通 revert commit，不 amend 已推送提交；

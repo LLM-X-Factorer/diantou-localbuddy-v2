@@ -61,10 +61,9 @@ try {
   }
   $installedBySmoke = $true
 
-  $installedExecutable = Join-Path $installRoot "app-$version/LocalBuddy.exe"
-  if (-not (Test-Path -LiteralPath $installedExecutable -PathType Leaf)) {
-    throw "Installed executable is missing at $installedExecutable"
-  }
+  $installedExecutables = @(Get-ChildItem -LiteralPath $installRoot -Recurse -File -Filter "LocalBuddy.exe" | Where-Object { $_.Directory.Name -like "app-*" })
+  if ($installedExecutables.Count -ne 1) { throw "Setup did not install exactly one versioned LocalBuddy.exe" }
+  $installedExecutable = $installedExecutables[0].FullName
 
   Restore-Environment $originalPath $hadDeepSeek $originalDeepSeek $hadOpenAI $originalOpenAI $hadCoordination $originalCoordination
   & pnpm verify:first-run-package $installedExecutable $evidenceRoot
@@ -91,6 +90,12 @@ try {
       if ($uninstallProcess.ExitCode -ne 0) {
         throw "Squirrel uninstall exited with $($uninstallProcess.ExitCode)"
       }
+    }
+    if (Test-Path -LiteralPath $installRoot) {
+      Remove-Item -LiteralPath $installRoot -Recurse -Force
+    }
+    if (Test-Path -LiteralPath $userDataRoot) {
+      Remove-Item -LiteralPath $userDataRoot -Recurse -Force
     }
   }
   if (Test-Path -LiteralPath $temporaryRoot) {

@@ -19,10 +19,26 @@ test("declares Windows-first CI plus low-frequency Linux maintenance boundaries"
   assert.equal(packageJson.dependencies["electron-squirrel-startup"], "1.0.1");
   assert.match(packageJson.scripts["verify:first-run-windows-installer"] ?? "", /verify-windows-installer-first-launch\.ps1/);
   assert.match(packageJson.scripts["verify:windows-gray-installer"] ?? "", /verify-windows-installer-gray\.ps1/);
+  assert.match(packageJson.scripts["verify:windows-upgrade-installer"] ?? "", /verify-windows-installer-upgrade\.ps1/);
+  assert.match(packageJson.scripts["windows:canary"] ?? "", /sync-windows-canary\.ps1/);
   const forgeConfig = await readFile(resolve(repository, "forge.config.cjs"), "utf8");
-  assert.match(forgeConfig, /const \{ version: packageVersion \} = require\("\.\/package\.json"\)/);
+  assert.match(forgeConfig, /LOCALBUDDY_BUILD_VERSION/);
+  assert.match(forgeConfig, /appVersion: packageVersion/);
+  assert.match(forgeConfig, /version: packageVersion/);
   assert.match(forgeConfig, /setupExe: `LocalBuddy-\$\{packageVersion\}-Setup\.exe`/);
   assert.match(forgeConfig, /depends: \["libsecret-tools"\]/);
+  const canarySync = await readFile(resolve(repository, "scripts", "sync-windows-canary.ps1"), "utf8");
+  assert.match(canarySync, /gh auth status/);
+  assert.match(canarySync, /localbuddy-windows-canary/);
+  assert.match(canarySync, /\$buildsRoot = Join-Path \$CanaryRoot "builds"/);
+  assert.match(canarySync, /--user-data-dir=/);
+  assert.match(canarySync, /current\.json/);
+  assert.doesNotMatch(canarySync, /Remove-Item[^\n]*LocalBuddy-Canary[\\/]builds/);
+  const upgradeVerification = await readFile(resolve(repository, "scripts", "verify-windows-installer-upgrade.ps1"), "utf8");
+  assert.match(upgradeVerification, /Refusing to overwrite an existing LocalBuddy installation or user profile/);
+  assert.match(upgradeVerification, /--update/);
+  assert.match(upgradeVerification, /User profile marker was lost during the in-place update/);
+  assert.match(upgradeVerification, /buildIdentity/);
   const workflow = await readFile(resolve(repository, ".github", "workflows", "ci.yml"), "utf8");
   assert.match(workflow, /windows-2025/);
   assert.match(workflow, /macos-15/);
@@ -30,6 +46,10 @@ test("declares Windows-first CI plus low-frequency Linux maintenance boundaries"
   assert.match(workflow, /playwright install --only-shell chromium/);
   assert.match(workflow, /Install Windows Setup and verify clean first launch without Provider credentials/);
   assert.match(workflow, /pnpm verify:first-run-windows-installer/);
+  assert.match(workflow, /prepare-windows-canary-version\.mjs/);
+  assert.match(workflow, /localbuddy-windows-canary-feed/);
+  assert.match(workflow, /verify-windows-installer-upgrade\.ps1/);
+  assert.match(workflow, /Windows install and in-place upgrade/);
   assert.match(workflow, /\.localbuddy\/first-run-smoke\/win32-installer\/\*\*/);
   assert.doesNotMatch(workflow, /make:linux/);
 
@@ -66,6 +86,9 @@ test("tag releases publish Windows only after installed-app synthetic gray passe
   assert.doesNotMatch(workflow, /SHA256SUMS-linux\.txt/);
   assert.match(workflow, /expected_tag="v\$\{package_version\}"/);
   assert.match(workflow, /pnpm verify:windows-gray-installer/);
+  assert.match(workflow, /verify-windows-installer-upgrade\.ps1/);
+  assert.match(workflow, /\.nupkg/);
+  assert.match(workflow, /RELEASES/);
   assert.match(workflow, /localbuddy-windows-gray-evidence/);
   assert.match(workflow, /--prerelease/);
 });

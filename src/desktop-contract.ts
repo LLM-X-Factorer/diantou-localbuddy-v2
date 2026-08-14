@@ -8,6 +8,8 @@ export const DESKTOP_CHANNELS = {
   storeProviderCredential: "localbuddy:store-provider-credential",
   deleteProviderCredential: "localbuddy:delete-provider-credential",
   verifyProviderConnection: "localbuddy:verify-provider-connection",
+  checkForUpdates: "localbuddy:check-for-updates",
+  quitAndInstallUpdate: "localbuddy:quit-and-install-update",
   listRuns: "localbuddy:list-runs",
   startRun: "localbuddy:start-run",
   cancelRun: "localbuddy:cancel-run",
@@ -23,6 +25,7 @@ export const DESKTOP_CHANNELS = {
   resolvePlanReview: "localbuddy:resolve-plan-review",
   openArtifact: "localbuddy:open-artifact",
   runUpdated: "localbuddy:run-updated",
+  updateUpdated: "localbuddy:update-updated",
 } as const;
 
 export type DesktopRunStatus =
@@ -205,6 +208,7 @@ export interface DesktopBootstrap {
   providerAvailability: DesktopProviderAvailability;
   workspaceReadiness: DesktopWorkspaceReadiness;
   onboarding: DesktopOnboardingState;
+  update: DesktopUpdateView;
 }
 
 export interface DesktopProviderAvailability {
@@ -349,6 +353,8 @@ export interface DesktopApi {
   verifyProviderConnection(
     request: VerifyDesktopProviderConnectionRequest,
   ): Promise<VerifyDesktopProviderConnectionResult>;
+  checkForUpdates(): Promise<DesktopUpdateView>;
+  quitAndInstallUpdate(): Promise<DesktopUpdateView>;
   listRuns(workspace: string): Promise<readonly DesktopRunView[]>;
   startRun(request: StartDesktopRunRequest): Promise<DesktopRunView>;
   cancelRun(runId: string): Promise<void>;
@@ -364,6 +370,10 @@ export interface DesktopApi {
   resolvePlanReview(request: ResolveDesktopPlanReviewRequest): Promise<DesktopRunView>;
   openArtifact(request: DesktopArtifactActionRequest): Promise<void>;
   onRunUpdate(listener: (run: DesktopRunView) => void): () => void;
+  onUpdateUpdate(listener: (update: DesktopUpdateView) => void): () => void;
 }
 import type { RunExtensionSelection } from "./extension-contract.js";
 import type { ProviderSelection } from "./provider-config.js";
+import type { DesktopUpdateView } from "./desktop-update.js";
+
+export type { DesktopUpdateView } from "./desktop-update.js";

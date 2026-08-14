@@ -46,7 +46,7 @@ jobs:
       - run: pnpm check
 
   windows-installed-smoke:
-    name: Windows Setup clean first launch
+    name: Windows install and in-place upgrade
     runs-on: windows-2025
     steps:
       - uses: actions/checkout@v7
@@ -58,10 +58,37 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Assign unique Windows Canary identity
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          $version = node scripts/prepare-windows-canary-version.mjs $env:GITHUB_RUN_NUMBER
+          if ($LASTEXITCODE -ne 0) { throw "Could not assign Canary version" }
+          "LOCALBUDDY_BUILD_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "LOCALBUDDY_BUILD_CHANNEL=canary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "LOCALBUDDY_BUILD_SHA=$env:GITHUB_SHA" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Build Windows installer and portable ZIP
         run: pnpm make:win
       - name: Install Windows Setup and verify clean first launch without Provider credentials
         run: pnpm verify:first-run-windows-installer
+      - name: Download previous stable Setup for in-place upgrade verification
+        if: github.event_name == 'push'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          New-Item -ItemType Directory -Force previous-release | Out-Null
+          $tag = gh release view --repo $env:GITHUB_REPOSITORY --json tagName --jq .tagName
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($tag)) { throw "Could not resolve previous stable Release" }
+          gh release download $tag --repo $env:GITHUB_REPOSITORY --pattern "LocalBuddy-*-Setup.exe" --dir previous-release
+          if ($LASTEXITCODE -ne 0) { throw "Could not download previous stable Setup" }
+          $setups = @(Get-ChildItem previous-release -File -Filter "LocalBuddy-*-Setup.exe")
+          if ($setups.Count -ne 1) { throw "Expected exactly one previous stable Setup" }
+          "LOCALBUDDY_UPGRADE_BASE_SETUP=$($setups[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Upgrade previous stable installation to this Canary without losing its profile
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -File scripts/verify-windows-installer-upgrade.ps1 -BaseSetup $env:LOCALBUDDY_UPGRADE_BASE_SETUP
       - name: Upload installed clean first-launch evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -70,19 +97,39 @@ jobs:
           path: .localbuddy/first-run-smoke/win32-installer/**
           if-no-files-found: warn
           retention-days: 14
-      - name: Stage Windows distributables on main only
+      - name: Upload installed in-place upgrade evidence
+        if: always() && github.event_name == 'push'
+        uses: actions/upload-artifact@v7
+        with:
+          name: localbuddy-installed-upgrade-windows-2025
+          path: .localbuddy/upgrade-smoke/windows/**
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Stage Windows Canary distributables and update feed on main only
         if: github.event_name == 'push'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force ci-assets | Out-Null
+          New-Item -ItemType Directory -Force ci-update-feed | Out-Null
           Get-ChildItem .localbuddy/forge-out/make -Recurse -File |
             Where-Object { $_.Extension -in @(".exe", ".zip") } |
             ForEach-Object { Copy-Item $_.FullName -Destination ci-assets/$($_.Name) }
-      - name: Upload Windows distributables on main only
+          Get-ChildItem .localbuddy/forge-out/make/squirrel.windows -Recurse -File |
+            Where-Object { $_.Name -eq "RELEASES" -or $_.Extension -eq ".nupkg" } |
+            ForEach-Object { Copy-Item $_.FullName -Destination ci-update-feed/$($_.Name) }
+      - name: Upload Windows Canary distributables on main only
         if: github.event_name == 'push'
         uses: actions/upload-artifact@v7
         with:
-          name: localbuddy-windows-main
+          name: localbuddy-windows-canary
           path: ci-assets/**
           if-no-files-found: error
           retention-days: 7
+      - name: Upload Windows Canary update feed on main only
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v7
+        with:
+          name: localbuddy-windows-canary-feed
+          path: ci-update-feed/**
+          if-no-files-found: error
+          retention-days: 14

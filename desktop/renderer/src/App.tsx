@@ -13,6 +13,7 @@ import type {
   DesktopIntegrationDiffView,
   DesktopArtifactPreviewView,
   DesktopWorkspaceReadiness,
+  DesktopUpdateView,
 } from "../../../src/desktop-contract";
 import {
   GUIDE_TEMPLATES,
@@ -40,6 +41,12 @@ const DEFAULT_ONBOARDING: DesktopOnboardingState = {
   version: 1,
   guideSeen: false,
   contextHelpEnabled: true,
+};
+const DEFAULT_UPDATE: DesktopUpdateView = {
+  supported: false,
+  configured: false,
+  status: "disabled",
+  build: { version: "unknown", channel: "dev", sha: "unknown", dirty: true, packaged: false },
 };
 
 export function App() {
@@ -87,12 +94,15 @@ export function App() {
   const [workspaceReadiness, setWorkspaceReadiness] = useState<DesktopWorkspaceReadiness>(EMPTY_WORKSPACE_READINESS);
   const [creatingTutorial, setCreatingTutorial] = useState(false);
   const [guideStatus, setGuideStatus] = useState<string>();
+  const [update, setUpdate] = useState<DesktopUpdateView>(DEFAULT_UPDATE);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = window.localbuddy.onRunUpdate((updated) => {
+    const unsubscribeRun = window.localbuddy.onRunUpdate((updated) => {
       setRuns((current) => upsertRun(current, updated));
       setSelectedRunId((current) => current ?? updated.runId);
     });
+    const unsubscribeUpdate = window.localbuddy.onUpdateUpdate(setUpdate);
     window.localbuddy.bootstrap()
       .then((bootstrap) => {
         setWorkspace(bootstrap.workspace);
@@ -103,10 +113,14 @@ export function App() {
         setWorkspaceReadiness(bootstrap.workspaceReadiness);
         setOnboarding(bootstrap.onboarding);
         setGuideVisible(!bootstrap.onboarding.guideSeen);
+        setUpdate(bootstrap.update);
       })
       .catch((cause: unknown) => setError(toMessage(cause)))
       .finally(() => setLoading(false));
-    return unsubscribe;
+    return () => {
+      unsubscribeRun();
+      unsubscribeUpdate();
+    };
   }, []);
 
   useEffect(() => {
@@ -135,6 +149,30 @@ export function App() {
       await activateWorkspace(selected);
     } catch (cause) {
       setError(toMessage(cause));
+    }
+  }
+
+  async function checkForUpdates() {
+    setError(undefined);
+    setUpdating(true);
+    try {
+      setUpdate(await window.localbuddy.checkForUpdates());
+    } catch (cause) {
+      setError(toMessage(cause));
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  async function quitAndInstallUpdate() {
+    setError(undefined);
+    setUpdating(true);
+    try {
+      setUpdate(await window.localbuddy.quitAndInstallUpdate());
+    } catch (cause) {
+      setError(toMessage(cause));
+    } finally {
+      setUpdating(false);
     }
   }
 
@@ -1284,6 +1322,28 @@ export function App() {
               ? "扩展按 Run 显式启用"
               : `${selectedRun.extensions.skillIds.length} Skills · ${selectedRun.extensions.mcpServerIds.length} MCP · ${selectedRun.extensions.browserOrigins.length > 0 ? "Browser" : "No Browser"}`}
           </p>
+          <div className="build-identity">
+            <span>{update.build.channel.toUpperCase()}</span>
+            <strong>v{update.build.version} · {shortBuildSha(update.build.sha)}{update.build.dirty ? "+dirty" : ""}</strong>
+          </div>
+          {update.configured && (
+            <div className="update-actions">
+              <small>{updateStatusLabel(update)}</small>
+              {update.status === "downloaded" ? (
+                <button
+                  onClick={quitAndInstallUpdate}
+                  disabled={updating}
+                >重启更新</button>
+              ) : (
+                <button
+                  onClick={checkForUpdates}
+                  disabled={updating || update.status === "checking" || update.status === "available"}
+                >{update.status === "checking" || update.status === "available" ? "正在获取…" : "检查更新"}</button>
+              )}
+            </div>
+          )}
+          {update.blockedReason && <small className="update-warning">{update.blockedReason}</small>}
+          {update.error && <small className="update-warning">{update.error}</small>}
         </div>
       </aside>
     </div>
@@ -1716,6 +1776,25 @@ function extensionCount(skills: string, servers: string, origins: string): numbe
 
 function providerLabel(id: string): string {
   return id === "openai" ? "OpenAI" : id === "deepseek" ? "DeepSeek" : "Provider";
+}
+
+function shortBuildSha(sha: string): string {
+  return sha === "unknown" ? sha : sha.slice(0, 8);
+}
+
+function updateStatusLabel(update: DesktopUpdateView): string {
+  switch (update.status) {
+    case "ready": return "可手动检查当前频道";
+    case "checking": return "正在检查更新";
+    case "available": return "发现更新，正在下载";
+    case "not_available": return "当前已经是最新版本";
+    case "downloaded": return update.releaseName === undefined
+      ? "新版本已验证并下载"
+      : `${update.releaseName} 已下载`;
+    case "installing": return "正在交给 Squirrel 更新";
+    case "error": return "更新检查失败";
+    default: return "此构建未配置自动更新";
+  }
 }
 
 function providerCredentialShortLabel(status: DesktopProviderCredentialStatus): string {

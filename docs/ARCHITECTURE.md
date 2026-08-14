@@ -1,6 +1,6 @@
 # LocalBuddy V2 Architecture
 
-> **状态基线**：2026-08-14，`v0.12.1 / M11.1` 是当前私有 Engineering Alpha Release。各历史 Validation 保留对应阶段当时的证据边界。
+> **状态基线**：2026-08-14，`v0.12.1 / M11.1` 是当前私有 Engineering Alpha Release；源码 `0.12.2` 是 Windows Canary 与安全原地更新候选。各历史 Validation 保留对应阶段当时的证据边界。
 
 ## 1. 产品判断
 
@@ -206,6 +206,22 @@ DesktopRunManager 默认允许 2 个活跃 Run，并向所有 Research/Coding Wo
 
 Desktop 使用 Electron single-instance lock，避免两个桌面进程同时拥有同一套内存态；工作区进程租约进一步阻止 Desktop 与 CLI 同时拥有同一工作区的写入/对账权。M7 的机器级文件 lease 让不同 LocalBuddy 进程共享 Task 容量、Provider 并发/限速和每日 token 预算；它不允许第二个进程绕过工作区所有权。
 
+### 6.1 Windows 构建与更新边界
+
+`0.12.2` 将构建身份和更新状态放在 Core 可测试合同中，Electron Main 只提供平台 transport，Renderer 只显示状态和发起受限命令：
+
+```text
+build-metadata.json -> build identity -> Desktop bootstrap/UI
+trusted runtime feed -> Electron autoUpdater -> update state machine
+                                              -> user confirmation
+                                              -> idle Run/Integration gate
+                                              -> Squirrel restart/install
+```
+
+Main 只在 packaged Windows 且存在显式 feed 时配置 updater。Renderer 不能提交 URL 或直接调用 `autoUpdater`。下载与安装分离：检查/下载可以发生在应用打开期间，真正退出安装必须再次确认 `DesktopRunManager.isIdle()`；该状态同时覆盖启动中/运行中的 Run 和正在写回的 Integration。
+
+开发 Canary 不走安装覆盖。CI 的便携 ZIP 按 Git SHA 解压到并存目录并使用独立 Electron user-data；稳定版安装目录不变。安装器正确性则由另一条 `上一稳定版 -> 候选版` Squirrel 原地升级验证负责。这两个通道故意不合并，因为便携包不能证明安装升级，反复干净安装也不能证明旧 profile 被保留。
+
 ## 7. 实施阶段
 
 1. **M0 Runtime（已完成）**：任务图、Agent 容量、工作区锁、事件契约和确定性测试。
@@ -228,5 +244,6 @@ Desktop 使用 Electron single-instance lock，避免两个桌面进程同时拥
 18. **M10.3 Provider Setup（已发布）**：独立 Provider 一级入口、来源状态、安全保存/替换/删除、显式 `/models` 连接探针、紧凑 Composer 状态和缺失凭据启动拦截。Skills/MCP/Browser 继续作为可选扩展单独配置；Windows `v0.11.1` 已完成 Tag Release，终端用户设备验收仍开放。
 19. **M10.4 Explicit Research Sources（已发布）**：运行位置与本次资料分离；本地 Research 工具只面向明确 source scope；目录按需有界搜索；checkpoint 只复核 read evidence；旧 implicit-workspace Run fail closed。macOS 包与 GUI 已验收，Windows `v0.11.2` Tag Gate、安装版合成灰度和资产回下载核验已完成；真实 Provider v4 dogfood 仍待完成。
 20. **M11.1 Goal Contract + Plan Review（已发布）**：Run Request v5 持久化 outcome、constraints 和 verification criteria；Desktop Orchestrator 计划写入 checkpoint 后等待人工 approve/reject；审批指纹绑定 Goal、Plan 和 scope；pending/approved 决定可恢复。CLI/Core 默认跳过交互 Gate，旧 goal/checkpoint 身份保持兼容。
+21. **v0.12.2 Windows Canary + Safe Updates（候选）**：可追踪构建身份、按 SHA 并存 Canary、上一稳定版 Squirrel 原地升级门禁、默认关闭的应用内更新入口和 Run/Integration 空闲重启 Gate。生产 feed、代码签名和 Windows 11 真人升级仍开放。
 
 M11 已从最小 Goal/Plan 控制面开始，但持久化多轮工作线程、计划编辑、Goal revision 2+、独立 Reviewer、Project/Workspace 首页、资料摄取和非纯文本产物预览仍未完成，不能写成已支持能力。

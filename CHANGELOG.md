@@ -2,6 +2,30 @@
 
 本文件记录已经发布或准备发布的产品版本。里程碑范围和证据分别以 [`docs/ROADMAP.md`](docs/ROADMAP.md) 与对应的 `docs/M*-VALIDATION.md` 为准。
 
+## 0.12.2 — unreleased
+
+Windows Canary 与安全原地更新候选。本版本把高频开发同步、安装器升级验证和未来稳定版应用内更新拆成三条独立通道；当前没有配置生产更新源，也没有完成 Windows 11 真机升级验收。
+
+### Added
+
+- 新增 `pnpm windows:canary`：从最新成功的私有 `main` CI 下载便携 ZIP，按 Git SHA 并存，使用独立 Electron user-data 启动；
+- 新增可审计构建身份，包内 metadata 与运行时版本必须一致，Desktop 展示 channel、version 和 short SHA；本地未提交构建明确标记 `+dirty`；
+- 新增 Windows Squirrel 更新控制器和手动检查入口；下载完成后只有用户确认且 Run/Integration 空闲时才能重启安装；
+- 新增 `上一稳定版 -> 当前候选版` 原地升级门禁，检查默认 profile 标记保留和更新后 UI 版本；
+- Windows Release 资产增加 `RELEASES` 和 full `.nupkg`，为后续受控更新源提供原始 feed 产物。
+
+### Security and boundaries
+
+- Renderer 不能设置更新源；feed 只接受 HTTPS 或 loopback HTTP，并拒绝 URL 凭证、query 和 hash；
+- Canary 不覆盖稳定安装，CI 升级脚本拒绝覆盖已有本机安装/用户目录；
+- 生产 feed、Windows 代码签名、SmartScreen 信誉和 Windows 11 真人验收仍开放，不能把 CI 产物生成写成自动更新已经上线。
+
+### Evidence
+
+- `pnpm check` 共 156 项：macOS 本机 154 passed、2 项 Windows-only 跳过、0 failed；生产依赖审计无已知漏洞；
+- `0.12.2` macOS App/ZIP/DMG、ad-hoc 签名、DMG 完整性、Fuse、ASAR、内置浏览器和真实 Renderer 首启通过，UI 读回可追踪构建身份；
+- Windows Server 2025 的干净安装、上一稳定版原地升级和 Canary artifact 仍等待本次 `main` CI，不能由 macOS 包验收替代。动态证据见 [`docs/WINDOWS-UPDATE-VALIDATION.md`](docs/WINDOWS-UPDATE-VALIDATION.md)。
+
 ## 0.12.1 — 2026-08-14
 
 M11.1 Goal Contract + Plan Review 私有 Engineering Alpha Release。`v0.12.0` Tag Gate 在 Windows 全量测试的临时目录清理阶段遇到一次 `runtime-lock` 释放竞态，停止于打包前，因此没有创建 GitHub Release 或发布资产；Tag 保留为失败审计记录，不移动、不复用。

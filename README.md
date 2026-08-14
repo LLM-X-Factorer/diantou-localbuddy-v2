@@ -4,7 +4,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 
 这不是 Craft Agents 的分支，也不包含腾讯 WorkBuddy 的私有实现。仓库只参考公开产品行为、通用 Agent 架构模式，以及我们自行定义的验收契约。
 
-> **产品判断（2026-08-14）**：`v0.12.1 / M11.1 Goal Contract + Plan Review` 是当前私有 Engineering Alpha Release。Desktop 会先生成计划并等待人工批准，批准前 Worker 不启动。Windows 11 真人灰度和真实 Provider 连续试用仍开放；它不是公开分发版，也不是与 WorkBuddy 功能对等的商业产品。
+> **产品判断（2026-08-14）**：`v0.12.1 / M11.1 Goal Contract + Plan Review` 是当前私有 Engineering Alpha Release；`main` 正在准备 `0.12.2` Windows Canary 与安全原地更新候选。Desktop 会先生成计划并等待人工批准，批准前 Worker 不启动。Windows 11 真人灰度和真实 Provider 连续试用仍开放；它不是公开分发版，也不是与 WorkBuddy 功能对等的商业产品。
 
 ## 一页状态
 
@@ -18,7 +18,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 | 代码写回 | 独立 worktree、组合预检、人工 Gate、apply/commit/revert commit |
 | 恢复 | Research/Coding 同 Run checkpoint resume；失败 Run 可恢复未完成 Task 链，并保留 replay 兜底 |
 | 扩展 | 本地/签名 Skill、MCP stdio/HTTP/OAuth、受限 Playwright Browser |
-| 分发 | Windows `v0.12.1` Setup/ZIP 已发布并完成安装版合成灰度和资产回下载校验；macOS `0.12.1` DMG/ZIP 已完成本机包验收与最终 App 合成灰度；Linux 仅维护 |
+| 分发 | Windows `v0.12.1` Setup/ZIP 已发布；`0.12.2` 候选增加按 SHA 同步的 Canary、上一稳定版原地升级门禁和可配置 Squirrel updater；生产更新源与 Windows 11 真人升级仍未验收 |
 | 当前主动暂缓 | Developer ID、生产 Hardened Runtime、notarization、公开 Gatekeeper |
 
 M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M10.3 继续补齐 Provider 配置闭环；M10.4 把运行位置与资料范围分离；M11.1 再将目标与执行计划变成可检查、可批准的合同。保存不会自动联网；验证连接只请求模型列表；真实 Run 必须由用户生成计划并批准后才启动 Worker。连续真实 dogfooding 仍是开放验证门。
@@ -36,6 +36,8 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 - [`docs/RELEASE.md`](docs/RELEASE.md)：版本、Tag、CI、Release 与校验流程；
 - [`docs/DOGFOOD.md`](docs/DOGFOOD.md)：真实任务试用矩阵与退出口径；
 - [`docs/WINDOWS-GRAY.md`](docs/WINDOWS-GRAY.md)：Windows 自动化合成灰度、RC 和真人灰度分层；
+- [`docs/WINDOWS-UPDATES.md`](docs/WINDOWS-UPDATES.md)：Windows 高频 Canary、安装升级门禁和稳定版更新源的三通道设计；
+- [`docs/WINDOWS-UPDATE-VALIDATION.md`](docs/WINDOWS-UPDATE-VALIDATION.md)：`0.12.2` 更新候选的已完成证据和 Windows 11 开放门禁；
 - [`CHANGELOG.md`](CHANGELOG.md)：已发布版本的变更记录。
 
 ## 当前状态
@@ -243,7 +245,7 @@ pnpm make:win
 
 它们应分别在 Linux/Windows Runner 上执行；仓库不会把交叉编译配置冒充成目标平台运行验收。
 
-推送 `v*` Tag 会在 `windows-2025` Runner 上执行生产依赖审计、完整测试、Squirrel Setup/ZIP 构建和安装版合成灰度，并生成 LF 格式的 `SHA256SUMS-windows.txt`。发布作业确认 Tag 与 `package.json` 完全一致并复核清单后发布 Windows 资产；预发布 Tag 自动标记 prerelease。Linux 仅在每周/手动维护工作流中构建，不进入 Tag Release。当前私有 Release 为 [`v0.12.1`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.1)，发布证据以 [`docs/M11.1-VALIDATION.md`](docs/M11.1-VALIDATION.md) 为准。
+推送 `v*` Tag 会在 `windows-2025` Runner 上执行生产依赖审计、完整测试、Squirrel Setup/ZIP 构建、上一稳定版原地升级和安装版合成灰度，并为 Setup、便携 ZIP、`RELEASES`、full `.nupkg` 生成 LF 格式的 `SHA256SUMS-windows.txt`。发布作业确认 Tag 与 `package.json` 完全一致并复核清单后发布 Windows 资产；预发布 Tag 自动标记 prerelease。Linux 仅在每周/手动维护工作流中构建，不进入 Tag Release。当前私有 Release 为 [`v0.12.1`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.1)，`0.12.2` 更新候选见 [`docs/WINDOWS-UPDATES.md`](docs/WINDOWS-UPDATES.md)。
 
 ## Headless 真实运行
 
