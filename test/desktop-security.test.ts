@@ -184,7 +184,7 @@ test("Renderer starts verified Artifact revisions without embedding preview text
   assert.doesNotMatch(renderer, /artifactPreview\.text\.slice/);
   assert.doesNotMatch(renderer, /setGoal\(`修订 \$\{artifactPreview\.fileName\}/);
   assert.match(renderer, /请写清这次要怎样修改 \$\{artifactContinuation\.parentFileName\}/);
-  assert.match(renderer, /setGoal\(""\);\n    setSourcePaths\(\[\]\);/);
+  assert.match(renderer, /setGoal\(""\);\r?\n    setSourcePaths\(\[\]\);/);
   assert.match(renderer, /版本历史/);
   assert.match(renderer, /只读取已登记 Artifact，不扫描工作区/);
   assert.match(renderer, /与上一版比较/);
