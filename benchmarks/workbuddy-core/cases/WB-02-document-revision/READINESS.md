@@ -1,6 +1,6 @@
 # WB-02 LocalBuddy readiness
 
-> 状态：`provider-stability-not-passed`，不是 `passed`。  
+> 状态：`provider-stability-not-passed`，不是 `passed`。
 > 日期：2026-08-15。
 
 M12.3 已解除 WB-02 的 DOCX 机械 blocker。LocalBuddy 现在可以在明确要求 Word/DOCX 时生成受限但可编辑的 `.docx`，从已登记 Artifact 中安全抽取正文和表格，在系统应用中打开复核，并把 V1 作为只读父资料生成 V2。版本历史、父 SHA-256、结构差异和篡改拒绝都保留在同一 Artifact Thread 中。

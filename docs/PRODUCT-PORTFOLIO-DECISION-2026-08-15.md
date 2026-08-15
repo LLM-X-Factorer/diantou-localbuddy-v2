@@ -1,6 +1,6 @@
 # LocalBuddy Product Portfolio Decision · 2026-08-15
 
-> 状态：L0 产品发现决策；不批准新功能实现、公开发布、商业化或企业产品。  
+> 状态：L0 产品发现决策；不批准新功能实现、公开发布、商业化或企业产品。
 > 依赖：公司级 D027、[`PRODUCT-DEFINITION-V2.md`](PRODUCT-DEFINITION-V2.md)、GitHub [Issue #3](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/3)。
 
 ## 1. 本轮裁决
@@ -162,4 +162,3 @@
 - 当前切入口通过后是否值得进入封闭用户试点。
 
 这些问题是 Issue #3 的剩余决策门，不能由本文替用户和业务事实作答。
-
