@@ -116,13 +116,30 @@ jobs:
           set -euo pipefail
           package_version="${GITHUB_REF_NAME#v}"
           feed_url="https://update.electronjs.org/${GITHUB_REPOSITORY}/win32-x64/${PREVIOUS_VERSION}"
-          for attempt in $(seq 1 20); do
-            response=$(curl --fail --location --silent --show-error "$feed_url" || true)
-            if grep -Fq "LocalBuddy-${package_version}-full.nupkg" <<<"$response"; then
+          expected_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${package_version}/LocalBuddy-${package_version}-Setup.exe"
+          for attempt in $(seq 1 40); do
+            response=$(curl --http1.1 --location --silent --show-error \
+              --write-out $'\n%{http_code}' "$feed_url" || true)
+            http_status="${response##*$'\n'}"
+            body="${response%$'\n'*}"
+            echo "Updater response attempt ${attempt}/40: HTTP ${http_status}"
+            if [[ "$http_status" == "200" ]] && RESPONSE="$body" node --input-type=module - "$package_version" "$expected_url" <<'NODE'
+          const [, , version, expectedUrl] = process.argv;
+          let response;
+          try {
+            response = JSON.parse(process.env.RESPONSE ?? "");
+          } catch {
+            process.exit(1);
+          }
+          if (response.name !== `LocalBuddy v${version}` || response.url !== expectedUrl) {
+            process.exit(1);
+          }
+          NODE
+            then
               echo "Public updater resolved LocalBuddy ${package_version} from ${PREVIOUS_VERSION}."
               exit 0
             fi
             sleep 15
           done
-          echo "Public updater did not resolve LocalBuddy ${package_version} within five minutes." >&2
+          echo "Public updater did not resolve LocalBuddy ${package_version} within ten minutes." >&2
           exit 1

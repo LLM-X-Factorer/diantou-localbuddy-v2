@@ -1,15 +1,16 @@
 # LocalBuddy V2 Roadmap after M11.1
 
-> **状态真源**：2026-08-15。仓库已按 Apache License 2.0 公开；当前 Release 为公开但未签名的 `v0.12.2 / Windows Canary + Safe Updates` Engineering Alpha。未发布 `0.12.4` 候选已加入 M12.1-M12.4 产品能力和 stable Windows 公共 GitHub feed 合同；`v0.12.3` 只保留失败 Tag 审计，没有 Release 或资产。桥接 Release、代码签名和 Windows 11 真人 OTA 仍开放。后续灰度保持 Windows-first，Linux 只做每周/手动维护。
+> **状态真源**：2026-08-15。仓库已按 Apache License 2.0 公开；当前 Release 为公开但未签名的 `v0.12.4 / Product Truth + Public Update Bridge` Engineering Alpha，包含 M12.1-M12.4 产品能力和 stable Windows 公共 GitHub feed。`v0.12.3` 只保留失败 Tag 审计，没有 Release 或资产。代码签名、Windows 11 真人和 `v0.12.4 -> 后续稳定版` 应用内更新仍开放。后续灰度保持 Windows-first，Linux 只做每周/手动维护。
 
 ## 当前里程碑
 
-### v0.12.4 · Product Truth Candidate + Public Update Bridge — unreleased
+### v0.12.4 · Product Truth + Public Update Bridge — public unsigned Engineering Alpha
 
 - stable Windows 包固定接入 Electron 官方公开 GitHub Release feed，不再要求普通用户设置环境变量；
 - Canary、beta、dev、非 Windows 和 unpackaged 构建不接稳定 feed；安全的显式 feed 仍只用于安装验收；
-- Tag workflow 在公开仓库中新增线上 updater 读回；`v0.12.2` 用户仍需手动原地安装一次 `v0.12.4` 桥接版；
-- 仓库历史与当前候选凭证扫描通过，Apache-2.0、历史作者邮箱/本机路径接受和公开可见性已关闭；Windows 代码签名仍开放；
+- Tag workflow 已发布并回下载核验五项 Windows 资产；公开 updater endpoint 已返回精确的 `v0.12.4` Setup 地址；`v0.12.2` 用户仍需手动原地安装一次 `v0.12.4` 桥接版；
+- 仓库历史与发布提交凭证扫描通过，Apache-2.0、历史作者邮箱/本机路径接受和公开可见性已关闭；Windows 代码签名仍开放；
+- 发布流水线的后置线上冒烟因检查错把 full nupkg 当作 JSON 响应、且缓存等待少 42 秒而标红；Release 本身有效，后续 workflow 已改为精确核对 Setup JSON 并等待十分钟；
 - 只有真实 Windows 11 从桥接版升级到后续稳定版并保留 profile 后，才进入真实用户连跑。
 
 ### v0.12.2 · Windows Canary + Safe Updates — public unsigned Engineering Alpha

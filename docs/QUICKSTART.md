@@ -1,6 +1,6 @@
 # LocalBuddy V2 Internal Quickstart
 
-> 适用版本：当前公开但未签名的 Engineering Alpha Release `v0.12.2 / Windows Canary + Safe Updates`。当前灰度与发布优先 Windows；macOS 保留回归，Linux 降为维护。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
+> 适用版本：当前公开但未签名的 Engineering Alpha Release `v0.12.4 / Product Truth + Public Update Bridge`。当前灰度与发布优先 Windows；macOS 保留回归，Linux 降为维护。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
 
 ## 1. 选择可用入口
 

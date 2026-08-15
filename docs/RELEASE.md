@@ -1,6 +1,6 @@
 # LocalBuddy V2 Release Runbook
 
-> 当前公开但未签名的 Release：`v0.12.2 / Windows Canary + Safe Updates Engineering Alpha`，并继续包含 M11.1 Goal Contract + Plan Review。Git push、Tag 和 Release 都是外部状态变更，必须获得用户明确授权。
+> 当前公开但未签名的 Release：`v0.12.4 / Product Truth + Public Update Bridge Engineering Alpha`，并继续包含 M11.1 Goal Contract + Plan Review。Git push、Tag 和 Release 都是外部状态变更，必须获得用户明确授权。
 
 ## 1. 发布真源
 
@@ -65,7 +65,7 @@ git push origin vX.Y.Z
 6. 同一 Windows 作业复核 Tag/包版本和 Windows SHA-256 后直接创建或更新 GitHub Release，不通过临时 Actions Artifact 中转正式二进制；
 7. `vX.Y.Z-rc.N` 等带预发布后缀的 Tag 自动标记为 prerelease。
 
-稳定 Windows 包会把 `update.electronjs.org/<owner>/<repo>/win32-<arch>/<current-version>` 作为内置只读 feed。公开 Tag Release 的独立 `online-update-smoke` 作业会从上一稳定版本查询该 endpoint，最多等待五分钟，并要求新 full nupkg 已可解析；不能把带鉴权的 Release API 访问冒充普通用户可用的更新服务。
+稳定 Windows 包会把 `update.electronjs.org/<owner>/<repo>/win32-<arch>/<current-version>` 作为内置只读 feed。公开 Tag Release 的独立 `online-update-smoke` 作业会从上一稳定版本查询该 endpoint，最多等待十分钟，解析公开 JSON 并精确核对新版本 Setup 下载地址；Setup、ZIP、full nupkg、`RELEASES` 和清单由 Windows 发布作业分别复核。不能把带鉴权的 Release API 访问冒充普通用户可用的更新服务。
 
 `v0.12.2` 没有内置 feed，因此首次启用在线更新必须发布一个需要手动原地安装的桥接版本。桥接后的下一稳定版才是线上 OTA 真正验收目标；只验证 endpoint 或 CI 本地 feed 不等于用户升级成功。
 
@@ -91,10 +91,10 @@ Linux 不再进入 Tag Release。`.github/workflows/linux-maintenance.yml` 只�
 
 ## 5. 回滚与修复
 
-- 平台无关的 Ed25519 更新协议仍只 staging；未发布 `0.12.4` stable Windows 候选已内置公共 GitHub feed，其余 channel 默认关闭，当前没有强制更新；
+- 平台无关的 Ed25519 更新协议仍只 staging；已发布的 `v0.12.4` stable Windows 桥接版内置公共 GitHub feed，其余 channel 默认关闭，当前没有强制更新；
 - 发现错误资产时停止传播，保留证据并判断是否属于未交付的发布恢复；
 - 已交付版本使用新的 patch 版本修复，不重写 Git 历史；
 - 集成代码回滚使用普通 revert commit，不 amend 已推送提交；
 - Release 事实变化后同步 Changelog、Known Limitations 和 Validation。
 
-`v0.12.2` 的发布、原地升级和回下载证据见 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md)；`v0.12.1` 的 Goal Contract Release 见 [`M11.1-VALIDATION.md`](M11.1-VALIDATION.md)。旧 Release 不回写、不替换；Linux 资产不进入 `v0.12.2`。
+`v0.12.4` 的桥接发布、原地升级、回下载和公开 endpoint 证据见 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md)；`v0.12.1` 的 Goal Contract Release 见 [`M11.1-VALIDATION.md`](M11.1-VALIDATION.md)。旧 Release 不回写、不替换；Linux 资产不进入 Windows-first Tag Release。

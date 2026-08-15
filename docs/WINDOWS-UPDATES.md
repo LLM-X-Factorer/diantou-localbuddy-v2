@@ -1,6 +1,6 @@
 # Windows 开发更新与安装升级
 
-> 状态：当前已发布基线是公开但未签名的 `v0.12.2` Engineering Alpha，仓库已采用 Apache License 2.0。未发布 `0.12.4` 候选已让 packaged stable Windows 构建内置公开 GitHub Release 更新源；`v0.12.3` 只有失败 Tag，没有 Release 或资产。桥接安装、线上 feed 读回、代码签名和 Windows 11 真人 OTA 仍是发布门禁。
+> 状态：当前已发布基线是公开但未签名的 `v0.12.4` Engineering Alpha，仓库已采用 Apache License 2.0。该桥接版已让 packaged stable Windows 构建内置公开 GitHub Release 更新源，五项资产与公开 endpoint 已回读；`v0.12.3` 只有失败 Tag，没有 Release 或资产。现有 `v0.12.2` 用户的手动桥接安装、代码签名和 Windows 11 上从桥接版到后续稳定版的真人 OTA 仍是发布门禁。
 
 ## 一句话方案
 
@@ -72,7 +72,7 @@ Canary 的 UI 会显示 `channel + version + short SHA`，用于确认“我实�
 
 ## 稳定版在线更新
 
-`0.12.4` 候选不再要求普通用户设置环境变量。packaged、stable、Windows 构建会由 Main 固定使用以下只读服务地址，并带上运行中的版本和架构：
+`0.12.4` 不再要求普通用户设置环境变量。packaged、stable、Windows 构建会由 Main 固定使用以下只读服务地址，并带上运行中的版本和架构：
 
 ```text
 https://update.electronjs.org/LLM-X-Factorer/diantou-localbuddy-v2/win32-x64/<current-version>
@@ -95,7 +95,7 @@ Windows 安装包已经接入 Electron/Squirrel 更新控制器。`0.12.4` 起�
 - Renderer 不能设置 feed，也不能绕过 Main 的空闲检查；
 - 当前没有静默安装、强制更新或自动回滚。
 
-Release workflow 从 `0.12.2` 起发布 Setup、便携 ZIP、`RELEASES`、full NuGet package 和 SHA-256 清单。`0.12.4` 起，验收通过的 Windows 作业直接把这些长期分发资产上传到 GitHub Release，不再用受配额约束的临时 Actions Artifact 中转；脱敏截图/摘要仍是尽力保存的短期证据，不阻断已通过完整验证的正式资产发布。公开仓库的 Tag Release 还会从上一稳定版本请求 Electron feed，并等待新 full package 可被解析。代码签名和真实 Windows 11 OTA 仍是独立门禁，不能因为线上 endpoint 返回成功就写成“生产自动更新已验收”。
+Release workflow 从 `0.12.2` 起发布 Setup、便携 ZIP、`RELEASES`、full NuGet package 和 SHA-256 清单。`0.12.4` 起，验收通过的 Windows 作业直接把这些长期分发资产上传到 GitHub Release，不再用受配额约束的临时 Actions Artifact 中转；脱敏截图/摘要仍是尽力保存的短期证据，不阻断已通过完整验证的正式资产发布。公开仓库的 Tag Release 还会从上一稳定版本请求 Electron feed，解析 JSON 并精确核对新版本 Setup 下载地址；full nupkg 与 `RELEASES` 由发布资产合同另行保证。`v0.12.4` 首次发布的旧冒烟把 full nupkg 错当作 JSON 响应且只等待五分钟，因而在 endpoint 刷新前约 42 秒标红；修复后的后续发布最多等待十分钟。代码签名和真实 Windows 11 OTA 仍是独立门禁，不能因为线上 endpoint 返回成功就写成“生产自动更新已验收”。
 
 ## 验收记录
 

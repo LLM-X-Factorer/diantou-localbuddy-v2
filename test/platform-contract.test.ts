@@ -133,6 +133,11 @@ test("tag releases publish Windows only after installed-app synthetic gray passe
   assert.match(workflow, /online-update-smoke/);
   assert.match(workflow, /update\.electronjs\.org/);
   assert.match(workflow, /github\.event\.repository\.private == false/);
+  assert.match(workflow, /LocalBuddy-\$\{package_version\}-Setup\.exe/);
+  assert.match(workflow, /JSON\.parse/);
+  assert.match(workflow, /seq 1 40/);
+  assert.match(workflow, /within ten minutes/);
+  assert.doesNotMatch(workflow, /grep -Fq "LocalBuddy-\$\{package_version\}-full\.nupkg"/);
   const publishScript = await readFile(resolve(repository, "scripts", "publish-windows-release.mjs"), "utf8");
   assert.match(publishScript, /--prerelease/);
   assert.match(publishScript, /Checksum mismatch/);
