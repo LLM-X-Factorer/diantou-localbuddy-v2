@@ -12,6 +12,8 @@ import type {
   DesktopRunView,
   DesktopIntegrationDiffView,
   DesktopArtifactPreviewView,
+  DesktopArtifactRevisionDiffView,
+  DesktopArtifactThreadView,
   DesktopWorkspaceReadiness,
   DesktopUpdateView,
 } from "../../../src/desktop-contract";
@@ -49,6 +51,14 @@ const DEFAULT_UPDATE: DesktopUpdateView = {
   build: { version: "unknown", channel: "dev", sha: "unknown", dirty: true, packaged: false },
 };
 
+interface ArtifactContinuationDraft {
+  parentRunId: string;
+  parentFileName: string;
+  parentSha256: string;
+  parentRevision: number;
+  threadId?: string;
+}
+
 export function App() {
   const [workspace, setWorkspace] = useState("");
   const [recentWorkspaces, setRecentWorkspaces] = useState<readonly string[]>([]);
@@ -57,6 +67,7 @@ export function App() {
   const [goal, setGoal] = useState("");
   const [goalConstraints, setGoalConstraints] = useState("");
   const [verificationCriteria, setVerificationCriteria] = useState("");
+  const [goalContractExpanded, setGoalContractExpanded] = useState(true);
   const [sourcePaths, setSourcePaths] = useState<readonly string[]>([]);
   const [concurrency, setConcurrency] = useState(3);
   const [mode, setMode] = useState<DesktopRunMode>("research");
@@ -87,7 +98,11 @@ export function App() {
   const [exportingDiagnostics, setExportingDiagnostics] = useState(false);
   const [diagnosticsStatus, setDiagnosticsStatus] = useState<string>();
   const [artifactPreview, setArtifactPreview] = useState<DesktopArtifactPreviewView>();
+  const [artifactThread, setArtifactThread] = useState<DesktopArtifactThreadView>();
+  const [artifactRevisionDiff, setArtifactRevisionDiff] = useState<DesktopArtifactRevisionDiffView>();
+  const [artifactContinuation, setArtifactContinuation] = useState<ArtifactContinuationDraft>();
   const [loadingArtifactName, setLoadingArtifactName] = useState<string>();
+  const [loadingArtifactDiff, setLoadingArtifactDiff] = useState(false);
   const [guideVisible, setGuideVisible] = useState(true);
   const [onboarding, setOnboarding] = useState<DesktopOnboardingState>(DEFAULT_ONBOARDING);
   const [providerAvailability, setProviderAvailability] = useState<DesktopProviderAvailability>(EMPTY_PROVIDER_AVAILABILITY);
@@ -127,6 +142,8 @@ export function App() {
     setIntegrationDiff(undefined);
     setDiagnosticsStatus(undefined);
     setArtifactPreview(undefined);
+    setArtifactThread(undefined);
+    setArtifactRevisionDiff(undefined);
   }, [selectedRunId]);
 
   const selectedRun = useMemo(
@@ -200,6 +217,7 @@ export function App() {
     setGoalConstraints("");
     setVerificationCriteria("");
     setSourcePaths([]);
+    setArtifactContinuation(undefined);
     setGuideStatus(guideVisible ? "运行位置已更换。编辑器和本次资料已经清空；请选择合适的模板。" : undefined);
   }
 
@@ -276,6 +294,7 @@ export function App() {
     setGoal(template.goal);
     setGoalConstraints(template.constraints.join("\n"));
     setVerificationCriteria(template.verificationCriteria.join("\n"));
+    setArtifactContinuation(undefined);
     setGuideStatus("模板已填入下方编辑器。请先检查内容；点击“生成计划”才会调用 Provider，Worker 仍需你批准计划后才开始。");
     setTimeout(() => document.querySelector<HTMLTextAreaElement>(".composer textarea")?.focus(), 0);
   }
@@ -328,6 +347,12 @@ export function App() {
             ? undefined
             : { allowedOrigins: origins, allowActions: allowBrowserActions },
         },
+        artifactContinuation: artifactContinuation === undefined ? undefined : {
+          parentRunId: artifactContinuation.parentRunId,
+          parentFileName: artifactContinuation.parentFileName,
+          parentSha256: artifactContinuation.parentSha256,
+          reason: goal,
+        },
       });
       setRuns((current) => upsertRun(current, run));
       setSelectedRunId(run.runId);
@@ -335,6 +360,7 @@ export function App() {
       setGoalConstraints("");
       setVerificationCriteria("");
       setSourcePaths([]);
+      setArtifactContinuation(undefined);
       setGuideVisible(false);
       setGuideStatus(undefined);
     } catch (cause) {
@@ -470,14 +496,29 @@ export function App() {
 
   async function loadArtifactPreview(fileName: string) {
     if (selectedRun === undefined) return;
+    await openArtifactVersion(selectedRun.runId, fileName, false);
+  }
+
+  async function openArtifactVersion(runId: string, fileName: string, navigate = true) {
     setError(undefined);
     setLoadingArtifactName(fileName);
+    setArtifactRevisionDiff(undefined);
     try {
-      setArtifactPreview(await window.localbuddy.loadArtifactPreview({
+      if (navigate) {
+        setSelectedRunId(runId);
+        await new Promise<void>((resolvePromise) => setTimeout(resolvePromise, 0));
+      }
+      const request = {
         workspace,
-        runId: selectedRun.runId,
+        runId,
         fileName,
-      }));
+      };
+      const [preview, thread] = await Promise.all([
+        window.localbuddy.loadArtifactPreview(request),
+        window.localbuddy.loadArtifactThread(request),
+      ]);
+      setArtifactPreview(preview);
+      setArtifactThread(thread);
     } catch (cause) {
       setError(toMessage(cause));
     } finally {
@@ -497,18 +538,57 @@ export function App() {
 
   function continueFromArtifact() {
     if (selectedRun === undefined || artifactPreview === undefined) return;
-    const excerpt = artifactPreview.text.slice(0, 20_000);
-    setMode(selectedRun.mode);
-    setGoal([
-      `基于上一 Run 的已验证产物 ${artifactPreview.fileName} 继续。`,
-      "以下内容只会在我点击“生成计划”后发送给所选 Provider：",
-      "",
-      excerpt,
-      artifactPreview.text.length > excerpt.length ? "\n[续写上下文已截断]" : "",
-      "",
-      "请继续：",
+    const parentRevision = selectedRun.artifactRevision?.revision ?? 1;
+    setArtifactContinuation({
+      parentRunId: selectedRun.runId,
+      parentFileName: artifactPreview.fileName,
+      parentSha256: artifactPreview.sha256,
+      parentRevision,
+      threadId: selectedRun.artifactRevision?.threadId,
+    });
+    setMode("research");
+    setGoal("");
+    setSourcePaths([]);
+    setGoalConstraints([
+      "把父产物作为明确资料，不读取未选择的工作区内容",
+      "保留上一版本和版本关系，不覆盖父产物",
+    ].join("\n"));
+    setVerificationCriteria([
+      "新产物明确回应本轮修改要求",
+      "父产物身份和 SHA-256 可追溯",
     ].join("\n"));
     setTimeout(() => document.querySelector<HTMLTextAreaElement>(".composer textarea")?.scrollIntoView({ behavior: "smooth" }), 0);
+  }
+
+  async function viewParentArtifactRevision() {
+    const revision = selectedRun?.artifactRevision;
+    if (revision === undefined) return;
+    setError(undefined);
+    setLoadingArtifactName(revision.parentFileName);
+    try {
+      await openArtifactVersion(revision.parentRunId, revision.parentFileName);
+    } catch (cause) {
+      setError(toMessage(cause));
+    } finally {
+      setLoadingArtifactName(undefined);
+    }
+  }
+
+  async function loadArtifactRevisionDiff() {
+    if (selectedRun === undefined || artifactPreview === undefined) return;
+    setError(undefined);
+    setLoadingArtifactDiff(true);
+    try {
+      setArtifactRevisionDiff(await window.localbuddy.loadArtifactRevisionDiff({
+        workspace,
+        runId: selectedRun.runId,
+        fileName: artifactPreview.fileName,
+      }));
+    } catch (cause) {
+      setError(toMessage(cause));
+    } finally {
+      setLoadingArtifactDiff(false);
+    }
   }
 
   async function cleanupWorktrees() {
@@ -964,8 +1044,21 @@ export function App() {
                   <span className="section-index">02</span>
                   <h2>验证产物</h2>
                 </div>
-                <span className="panel-note">Artifact Gate protected</span>
+                <span className="panel-note">{artifactReviewLabel(selectedRun.artifactReview)}</span>
               </div>
+              {selectedRun.artifactRevision && (
+                <div className="artifact-revision-banner">
+                  <span>VERSION {selectedRun.artifactRevision.revision}</span>
+                  <div>
+                    <strong>这是同一 Artifact Thread 的第 {selectedRun.artifactRevision.revision} 版任务</strong>
+                    <p>
+                      上一版：{selectedRun.artifactRevision.parentFileName} · {selectedRun.artifactRevision.parentSha256.slice(0, 12)}
+                      <br />修改原因：{selectedRun.artifactRevision.reason}
+                    </p>
+                  </div>
+                  <button type="button" onClick={viewParentArtifactRevision}>查看上一版</button>
+                </div>
+              )}
               <div className="artifact-list">
                 {selectedRun.artifacts.map((artifact) => (
                   <button
@@ -990,15 +1083,123 @@ export function App() {
                   <div className="artifact-preview-header">
                     <div>
                       <strong>{artifactPreview.fileName}</strong>
-                      <span>SHA-256 {artifactPreview.sha256.slice(0, 16)} · {formatBytes(artifactPreview.bytes)}{artifactPreview.truncated ? " · 预览已截断" : ""}</span>
+                      <span>
+                        {selectedRun.artifactRevision ? `Version ${selectedRun.artifactRevision.revision} · ` : ""}
+                        SHA-256 {artifactPreview.sha256.slice(0, 16)} · {formatBytes(artifactPreview.bytes)}{artifactPreview.truncated ? " · 预览已截断" : ""}
+                      </span>
                     </div>
                     <div>
                       <button onClick={() => openArtifactExternally(artifactPreview.fileName)}>系统打开</button>
+                      {selectedRun.artifactRevision && (
+                        <button onClick={loadArtifactRevisionDiff} disabled={loadingArtifactDiff}>
+                          {loadingArtifactDiff ? "比较中…" : "与上一版比较"}
+                        </button>
+                      )}
                       <button className="continue-artifact-button" onClick={continueFromArtifact}>基于此产物继续</button>
                     </div>
                   </div>
+                  {artifactPreview.document && (
+                    <div className="artifact-document-summary">
+                      <strong>DOCX 结构预览</strong>
+                      <span>
+                        {artifactPreview.document.sections} 个章节 · {artifactPreview.document.paragraphs} 个段落 · {artifactPreview.document.tables} 个表格 · {artifactPreview.document.tableRows} 行表格数据
+                      </span>
+                      <small>正文与表格已在本机从 OOXML 抽取复核；分页和视觉版式请使用“系统打开”检查。</small>
+                    </div>
+                  )}
                   <pre>{artifactPreview.text}</pre>
-                  <small>预览在本机完成；只有你点击“生成计划”后，填入编辑器的续写上下文才会发送给 Provider。</small>
+                  <small>
+                    {artifactPreview.format === "docx" ? "结构预览" : "文本预览"}在本机完成；发起修订时会把这份已校验内容复制成新 Run 的只读资料快照，不会覆盖上一版。
+                  </small>
+                </div>
+              )}
+              {artifactThread && (
+                <div className="artifact-thread-workbench">
+                  <div className="artifact-thread-heading">
+                    <div>
+                      <strong>版本历史</strong>
+                      <small>{artifactThread.threadId} · {artifactThread.versions.length} 个版本/尝试</small>
+                    </div>
+                    <span>只读取已登记 Artifact，不扫描工作区</span>
+                  </div>
+                  <div className="artifact-thread-list">
+                    {artifactThread.versions.map((version, index) => {
+                      const sameRevisionCount = artifactThread.versions.filter(
+                        (candidate) => candidate.revision === version.revision,
+                      ).length;
+                      return (
+                        <article
+                          className={version.runId === selectedRun.runId ? "selected" : ""}
+                          key={`${version.revision}:${version.runId}:${index}`}
+                        >
+                          <div className="artifact-thread-version">
+                            <span>V{version.revision}</span>
+                            <div>
+                              <strong>{version.title}</strong>
+                              <small>
+                                {statusLabel(version.runStatus)} · {formatTime(version.startedAt)}
+                                {sameRevisionCount > 1 ? ` · 同版 ${sameRevisionCount} 个分支/尝试` : ""}
+                              </small>
+                            </div>
+                          </div>
+                          {version.reason && <p>{version.reason}</p>}
+                          <div className="artifact-thread-files">
+                            {version.artifacts.map((artifact) => (
+                              <button
+                                type="button"
+                                key={artifact.fileName}
+                                disabled={artifact.verification !== "verified"}
+                                onClick={() => openArtifactVersion(version.runId, artifact.fileName)}
+                              >
+                                <span>{artifact.fileName}</span>
+                                <small>
+                                  {artifact.verification === "verified"
+                                    ? `${formatBytes(artifact.bytes)} · ${artifact.sha256?.slice(0, 12)}`
+                                    : "校验不可用"}
+                                </small>
+                              </button>
+                            ))}
+                            {version.artifacts.length === 0 && <small>本次运行没有通过验证的产物</small>}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {artifactRevisionDiff && (
+                <div className="artifact-revision-diff">
+                  <div className="artifact-diff-heading">
+                    <div>
+                      <strong>
+                        V{artifactRevisionDiff.parent.revision} → V{artifactRevisionDiff.current.revision}
+                        {artifactRevisionDiff.comparisonKind === "docx-structure" ? " DOCX 正文/表格差异" : " 文本差异"}
+                      </strong>
+                      <small>
+                        {artifactRevisionDiff.parent.fileName} → {artifactRevisionDiff.current.fileName}
+                      </small>
+                    </div>
+                    <span>
+                      +{artifactRevisionDiff.addedLines} / −{artifactRevisionDiff.removedLines}
+                      {artifactRevisionDiff.truncated ? " · 显示已截断" : ""}
+                    </span>
+                  </div>
+                  {artifactRevisionDiff.lines.length === 0 ? (
+                    <div className="artifact-diff-empty">文本内容与上一版一致；版本关系和 SHA-256 仍分别保留。</div>
+                  ) : (
+                    <div className="artifact-diff-lines">
+                      {artifactRevisionDiff.lines.map((line, index) => (
+                        <div className={line.kind} key={`${index}:${line.beforeLine ?? ""}:${line.afterLine ?? ""}`}>
+                          <span>{line.beforeLine ?? ""}</span>
+                          <span>{line.afterLine ?? ""}</span>
+                          <code>
+                            {line.kind === "added" ? "+ " : line.kind === "removed" ? "− " : "  "}
+                            {line.text}
+                          </code>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </section>
@@ -1115,14 +1316,40 @@ export function App() {
               <strong>目标说明</strong>
               <small>先写清结果和验收办法；LocalBuddy 会先生成计划，批准后 Worker 才开始。</small>
             </div>
-            <span>GOAL CONTRACT</span>
+            <div className="goal-contract-heading-actions">
+              <span>GOAL CONTRACT</span>
+              <button
+                type="button"
+                aria-expanded={goalContractExpanded}
+                aria-controls="goal-contract-fields"
+                onClick={() => setGoalContractExpanded((current) => !current)}
+              >
+                {goalContractExpanded ? "收起" : "展开"}
+                <span aria-hidden="true">{goalContractExpanded ? "⌃" : "⌄"}</span>
+              </button>
+            </div>
           </div>
+          {goalContractExpanded ? <div id="goal-contract-fields" className="goal-contract-fields">
+          {artifactContinuation && (
+            <div className="artifact-continuation-banner">
+              <span>V{artifactContinuation.parentRevision} → V{artifactContinuation.parentRevision + 1}</span>
+              <div>
+                <strong>正在修订 {artifactContinuation.parentFileName}</strong>
+                <small>
+                  父产物 {artifactContinuation.parentSha256.slice(0, 12)} 将由 Main 进程复核，并复制为本次明确资料；本轮目标会保存为修改原因。
+                </small>
+              </div>
+              <button type="button" onClick={() => setArtifactContinuation(undefined)}>取消修订关系</button>
+            </div>
+          )}
           <label className="goal-outcome-field">
             <span>希望得到什么结果</span>
             <textarea
               value={goal}
               onChange={(event) => setGoal(event.target.value)}
-              placeholder="例如：整理三类政策发言，按主题、时间、原始出处形成可核验报告。"
+              placeholder={artifactContinuation === undefined
+                ? "例如：整理三类政策发言，按主题、时间、原始出处形成可核验报告。"
+                : `请写清这次要怎样修改 ${artifactContinuation.parentFileName}。`}
             />
           </label>
           <div className="goal-contract-grid">
@@ -1173,6 +1400,20 @@ export function App() {
               )}
             </div>
           )}
+          </div> : (
+            <button
+              type="button"
+              className="goal-contract-summary"
+              onClick={() => setGoalContractExpanded(true)}
+            >
+              <strong>{goal.trim().length > 0 ? "结果已填写" : "结果未填写"}</strong>
+              <span>
+                约束 {lineValues(goalConstraints).length} 条 · 完成标准 {lineValues(verificationCriteria).length} 条
+                {mode === "research" ? ` · 资料 ${sourcePaths.length} 项` : " · 代码隔离模式"}
+              </span>
+              <small>点击展开并检查任务范围</small>
+            </button>
+          )}
           {!selectedProviderCredential.available && (
             <div className="provider-required-banner">
               <span><strong>{providerLabel(providerId)} 尚未配置</strong>真实任务需要可用的 API Key，Guide 和模板仍可离线使用。</span>
@@ -1209,7 +1450,11 @@ export function App() {
               </label>
               <label className="mode-option" title="模式">
                 <span className="control-label">模式</span>
-                <select aria-label="模式" value={mode} onChange={(event) => setMode(event.target.value as DesktopRunMode)}>
+                <select aria-label="模式" value={mode} onChange={(event) => {
+                  const nextMode = event.target.value as DesktopRunMode;
+                  setMode(nextMode);
+                  if (nextMode !== "research") setArtifactContinuation(undefined);
+                }}>
                   <option value="research">研究</option>
                   <option value="code">代码隔离</option>
                 </select>
@@ -1840,11 +2085,13 @@ function promoteRecentWorkspace(current: readonly string[], workspace: string): 
 
 function friendlyRunName(run: DesktopRunView) {
   const meaningfulTask = run.tasks.find((task) => task.id !== "integrate");
-  return meaningfulTask?.title ?? run.runId.replace(/^run-/, "Run ").slice(0, 22);
+  const title = meaningfulTask?.title ?? run.runId.replace(/^run-/, "Run ").slice(0, 22);
+  return run.artifactRevision === undefined ? title : `V${run.artifactRevision.revision} · ${title}`;
 }
 
 function artifactBadge(fileName: string) {
-  return fileName.endsWith(".patch") ? "DIFF" : fileName.endsWith(".json") ? "JSON" : "MD";
+  const lower = fileName.toLowerCase();
+  return lower.endsWith(".docx") ? "DOCX" : lower.endsWith(".patch") ? "DIFF" : lower.endsWith(".json") ? "JSON" : "MD";
 }
 
 function integrationStatusLabel(status: string) {
@@ -1883,9 +2130,21 @@ function statusLabel(status: string) {
 function eventLabel(type: string) {
   const [owner, action] = type.split(".");
   const ownerLabels: Record<string, string> = { run: "运行", plan: "规划", task: "任务", model: "模型", tool: "工具", approval: "审批", artifact: "产物", workspace: "隔离区", integration: "集成", checkpoint: "检查点" };
-  const actionLabels: Record<string, string> = { started: "开始", resumed: "恢复执行", queued: "排队", requested: "请求", review_requested: "等待确认", resolved: "已决策", approved: "获准", rejected: "被拒绝", completed: "完成", succeeded: "成功", failed: "失败", blocked: "阻塞", created: "生成", restored: "状态恢复", resume_blocked: "恢复阻断", reused: "结果复用", denied: "拒绝", cancelled: "取消", interrupted: "意外中断", restarted: "已重放", removed: "已清理", diff_captured: "补丁已捕获", preflight_started: "组合预检", preflight_failed: "预检失败", awaiting_approval: "等待批准", applying: "写回中", applied: "已写回", committed: "已提交", reverted: "已撤销", revert_committed: "反向提交完成", revert_failed: "反向提交失败", recovery_required: "需要恢复" };
+  const actionLabels: Record<string, string> = { started: "开始", resumed: "恢复执行", queued: "排队", requested: "请求", review_requested: "等待确认", review_completed: "审核结论", review_failed: "审核失败", resolved: "已决策", approved: "获准", rejected: "被拒绝", completed: "完成", succeeded: "成功", failed: "失败", blocked: "阻塞", created: "生成", revision_linked: "版本关联", restored: "状态恢复", resume_blocked: "恢复阻断", reused: "结果复用", denied: "拒绝", cancelled: "取消", interrupted: "意外中断", restarted: "已重放", removed: "已清理", diff_captured: "补丁已捕获", preflight_started: "组合预检", preflight_failed: "预检失败", awaiting_approval: "等待批准", applying: "写回中", applied: "已写回", committed: "已提交", reverted: "已撤销", revert_committed: "反向提交完成", revert_failed: "反向提交失败", recovery_required: "需要恢复" };
   if (owner === "integration" && action === "approved") return "集成 · 人工批准";
   return `${ownerLabels[owner ?? ""] ?? owner} · ${actionLabels[action ?? ""] ?? action}`;
+}
+
+function artifactReviewLabel(review: DesktopRunView["artifactReview"]) {
+  if (review === undefined) return "Artifact Gate protected";
+  if (review.status === "accepted") {
+    return `独立审核通过 · ${review.attempts} 次${review.revisionRequests > 0 ? ` · 退回 ${review.revisionRequests} 次` : ""}`;
+  }
+  if (review.status === "revision_requested") {
+    return `独立审核退回 · ${review.findingCount} 项`;
+  }
+  if (review.status === "failed") return "独立审核未形成结论";
+  return `独立审核中 · 第 ${review.attempts} 次`;
 }
 
 function eventGlyph(type: string) {

@@ -6,6 +6,7 @@ import test from "node:test";
 
 import { InMemoryArtifactRegistry } from "../src/artifacts.js";
 import { InMemoryCalculationRegistry } from "../src/calculations.js";
+import { buildDocxArtifact } from "../src/docx-artifact.js";
 import type { AgentDefinition } from "../src/domain.js";
 import { InMemoryEventStore } from "../src/event-store.js";
 import { RoleBasedApprovalPolicy, ToolRegistry, ToolRuntime } from "../src/tool-runtime.js";
@@ -35,12 +36,13 @@ test("enforces workspace boundaries and role-based artifact writes", async (cont
   await writeFile(join(directory, "notes.md"), "local evidence", "utf8");
   const eventStore = new InMemoryEventStore();
   const artifactRegistry = new InMemoryArtifactRegistry();
+  const calculationRegistry = new InMemoryCalculationRegistry();
   const runtime = new ToolRuntime(
     new ToolRegistry(await createWorkspaceTools({
       workspaceRoot: directory,
       artifactRoot,
       artifactRegistry,
-      calculationRegistry: new InMemoryCalculationRegistry(),
+      calculationRegistry,
       eventStore,
     })),
     new RoleBasedApprovalPolicy(),
@@ -91,6 +93,27 @@ test("enforces workspace boundaries and role-based artifact writes", async (cont
   assert.equal(unregisteredCalculation.isError, true);
   assert.match(unregisteredCalculation.content, /derived numeric calculation lacks/);
 
+  await calculationRegistry.add({
+    id: "calc-unused",
+    runId: "run",
+    taskId: "worker-note",
+    agentId: "worker-1",
+    toolName: "compare_ratios",
+    operation: "1/2 compared with 1/3",
+    inputs: {
+      leftNumerator: "1",
+      leftDenominator: "2",
+      rightNumerator: "1",
+      rightDenominator: "3",
+    },
+    outputs: {
+      leftDecimal: "0.5",
+      rightDecimal: "0.3333333333333333333333333333333333333333",
+      relation: "left_is_higher",
+      exactComparison: "1*3 compared with 1*2",
+    },
+  });
+
   const sourceDatesAndUrls = await runtime.execute(
     {
       id: "write-sources",
@@ -102,8 +125,12 @@ test("enforces workspace boundaries and role-based artifact writes", async (cont
           "- Slash date: 2021/05/28",
           "- URL: https://www.news.cn/politics/leaders/2021-05/28/c_1127505377.htm",
           "- Encoded URL: https://example.test/a%20b/2021/05/report.html",
+          "- Bare source URL: news.cn/politics/leaders/2023-03/02/c_1129409678.htm",
+          "- Policy source fact: 全社会研发经费投入年均增长7%以上。",
+          "- Evidence set: selected snapshots source-2/3/4/5/6/7/8.",
+          "- Numbered files: 01/02号资料已经纳入本次任务。",
         ].join("\n"),
-        calculationIds: [],
+        calculationIds: ["calc-unused"],
       }),
     },
     { runId: "run", taskId: "integrate", agent: integrator },
@@ -131,6 +158,17 @@ test("research file tools are absent without sources and stay inside explicitly 
   const sourceDirectory = join(directory, "selected-sources");
   await mkdir(sourceDirectory);
   await writeFile(join(sourceDirectory, "policy-note.md"), "selected evidence", "utf8");
+  await writeFile(join(sourceDirectory, "large-policy-note.txt"), "policy evidence\n".repeat(4_000), "utf8");
+  await writeFile(join(sourceDirectory, "parent.docx"), buildDocxArtifact({
+    version: 1,
+    title: "Verified parent",
+    sections: [{
+      heading: "Evidence",
+      blocks: [{ type: "paragraph", text: "semiconductor revision evidence" }],
+    }],
+  }));
+  const separatelySelectedFile = join(directory, "separate-note.md");
+  await writeFile(separatelySelectedFile, "separate selected evidence", "utf8");
   await writeFile(join(directory, "outside.md"), "must stay unavailable", "utf8");
   const eventStore = new InMemoryEventStore();
   const registries = () => ({
@@ -145,11 +183,13 @@ test("research file tools are absent without sources and stay inside explicitly 
     eventStore,
   }));
   assert.equal(noSourceRegistry.get("search_files"), undefined);
+  assert.equal(noSourceRegistry.get("search_source_text"), undefined);
   assert.equal(noSourceRegistry.get("read_file"), undefined);
 
   const runtime = new ToolRuntime(
     new ToolRegistry(await createWorkspaceTools({
-      sourcePaths: [sourceDirectory],
+      sourcePaths: [sourceDirectory, separatelySelectedFile],
+      sourceIdsByTask: new Map([["scoped-task", new Set(["source-1"])]]),
       artifactRoot: join(directory, "artifacts-selected"),
       ...registries(),
       eventStore,
@@ -173,6 +213,71 @@ test("research file tools are absent without sources and stay inside explicitly 
   assert.equal(read.isError, false);
   assert.match(read.content, /selected evidence/);
   assert.match(read.content, /"sha256":"[a-f0-9]{64}"/);
+
+  const largeRead = await runtime.execute(
+    { id: "read-large", name: "read_file", arguments: '{"path":"source-1/large-policy-note.txt"}' },
+    { runId: "run", taskId: "scoped-task", agent: worker },
+    ["read_file"],
+  );
+  assert.equal(largeRead.isError, false);
+  assert.match(largeRead.content, /"truncated":true/);
+  assert.match(largeRead.content, /use search_source_text/);
+  assert.ok(largeRead.content.length < 20_000);
+
+  const excerptSearch = await runtime.execute(
+    {
+      id: "search-text",
+      name: "search_source_text",
+      arguments: JSON.stringify({
+        path: "source-1/policy-note.md",
+        queries: ["selected", "missing"],
+        contextLines: 0,
+      }),
+    },
+    { runId: "run", taskId: "search-text", agent: worker },
+    ["search_source_text"],
+  );
+  assert.equal(excerptSearch.isError, false);
+  assert.match(excerptSearch.content, /"path":"source-1\/policy-note\.md"/);
+  assert.match(excerptSearch.content, /"line":1/);
+  assert.match(excerptSearch.content, /selected evidence/);
+  assert.match(excerptSearch.content, /"sha256":"[a-f0-9]{64}"/);
+
+  const docxExcerptSearch = await runtime.execute(
+    {
+      id: "search-docx-text",
+      name: "search_source_text",
+      arguments: JSON.stringify({
+        path: "source-1/parent.docx",
+        queries: ["semiconductor"],
+        contextLines: 0,
+      }),
+    },
+    { runId: "run", taskId: "search-docx-text", agent: worker },
+    ["search_source_text"],
+  );
+  assert.equal(docxExcerptSearch.isError, false);
+  assert.match(docxExcerptSearch.content, /semiconductor revision evidence/u);
+
+  const implicitDirectorySearch = await runtime.execute(
+    {
+      id: "search-directory-text",
+      name: "search_source_text",
+      arguments: JSON.stringify({ path: "source-1", queries: ["evidence"] }),
+    },
+    { runId: "run", taskId: "search-directory-text", agent: worker },
+    ["search_source_text"],
+  );
+  assert.equal(implicitDirectorySearch.isError, true);
+  assert.match(implicitDirectorySearch.content, /select a file below it/);
+
+  const crossTaskScopeRead = await runtime.execute(
+    { id: "cross-scope", name: "read_file", arguments: '{"path":"source-2"}' },
+    { runId: "run", taskId: "scoped-task", agent: worker },
+    ["read_file"],
+  );
+  assert.equal(crossTaskScopeRead.isError, true);
+  assert.match(crossTaskScopeRead.content, /unknown research source: source-2/);
 
   const escape = await runtime.execute(
     { id: "escape", name: "read_file", arguments: '{"path":"source-1/../outside.md"}' },

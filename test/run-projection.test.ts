@@ -41,7 +41,7 @@ test("projects auditable Run cost, retry, duration, and failure-stage metrics", 
     event(5, "model.completed", { taskId: "integrate", data: { totalTokens: 420 } }),
     event(6, "tool.failed", {
       taskId: "integrate",
-      data: { toolName: "write_artifact", error: "Artifact Gate rejected the write" },
+      data: { toolName: "write_docx_artifact", error: "Artifact Gate rejected the write" },
     }),
     event(7, "model.completed", { taskId: "integrate", data: { totalTokens: 80 } }),
     event(8, "task.failed", { taskId: "integrate", data: { error: "gate budget exhausted" } }),
@@ -105,6 +105,45 @@ test("projects the Plan Review gate before Worker execution", () => {
     ...baseEvents,
     event(4, "plan.rejected", { taskId: "orchestrate" }),
   ]).status, "cancelling");
+});
+
+test("projects the independent Artifact Review without persisting findings", () => {
+  const events: RuntimeEvent[] = [
+    event(1, "run.started"),
+    event(2, "artifact.review_requested", {
+      taskId: "integrate",
+      agentId: "artifact-reviewer",
+      data: { sha256: "a".repeat(64) },
+    }),
+    event(3, "artifact.review_completed", {
+      taskId: "integrate",
+      agentId: "artifact-reviewer",
+      data: { sha256: "a".repeat(64), verdict: "revise", findingCount: 2 },
+    }),
+    event(4, "artifact.review_requested", {
+      taskId: "integrate",
+      agentId: "artifact-reviewer",
+      data: { sha256: "b".repeat(64) },
+    }),
+    event(5, "artifact.review_completed", {
+      taskId: "integrate",
+      agentId: "artifact-reviewer",
+      data: { sha256: "b".repeat(64), verdict: "accept", findingCount: 0 },
+    }),
+  ];
+
+  const view = projectRun("run-review", "/tmp/localbuddy-review", events);
+  assert.deepEqual(view.artifactReview, {
+    status: "accepted",
+    attempts: 2,
+    revisionRequests: 1,
+    findingCount: 0,
+    candidateSha256: "b".repeat(64),
+  });
+  assert.match(
+    view.recentEvents.find((item) => item.sequence === 3)?.detail ?? "",
+    /退回修订 · 2 项/u,
+  );
 });
 
 test("rebuilds desktop history from a persisted JSONL event log", async (context) => {

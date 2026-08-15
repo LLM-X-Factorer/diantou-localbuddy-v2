@@ -29,6 +29,8 @@ test("desktop runtime uses the privileged local protocol and Electron isolation 
   assert.match(main, /const result = await dialog\.showSaveDialog\(options\)/);
   assert.doesNotMatch(main, /showSaveDialog\(mainWindow/);
   assert.match(main, /runManager\.loadArtifactPreview/);
+  assert.match(main, /runManager\.loadArtifactThread/);
+  assert.match(main, /runManager\.loadArtifactRevisionDiff/);
   assert.match(main, /runManager\.resolveArtifactPath/);
   assert.match(main, /createTutorialWorkspace/);
   assert.match(main, /inspectProviderCredential\("deepseek"\)/);
@@ -134,6 +136,10 @@ test("Renderer composer is a compact input plus wrapping control toolbar", async
   assert.match(styles, /\.control-label \{ position: absolute; width: 1px; height: 1px/);
   assert.match(styles, /\.extensions-toggle \{[^}]*min-height: 32px/);
   assert.doesNotMatch(styles, /\.composer-actions \{[^}]*repeat\(16/);
+  assert.match(renderer, /aria-controls="goal-contract-fields"/);
+  assert.match(renderer, /className="goal-contract-summary"/);
+  assert.match(renderer, /结果已填写/);
+  assert.match(styles, /\.goal-contract-summary \{ display: grid;/);
 });
 
 test("Renderer separates explicit research sources from recovery and confirms paid replay", async () => {
@@ -165,6 +171,26 @@ test("Renderer exposes Goal Contract fields and a Worker-blocking Plan Review de
   assert.match(renderer, /批准，开始 Worker/);
   assert.match(renderer, /resolvePlanReview/);
   assert.match(main, /requirePlanReview: true/);
+});
+
+test("Renderer starts verified Artifact revisions without embedding preview text in the Goal", async () => {
+  const renderer = await readFile("desktop/renderer/src/App.tsx", "utf8");
+  const main = await readFile("desktop/main.ts", "utf8");
+
+  assert.match(renderer, /artifactContinuation/);
+  assert.match(renderer, /只读资料快照/);
+  assert.match(renderer, /查看上一版/);
+  assert.match(renderer, /父产物身份和 SHA-256 可追溯/);
+  assert.doesNotMatch(renderer, /artifactPreview\.text\.slice/);
+  assert.doesNotMatch(renderer, /setGoal\(`修订 \$\{artifactPreview\.fileName\}/);
+  assert.match(renderer, /请写清这次要怎样修改 \$\{artifactContinuation\.parentFileName\}/);
+  assert.match(renderer, /setGoal\(""\);\n    setSourcePaths\(\[\]\);/);
+  assert.match(renderer, /版本历史/);
+  assert.match(renderer, /只读取已登记 Artifact，不扫描工作区/);
+  assert.match(renderer, /与上一版比较/);
+  assert.match(renderer, /同版 \$\{sameRevisionCount\} 个分支\/尝试/);
+  assert.match(renderer, /校验不可用/);
+  assert.match(main, /parseArtifactContinuation/);
 });
 
 test("brand assets provide native macOS, Windows, and Linux icon formats", async () => {

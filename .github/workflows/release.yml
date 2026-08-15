@@ -12,6 +12,8 @@ jobs:
   windows-release:
     runs-on: windows-2025
     timeout-minutes: 45
+    outputs:
+      previous_version: ${{ steps.previous_stable.outputs.version }}
     env:
       LOCALBUDDY_GRAY_FAULT_MATRIX: "1"
       LOCALBUDDY_GRAY_SOAK_CYCLES: "3"
@@ -35,6 +37,7 @@ jobs:
       - name: Install and exercise LocalBuddy with a local deterministic Provider
         run: pnpm verify:windows-gray-installer
       - name: Download previous stable Setup
+        id: previous_stable
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -42,6 +45,7 @@ jobs:
           New-Item -ItemType Directory -Force previous-release | Out-Null
           $tag = gh release view --repo $env:GITHUB_REPOSITORY --json tagName --jq .tagName
           if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($tag)) { throw "Could not resolve previous stable Release" }
+          "version=$($tag.TrimStart('v'))" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           gh release download $tag --repo $env:GITHUB_REPOSITORY --pattern "LocalBuddy-*-Setup.exe" --dir previous-release
           if ($LASTEXITCODE -ne 0) { throw "Could not download previous stable Setup" }
           $setups = @(Get-ChildItem previous-release -File -Filter "LocalBuddy-*-Setup.exe")
@@ -133,3 +137,27 @@ jobs:
             gh release create "$GITHUB_REF_NAME" "${release_flags[@]}"
           fi
           gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
+
+  online-update-smoke:
+    needs: [windows-release, publish-release]
+    if: github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Verify the public Windows updater resolves the new Release
+        shell: bash
+        env:
+          PREVIOUS_VERSION: ${{ needs.windows-release.outputs.previous_version }}
+        run: |
+          set -euo pipefail
+          package_version="${GITHUB_REF_NAME#v}"
+          feed_url="https://update.electronjs.org/${GITHUB_REPOSITORY}/win32-x64/${PREVIOUS_VERSION}"
+          for attempt in $(seq 1 20); do
+            response=$(curl --fail --location --silent --show-error "$feed_url" || true)
+            if grep -Fq "LocalBuddy-${package_version}-full.nupkg" <<<"$response"; then
+              echo "Public updater resolved LocalBuddy ${package_version} from ${PREVIOUS_VERSION}."
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Public updater did not resolve LocalBuddy ${package_version} within five minutes." >&2
+          exit 1

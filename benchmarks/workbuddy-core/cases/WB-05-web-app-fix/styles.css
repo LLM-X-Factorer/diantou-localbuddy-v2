@@ -1,0 +1,26 @@
+:root {
+  color: #182744;
+  background: #f5f2ec;
+  font-family: system-ui, sans-serif;
+}
+
+main {
+  width: min(640px, calc(100% - 32px));
+  margin: 48px auto;
+  padding: 28px;
+  background: white;
+  border-radius: 18px;
+}
+
+form {
+  display: flex;
+  gap: 8px;
+}
+
+input {
+  flex: 1;
+}
+
+li {
+  margin: 12px 0;
+}

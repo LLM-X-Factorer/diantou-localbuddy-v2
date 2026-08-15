@@ -3,6 +3,10 @@ import { mkdir, readFile, realpath, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 import type { DesktopRunMode, StartDesktopRunRequest } from "./desktop-contract.js";
+import {
+  normalizeArtifactRevision,
+  type ArtifactRevisionContract,
+} from "./artifact-revision.js";
 import { normalizeRunExtensions, type RunExtensionSelection } from "./extension-config.js";
 import {
   compileGoalContract,
@@ -14,7 +18,7 @@ import { canonicalResearchSourcePaths } from "./research-sources.js";
 import { normalizeTrustProfile, type TrustProfile } from "./tool-runtime.js";
 
 export interface PersistedRunRequest {
-  version: 5;
+  version: 6;
   runId: string;
   workspace: string;
   goalContract: GoalContract;
@@ -31,15 +35,17 @@ export interface PersistedRunRequest {
   provider: ProviderSelection;
   trustProfile: TrustProfile;
   extensions: RunExtensionSelection;
+  artifactRevision?: ArtifactRevisionContract;
 }
 
-export interface SaveRunRequestInput extends StartDesktopRunRequest {
+export type SaveRunRequestInput = Omit<StartDesktopRunRequest, "artifactContinuation"> & {
   runId: string;
   workspace: string;
   recoveryOf?: string;
   runtimeOwner?: "desktop" | "cli";
   planReview?: "required" | "skipped";
-}
+  artifactRevision?: ArtifactRevisionContract;
+};
 
 export class RunRequestStore {
   readonly #clock: () => Date;
@@ -64,8 +70,11 @@ export class RunRequestStore {
       constraints: input.goalConstraints,
       verificationCriteria: input.verificationCriteria,
     });
+    const artifactRevision = input.artifactRevision === undefined
+      ? undefined
+      : normalizeArtifactRevision(input.artifactRevision);
     const stored = {
-      version: 5 as const,
+      version: 6 as const,
       runId: input.runId,
       workspace,
       goalContract,
@@ -80,6 +89,7 @@ export class RunRequestStore {
       provider: normalizeProviderSelection(input.provider),
       trustProfile: normalizeTrustProfile(input.trustProfile),
       extensions: normalizeRunExtensions(input.extensions),
+      artifactRevision,
     };
     const requestPath = resolve(runRoot, "run-request.json");
     const temporaryPath = `${requestPath}.${process.pid}.${randomUUID()}.tmp`;
@@ -109,7 +119,8 @@ export class RunRequestStore {
         && request.version !== 2
         && request.version !== 3
         && request.version !== 4
-        && request.version !== 5)
+        && request.version !== 5
+        && request.version !== 6)
       || request.runId !== expectedRunId
       || typeof request.workspace !== "string"
       || typeof request.concurrency !== "number"
@@ -121,17 +132,21 @@ export class RunRequestStore {
       || ((request.version === 2
         || request.version === 3
         || request.version === 4
-        || request.version === 5)
+        || request.version === 5
+        || request.version === 6)
         && (request.provider === undefined || request.extensions === undefined))
-      || ((request.version === 3 || request.version === 4 || request.version === 5)
+      || ((request.version === 3
+        || request.version === 4
+        || request.version === 5
+        || request.version === 6)
         && request.trustProfile === undefined)
-      || (request.version !== 5 && typeof request.goal !== "string")
+      || (request.version < 5 && typeof request.goal !== "string")
       || (request.version === 4
         && (request.trustProfile === undefined
           || !Array.isArray(request.sourcePaths)
           || !request.sourcePaths.every((item) => typeof item === "string")
           || request.sourceContract !== "explicit"))
-      || (request.version === 5
+      || ((request.version === 5 || request.version === 6)
         && (request.goalContract === undefined
           || (request.planReview !== "required" && request.planReview !== "skipped")
           || !Array.isArray(request.sourcePaths)
@@ -153,12 +168,15 @@ export class RunRequestStore {
     const sourceContract = request.version >= 4 || request.mode === "code"
       ? "explicit" as const
       : "legacy-workspace" as const;
-    const goalContract = request.version === 5
+    const goalContract = request.version >= 5
       ? normalizeGoalContract(request.goalContract as GoalContract)
       : normalizeGoalContract({ outcome: request.goal as string });
-    const executionGoal = request.version === 5
+    const executionGoal = request.version >= 5
       ? compileGoalContract(goalContract)
       : request.goal as string;
+    const artifactRevision = request.version === 6 && request.artifactRevision !== undefined
+      ? normalizeArtifactRevision(request.artifactRevision as ArtifactRevisionContract)
+      : undefined;
     validateRequest({
       workspace: request.workspace,
       goal: goalContract.outcome,
@@ -182,12 +200,12 @@ export class RunRequestStore {
       throw new Error("persisted Run Request workspace does not match the selected workspace");
     }
     return {
-      version: 5,
+      version: 6,
       runId: request.runId,
       workspace,
       goalContract,
       executionGoal,
-      planReview: request.version === 5 && request.planReview === "required" ? "required" : "skipped",
+      planReview: request.version >= 5 && request.planReview === "required" ? "required" : "skipped",
       concurrency: request.concurrency,
       mode: request.mode,
       sourcePaths,
@@ -198,7 +216,29 @@ export class RunRequestStore {
       provider,
       trustProfile,
       extensions,
+      artifactRevision,
     } as PersistedRunRequest;
+  }
+
+  async loadArtifactRevision(
+    runRoot: string,
+    expectedRunId: string,
+  ): Promise<ArtifactRevisionContract | undefined> {
+    validateRunId(expectedRunId);
+    const raw = JSON.parse(await readFile(resolve(runRoot, "run-request.json"), "utf8")) as unknown;
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+      throw new Error("persisted Run Request must be an object");
+    }
+    const request = raw as Record<string, unknown>;
+    if (request.runId !== expectedRunId || typeof request.version !== "number") {
+      throw new Error("persisted Run Request has an invalid Artifact revision identity");
+    }
+    if (request.version < 6) return undefined;
+    if (request.version !== 6) {
+      throw new Error("persisted Run Request has an unsupported Artifact revision version");
+    }
+    if (request.artifactRevision === undefined) return undefined;
+    return normalizeArtifactRevision(request.artifactRevision as ArtifactRevisionContract);
   }
 }
 

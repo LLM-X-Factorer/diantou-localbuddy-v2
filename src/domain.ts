@@ -74,3 +74,20 @@ export interface RunSummary {
   status: RunStatus;
   tasks: ReadonlyMap<TaskId, TaskRecord>;
 }
+
+export function summarizeRunFailure(summary: RunSummary): string | undefined {
+  if (summary.status !== "failed") return undefined;
+  const failed = [...summary.tasks.values()].find((task) => task.status === "failed");
+  if (failed !== undefined) {
+    const detail = failed.error?.trim();
+    return detail === undefined || detail.length === 0
+      ? `Task ${failed.definition.id} failed`
+      : `Task ${failed.definition.id} failed: ${detail.slice(0, 1_000)}`;
+  }
+  const blocked = [...summary.tasks.values()]
+    .filter((task) => task.status === "blocked")
+    .map((task) => task.definition.id);
+  return blocked.length === 0
+    ? "Run failed without a task-level error"
+    : `Run failed because dependent tasks were blocked: ${blocked.join(", ")}`;
+}

@@ -19,6 +19,7 @@ export interface ToolContext {
   runId: RunId;
   taskId: TaskId;
   agent: AgentDefinition;
+  dependencyOutputs?: ReadonlyMap<TaskId, unknown>;
   signal?: AbortSignal;
 }
 
@@ -205,7 +206,7 @@ function enforceRoleBoundary(
   context: ToolContext,
 ): ApprovalDecision {
   if (permission === "artifact.write") {
-    return context.agent.role === "integrator" && tool.name === "write_artifact"
+    return context.agent.role === "integrator" && isFinalArtifactToolName(tool.name)
       ? { allowed: true, reason: "integrator owns the registered artifact directory" }
       : { allowed: false, reason: `${context.agent.role} is not allowed to write final artifacts` };
   }
@@ -221,6 +222,10 @@ function enforceRoleBoundary(
       : { allowed: false, reason: `${context.agent.role} is not allowed to start local processes` };
   }
   return { allowed: true, reason: `${permission} passed its role boundary` };
+}
+
+export function isFinalArtifactToolName(name: string): boolean {
+  return name === "write_artifact" || name === "write_docx_artifact";
 }
 
 export class ToolRegistry {
@@ -332,6 +337,7 @@ export class ToolRuntime {
 
     let result: ToolExecutionResult;
     let failureMessage: string | undefined;
+    let auditFailureMessage: string | undefined;
     try {
       const rawInput = JSON.parse(toolCall.arguments) as unknown;
       const input = tool.parse(rawInput);
@@ -340,6 +346,7 @@ export class ToolRuntime {
       result = { toolCallId: toolCall.id, content, isError: false };
     } catch (error) {
       failureMessage = error instanceof Error ? error.message : String(error);
+      auditFailureMessage = hasAuditMessage(error) ? error.auditMessage : failureMessage;
       result = {
         toolCallId: toolCall.id,
         content: `Tool error: ${failureMessage}`,
@@ -362,7 +369,7 @@ export class ToolRuntime {
       runId: context.runId,
       taskId: context.taskId,
       agentId: context.agent.id,
-      data: { toolCallId: toolCall.id, toolName: toolCall.name, error: failureMessage },
+      data: { toolCallId: toolCall.id, toolName: toolCall.name, error: auditFailureMessage },
     });
     return result;
   }
@@ -381,6 +388,13 @@ export class ToolRuntime {
     });
     return { toolCallId: toolCall.id, content: `Tool denied: ${reason}`, isError: true };
   }
+}
+
+function hasAuditMessage(value: unknown): value is { auditMessage: string } {
+  return value !== null
+    && typeof value === "object"
+    && "auditMessage" in value
+    && typeof value.auditMessage === "string";
 }
 
 function serializeToolOutput(output: unknown): string {

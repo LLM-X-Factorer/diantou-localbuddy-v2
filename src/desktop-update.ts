@@ -33,6 +33,22 @@ export interface DesktopUpdateTransport {
   subscribe(listener: (event: DesktopUpdateTransportEvent) => void): () => void;
 }
 
+const PUBLIC_GITHUB_REPOSITORY = "LLM-X-Factorer/diantou-localbuddy-v2";
+const PUBLIC_UPDATE_SERVICE = "https://update.electronjs.org";
+
+export function resolveDesktopUpdateFeed(input: {
+  build: DesktopBuildIdentity;
+  platform: string;
+  arch: string;
+  override?: string;
+}): string | undefined {
+  if (!input.build.packaged || input.platform !== "win32") return undefined;
+  if (input.override !== undefined) return input.override;
+  if (input.build.channel !== "stable") return undefined;
+  if (input.arch !== "x64" && input.arch !== "arm64") throw new Error("Windows update architecture is unsupported");
+  return `${PUBLIC_UPDATE_SERVICE}/${PUBLIC_GITHUB_REPOSITORY}/${input.platform}-${input.arch}/${input.build.version}`;
+}
+
 export class DesktopUpdateCoordinator {
   readonly #transport: DesktopUpdateTransport | undefined;
   readonly #canInstall: () => boolean | Promise<boolean>;

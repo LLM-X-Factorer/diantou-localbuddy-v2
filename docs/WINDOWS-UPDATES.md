@@ -1,6 +1,6 @@
 # Windows 开发更新与安装升级
 
-> 状态：当前私有 `v0.12.2` Engineering Alpha Release。本页把“日常拿新包”“验证安装升级”“稳定版自动更新”分开，避免用一种流程冒充另外两种验收。生产更新源仍未配置。
+> 状态：当前已发布基线仍是私有 `v0.12.2` Engineering Alpha。未发布 `0.12.3` 候选已让 packaged stable Windows 构建内置公开 GitHub Release 更新源；仓库公开、桥接安装、线上 feed 读回、代码签名和 Windows 11 真人 OTA 仍是发布门禁。
 
 ## 一句话方案
 
@@ -18,7 +18,7 @@ pnpm windows:canary
 |---|---|---|---|
 | Canary 快速同步 | 今天的代码在 Windows 上能不能快速打开和试用 | 下载 CI 便携 ZIP，按 SHA 并存，使用独立 user-data | Setup 安装、卸载和原地升级 |
 | 安装/升级门禁 | 新用户安装和老用户升级会不会坏 | CI 先做干净安装，再做 `上一稳定版 -> 当前候选版` 原地升级并检查用户数据 | Windows 11、SmartScreen、UAC 和真实网络 |
-| 稳定版应用内更新 | 已安装用户能否在应用内检查并安全重启升级 | Squirrel feed + 手动检查 + 下载完成后人工确认重启 | 当前尚未配置生产更新源，也未完成公开签名 |
+| 稳定版应用内更新 | 已安装用户能否在应用内检查并安全重启升级 | 公开 GitHub Release + Electron 官方 feed + 手动检查 + 下载完成后人工确认重启 | 未签名包的 SmartScreen 信誉，也不能替代 Windows 11 真人验收 |
 
 如果每次只重装，我们只能证明“新装还能开”，反而会漏掉用户真正关心的旧数据、旧配置和升级路径。反过来，只跑 Canary 也会漏掉安装器问题。
 
@@ -70,9 +70,21 @@ Canary 的 UI 会显示 `channel + version + short SHA`，用于确认“我实�
 
 第二条链路只在一次性托管 Runner 上运行，脚本会拒绝覆盖已有 LocalBuddy 安装或用户目录，并只清理本次测试创建的路径。Tag Release 也必须重复 `上一稳定版 -> 目标稳定版` 的升级验证。
 
+## 稳定版在线更新
+
+`0.12.3` 候选不再要求普通用户设置环境变量。packaged、stable、Windows 构建会由 Main 固定使用以下只读服务地址，并带上运行中的版本和架构：
+
+```text
+https://update.electronjs.org/LLM-X-Factorer/diantou-localbuddy-v2/win32-x64/<current-version>
+```
+
+该服务从公开 GitHub Releases 解析下一稳定版；Renderer 仍不能修改更新源。Canary、beta、开发包和非 Windows 包默认不接稳定 feed。`LOCALBUDDY_UPDATE_FEED_URL` 只保留给打包验收时的显式 HTTPS/loopback 夹具，不作为用户配置或私有仓库鉴权方案。
+
+`v0.12.2` 本身没有内置更新地址，因此已有用户必须对 `v0.12.3` 做最后一次手动原地安装；不需要先卸载。只有在真实 Windows 11 上完成 `v0.12.3 -> 后续稳定版` 的线上检查、下载、重启、版本读回和 profile 保留后，才可以宣称以后无需回仓库下载。
+
 ## 应用内更新的安全规则
 
-Windows 安装包已经接入 Electron/Squirrel 更新控制器，但默认不配置更新源。只有运行环境提供 `LOCALBUDDY_UPDATE_FEED_URL` 时，应用才显示检查更新入口。该 URL 必须是 HTTPS，开发夹具可使用 loopback HTTP；URL 中禁止用户名、密码、query 和 hash，避免把 token 留在日志或进程参数中。
+Windows 安装包已经接入 Electron/Squirrel 更新控制器。`0.12.3` 起，正式 stable 包默认使用构建内置的公开 GitHub 更新源；其余 channel 默认关闭。验收覆盖使用的显式 feed 必须是 HTTPS，开发夹具可使用 loopback HTTP；URL 中禁止用户名、密码、query 和 hash，避免把 token 留在日志或进程参数中。
 
 更新规则：
 
@@ -83,7 +95,7 @@ Windows 安装包已经接入 Electron/Squirrel 更新控制器，但默认不�
 - Renderer 不能设置 feed，也不能绕过 Main 的空闲检查；
 - 当前没有静默安装、强制更新或自动回滚。
 
-Release workflow 从 `0.12.2` 起发布 Setup、便携 ZIP、`RELEASES`、full NuGet package 和 SHA-256 清单。生产 feed 的托管、访问控制、代码签名和真实 Windows 11 升级仍是后续独立决策，不能因为 feed 原始产物已经发布就写成“自动更新已上线”。
+Release workflow 从 `0.12.2` 起发布 Setup、便携 ZIP、`RELEASES`、full NuGet package 和 SHA-256 清单。公开仓库的 Tag Release 还会从上一稳定版本请求 Electron feed，并等待新 full package 可被解析。代码签名和真实 Windows 11 OTA 仍是独立门禁，不能因为线上 endpoint 返回成功就写成“生产自动更新已验收”。
 
 ## 验收记录
 

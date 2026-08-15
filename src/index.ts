@@ -1,5 +1,6 @@
 export * from "./agent-loop.js";
 export * from "./artifacts.js";
+export * from "./artifact-reviewer.js";
 export * from "./browser-tools.js";
 export * from "./calculations.js";
 export * from "./checkpoint-store.js";

@@ -324,12 +324,16 @@ export class ResearchCheckpointStore implements AgentCheckpointStore {
     const sources = await resolveResearchSources(manifest.sourcePaths);
     const receipts = await this.#listToolReceipts();
     for (const receipt of receipts) {
-      if (receipt.toolName !== "read_file" || receipt.status !== "completed" || receipt.result?.isError !== false) {
+      if (
+        !["read_file", "search_source_text"].includes(receipt.toolName)
+        || receipt.status !== "completed"
+        || receipt.result?.isError !== false
+      ) {
         continue;
       }
       const evidence = parseReadEvidence(receipt.result.content);
       if (evidence === undefined) {
-        return "checkpoint contains a completed local file read without verifiable evidence metadata";
+        return "checkpoint contains a completed local source read without verifiable evidence metadata";
       }
       try {
         const current = await hashResearchSourceReference(sources, evidence.path);

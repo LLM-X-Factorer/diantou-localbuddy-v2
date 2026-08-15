@@ -4,10 +4,44 @@
 
 ## Unreleased
 
+### Added
+
+- Packaged stable Windows builds now derive a fixed `update.electronjs.org` feed from the public GitHub repository, while Canary/beta/dev and non-Windows builds remain disconnected from the stable channel by default.
+- Tag Releases on a public repository now wait for the Electron update service to resolve the new full Squirrel package from the previous stable version.
+
+- 新增 WorkBuddy 产品能力基准 v1：把公开承诺拆成批量文件、文档修订、表格分析、证据研究、网页修复和中断恢复六个黄金任务，统一 100 分评分、硬失败条件与证据等级；
+- 新增只使用合成资料的版本化夹具和 `pnpm benchmark:materialize` 安全物化命令。目标目录必须不存在，脚本不会覆盖既有测试现场；当前只证明基准协议可执行，不代表 WorkBuddy 黑盒或 LocalBuddy 六题已经通过。
+- 新增 M12.1 Artifact Revision 第一切片：Run Request v6 保存父 Artifact、Thread、版本和修改原因；Main 进程在 Provider 调用前复核父产物并复制为新 Run 的只读 Research Source 快照；Desktop 展示版本关系和上一版入口；
+- “基于此产物继续”不再把截断后的预览正文拼进 Goal。父 Artifact 被移动、删除或篡改时 fail closed，旧 v1-v5 Run Request 继续按原语义读取且不改写。
+- 修订任务从头 replay 时重新复核原父 Artifact、创建新 Run 私有快照并保持 Thread/版本身份；Composer 不再预填一个可误提交的修改目标，并清除遗留资料选择，用户写明实际修改要求后才能生成计划。
+- 新增 M12.2 Artifact Thread Workbench：按 Thread 展示 V1/V2、失败/replay 和同版分支尝试；每个历史 Artifact 独立复核，漂移版本保留记录但禁用打开；
+- 新增本机有界文本 diff：复核直接父版本后显示增删行和双边行号，限制 bytes、行数、LCS 计算量与渲染行数；缺失 V3 父合同或父 SHA 漂移时 fail closed；
+- 为 WB-02 增加逐项来源事实真源和 readiness 门禁；M12.3 已解除 DOCX 机械 blocker。真实 DeepSeek 当前记录 2 次接受、1 次失败和 1 次 grader 缺陷导致的无结论运行，状态为 `provider-stability-not-passed`，不把诊断重跑冒充三次稳定通过。
+- 新增受限 DOCX Artifact 纵向切片：Integrator 只提交有界 Markdown 正文，由本地编译器解析标题、段落、项目符号和表格，确定性生成 OOXML、回读正文并经 Artifact Gate 登记；不让模型直接拼嵌套结构、ZIP、XML 或伪装扩展名。
+- 显式选择的 DOCX 可作为 Research Source 读取；压缩包条目数、压缩/展开大小和正文长度均有上限，宏、外部关系、嵌入对象、图片、批注、修订痕迹和复杂富内容 fail closed。
+- Desktop 增加 DOCX 结构预览、章节/段落/表格统计、系统打开入口和直接父版本正文/表格差异；每次预览、打开、修订和比较都重新复核 Registry、bytes 与 SHA-256。
+- 新增 WB-02 两轮确定性产品 pilot：V1/V2 都满足来源事实，V2 摘要 59 字、六项行动含负责人/日期或“待确认”、“本轮修改说明”位于文末，V1 保持可恢复。
+- 新增 M12.4 独立 DOCX Reviewer：在文件写入/登记前，以只读 `artifact-reviewer` 比较完整 Goal Contract、Worker 证据和候选 DOCX 抽取文本；退回意见进入 Integrator 私有 checkpoint，最多三次，未通过候选不发布；
+- Artifact Revision 新增父版本保留门槛：已验证父正文和结构直接提供给 Integrator/Reviewer，模型审核前确定性拦截正文或段落大幅缩水，以及章节、表格和表格行丢失；
+- 新增 `pnpm benchmark:trace`：把 Run 状态、调用/失败计数、失败工具名、Reviewer verdict 和 Artifact 元数据脱敏导出到一次性工作区之外；拒绝覆盖旧文件或把 trace 写回待清理工作区。
+- Research 长资料新增单文件有界 `search_source_text`；每个 Worker 的 Prompt 可见资料与 Runtime 可读资料按计划共同收窄，不再让 Agent 看见全局 Source Set 后反复尝试越界读取；
+- Goal Contract 可显式收起为结果、约束、验收和资料数量摘要，保留完整提交值的同时减少 Composer 占高。
+
 ### Fixed
 
+- Integrator 现在必须至少有一次最终 Artifact 写入通过才能成功结束，不能在写入/Reviewer 失败后只返回“完成”绕过后置条件；同 Run 恢复继续沿用已经消耗的三次 Artifact Gate 预算；
+- DOCX 写入失败现在与文本写入一样计入 Artifact Gate retry 和失败阶段，最近事件显示截断后的具体工具反馈；Research/Coding Run 失败会把首个失败 Task 的原因投影到顶层，不再只显示无原因的 `failed`；
+- WB-02 实跑 grader 的章节匹配允许“一、执行摘要”“五、风险”等带序号标题，避免把内容齐全的文档误判为缺章节；历史无结论运行不因修正评分器而被事后改写为通过；
+- Artifact revision 的输出文件名/格式现在由已验证父 Artifact 约束；第二轮只说“继续修改同一份文件”或 Planner 省略/误写 `integration.fileName` 时，不再悄悄降级成 Markdown或在控制器接管前失败；
+- Integrator 每轮都会重新收到完整 Overall Goal Contract；revision 还会收到“保留未被明确要求修改的父内容”合同，减少 Planner/Worker 摘要交接时遗漏验收条件；
 - Canary 版本现在会与最新稳定 Release 比较；发布后的下一次 `main` 构建自动进入下一 patch 的 prerelease 线，避免 Squirrel 把同号 `X.Y.Z-canary.*` 识别为低于已经安装的稳定 `X.Y.Z`。
 - 修复 CI `31784118614` 已在 Windows Server 2025 实测 `v0.12.2 -> 0.12.3-canary.39` 原地升级且 `profilePreserved=true`，同时通过 157 项 Windows/macOS 合同、干净安装和两类 Canary artifact 上传。
+- 用户主动从安全 checkpoint 继续时，未完成 Agent 获得新的有界 8-turn 窗口，已成功 Task 不重跑；工具参数格式失败与 Reviewer 语义退回分开计数，避免恢复后立即用尽旧预算；
+- Orchestrator 输出允许一次有界 JSON 修复，并在 Plan Review 前检查所有已选 source ID 是否得到“使用或说明排除”；Integrator/Reviewer 的真实 Research 上下文上限恢复为 8,000 output tokens；
+- 数字 Artifact Gate 不再把逻辑资料编号列表（如 `source-2/3/4`）、URL、斜杠日期和政策原文百分数误判为派生计算；
+- Reviewer 明确候选 DOCX 在内存中完成结构编译、接受后才原子发布的语义，不再因为目标文件尚未落盘而误退回。
+- `search_source_text` 现在可对单个受限 DOCX 做本地安全抽取后的有界正文检索；DOCX 父稿中的 tab-separated 表格也可由本地 Markdown 编译器直接还原，消除二进制搜索和制表符控制字符误报；
+- 修复窄 Artifact Revision 被独立 Reviewer 接受却静默删掉大部分父稿的缺陷；保留 finding 使用同一三次有界修订预算，失败候选仍不落盘。
 
 ## 0.12.2 — 2026-08-14
 

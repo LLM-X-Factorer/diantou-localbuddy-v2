@@ -1,11 +1,14 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, realpath, stat } from "node:fs/promises";
-import { basename, extname, isAbsolute, resolve, sep } from "node:path";
+import { mkdir, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
+import { basename, dirname, extname, isAbsolute, resolve, sep } from "node:path";
 
 import type {
   ApproveDesktopIntegrationRequest,
   DesktopArtifactActionRequest,
   DesktopArtifactPreviewView,
+  DesktopArtifactRevisionDiffView,
+  DesktopArtifactThreadVersionView,
+  DesktopArtifactThreadView,
   DesktopCheckpointView,
   DesktopRunActionRequest,
   DesktopRunView,
@@ -14,7 +17,21 @@ import type {
   ResolveDesktopToolApprovalRequest,
   StartDesktopRunRequest,
 } from "./desktop-contract.js";
+import {
+  createArtifactRevision,
+  artifactThreadId,
+  normalizeArtifactContinuation,
+  normalizeArtifactRevision,
+  type ArtifactContinuationRequest,
+  type ArtifactRevisionContract,
+} from "./artifact-revision.js";
+import { createArtifactTextDiff } from "./artifact-text-diff.js";
+import {
+  MAX_ARTIFACT_REVIEW_CHARACTERS,
+  type ArtifactReviewCandidate,
+} from "./artifact-reviewer.js";
 import { JsonArtifactRegistry, type ArtifactRecord } from "./artifacts.js";
+import { DOCX_MEDIA_TYPE, inspectDocxArtifact } from "./docx-artifact.js";
 import { CodingWorkflow } from "./coding-workflow.js";
 import { CodingCheckpointStore } from "./coding-checkpoint-store.js";
 import { ResearchCheckpointStore } from "./checkpoint-store.js";
@@ -33,6 +50,7 @@ import type { OAuthRedirectHandler } from "./mcp-oauth.js";
 import { normalizeRunExtensions } from "./extension-config.js";
 import { normalizeProviderSelection, type ProviderSelection } from "./provider-config.js";
 import { loadWorkspaceRunHistory, projectRun } from "./run-projection.js";
+import { canonicalResearchSourcePaths } from "./research-sources.js";
 import {
   RunRequestStore,
   type PersistedRunRequest,
@@ -80,8 +98,17 @@ interface DesktopResumeInspection {
   reason?: string;
 }
 
+interface PreparedArtifactRevision {
+  contract: ArtifactRevisionContract;
+  content: Buffer;
+  parentAbsolutePath: string;
+  verifiedParentArtifact?: ArtifactReviewCandidate;
+}
+
 const MAX_ARTIFACT_PREVIEW_BYTES = 200_000;
-const PREVIEWABLE_ARTIFACT_EXTENSIONS = new Set([".md", ".json", ".txt", ".patch", ".diff"]);
+const MAX_ARTIFACT_THREAD_VERSIONS = 200;
+const MAX_ARTIFACTS_PER_THREAD_VERSION = 20;
+const TEXT_ARTIFACT_EXTENSIONS = new Set([".md", ".json", ".txt", ".patch", ".diff"]);
 
 export class DesktopRunManager {
   readonly #createProvider: (selection: ProviderSelection) => Promise<ModelProvider>;
@@ -145,7 +172,11 @@ export class DesktopRunManager {
           verificationCriteria: persisted.goalContract.verificationCriteria,
           concurrency: persisted.concurrency,
           mode: persisted.mode,
-          sourcePaths: persisted.sourcePaths,
+          sourcePaths: persisted.artifactRevision === undefined
+            ? persisted.sourcePaths
+            : persisted.sourcePaths.filter((sourcePath) =>
+                sourcePath !== resolve(runRoot, persisted.artifactRevision?.sourceRelativePath ?? "")
+              ),
           provider: persisted.provider,
           trustProfile: persisted.trustProfile,
           extensions: persisted.extensions,
@@ -160,6 +191,7 @@ export class DesktopRunManager {
           this.#emit(projectRun(request.runId, workspace, await eventStore.list(request.runId)));
         },
         persisted.planReview,
+        persisted.artifactRevision,
       );
     } finally {
       await lease.release();
@@ -245,6 +277,10 @@ export class DesktopRunManager {
 
       try {
         const provider = await this.#createProvider(persisted.provider);
+        const verifiedParentArtifact = await this.#loadVerifiedRevisionParent(
+          runRoot,
+          persisted,
+        );
         const workflow = persisted.mode === "code"
           ? new CodingWorkflow({
               provider,
@@ -280,6 +316,8 @@ export class DesktopRunManager {
               processTaskCapacity: this.#processTaskCapacity,
               oauthRedirectHandler: this.#oauthRedirectHandler,
               planReview: planReviewBroker?.review.bind(planReviewBroker),
+              requiredArtifactFileName: persisted.artifactRevision?.parentFileName,
+              verifiedParentArtifact,
             });
         placeholder.execution = workflow
           .resume(request.runId, persisted.executionGoal, abortController.signal)
@@ -358,6 +396,7 @@ export class DesktopRunManager {
     planReviewPolicy: PersistedRunRequest["planReview"] = this.#requirePlanReview
       ? "required"
       : "skipped",
+    replayArtifactRevision?: ArtifactRevisionContract,
   ): Promise<DesktopRunView> {
     validateStartRequest(request);
     if (planReviewPolicy === "required"
@@ -383,26 +422,73 @@ export class DesktopRunManager {
       this.#launching.delete(runId);
       throw error;
     }
+    let preparedArtifactRevision: PreparedArtifactRevision | undefined;
+    try {
+      preparedArtifactRevision = replayArtifactRevision === undefined
+        ? request.artifactContinuation === undefined
+          ? undefined
+          : await this.#prepareArtifactRevision(workspace, request.artifactContinuation)
+        : await this.#prepareArtifactRevision(workspace, replayArtifactRevision, replayArtifactRevision);
+    } catch (error) {
+      this.#launching.delete(runId);
+      await lease.release();
+      throw error;
+    }
     const runRoot = resolve(workspace, ".localbuddy", "runs", runId);
     const artifactRoot = resolve(runRoot, "artifacts");
     let persisted: PersistedRunRequest;
+    let revisionEvent: RuntimeEvent | undefined;
     try {
       await mkdir(artifactRoot, { recursive: true });
+      let revisionSourcePath: string | undefined;
+      let requestedSourcePaths = request.sourcePaths ?? [];
+      if (preparedArtifactRevision !== undefined) {
+        requestedSourcePaths = (await canonicalResearchSourcePaths(requestedSourcePaths))
+          .filter((sourcePath) => sourcePath !== preparedArtifactRevision.parentAbsolutePath);
+        revisionSourcePath = resolve(
+          runRoot,
+          preparedArtifactRevision.contract.sourceRelativePath,
+        );
+        await mkdir(dirname(revisionSourcePath), { recursive: true });
+        await writeFile(revisionSourcePath, preparedArtifactRevision.content, {
+          flag: "wx",
+          mode: 0o600,
+        });
+      }
       persisted = await this.#requestStore.save(runRoot, {
         ...request,
+        sourcePaths: revisionSourcePath === undefined
+          ? request.sourcePaths
+          : [revisionSourcePath, ...requestedSourcePaths],
         workspace,
         runId,
         recoveryOf,
         runtimeOwner: "desktop",
         planReview: planReviewPolicy,
+        artifactRevision: preparedArtifactRevision?.contract,
       });
+      if (persisted.artifactRevision !== undefined) {
+        revisionEvent = await new JsonlEventStore(resolve(runRoot, "events.jsonl")).append({
+          type: "artifact.revision_linked",
+          runId,
+          data: {
+            version: persisted.artifactRevision.version,
+            threadId: persisted.artifactRevision.threadId,
+            revision: persisted.artifactRevision.revision,
+            parentRunId: persisted.artifactRevision.parentRunId,
+            parentFileName: persisted.artifactRevision.parentFileName,
+            parentSha256: persisted.artifactRevision.parentSha256,
+            reason: persisted.artifactRevision.reason,
+          },
+        });
+      }
       await onPersisted?.(runId);
     } catch (error) {
       this.#launching.delete(runId);
       await lease.release();
       throw error;
     }
-    const events: RuntimeEvent[] = [];
+    const events: RuntimeEvent[] = revisionEvent === undefined ? [] : [revisionEvent];
     const persistentStore = new JsonlEventStore(resolve(runRoot, "events.jsonl"));
     const eventStore = new NotifyingEventStore(persistentStore, (event) => {
       events.push(event);
@@ -425,6 +511,7 @@ export class DesktopRunManager {
       recoveryOf,
       providerId: persisted.provider.id,
       trustProfile: persisted.trustProfile,
+      artifactRevision: persisted.artifactRevision,
     };
     const placeholder: ActiveRun = {
       abortController,
@@ -481,6 +568,8 @@ export class DesktopRunManager {
             processTaskCapacity: this.#processTaskCapacity,
             oauthRedirectHandler: this.#oauthRedirectHandler,
             planReview: planReviewBroker?.review.bind(planReviewBroker),
+            requiredArtifactFileName: persisted.artifactRevision?.parentFileName,
+            verifiedParentArtifact: preparedArtifactRevision?.verifiedParentArtifact,
           });
       placeholder.execution = workflow
         .run(
@@ -613,7 +702,26 @@ export class DesktopRunManager {
     request: DesktopArtifactActionRequest,
   ): Promise<DesktopArtifactPreviewView> {
     const { record, content } = await this.#readVerifiedArtifact(request);
-    if (!PREVIEWABLE_ARTIFACT_EXTENSIONS.has(extname(record.relativePath).toLowerCase())) {
+    const extension = extname(record.relativePath).toLowerCase();
+    if (extension === ".docx") {
+      const inspection = inspectDocxArtifact(content);
+      return {
+        fileName: record.relativePath,
+        sha256: record.sha256,
+        bytes: content.length,
+        format: "docx",
+        text: inspection.text,
+        truncated: false,
+        document: {
+          title: inspection.title,
+          paragraphs: inspection.paragraphCount,
+          sections: inspection.sectionCount,
+          tables: inspection.tableCount,
+          tableRows: inspection.tableRowCount,
+        },
+      };
+    }
+    if (!TEXT_ARTIFACT_EXTENSIONS.has(extension)) {
       throw new Error("This artifact type cannot be previewed as text");
     }
     const truncated = content.length > MAX_ARTIFACT_PREVIEW_BYTES;
@@ -621,8 +729,207 @@ export class DesktopRunManager {
       fileName: record.relativePath,
       sha256: record.sha256,
       bytes: content.length,
+      format: "text",
       text: content.subarray(0, MAX_ARTIFACT_PREVIEW_BYTES).toString("utf8"),
       truncated,
+    };
+  }
+
+  async loadArtifactThread(
+    request: DesktopArtifactActionRequest,
+  ): Promise<DesktopArtifactThreadView> {
+    const selectedArtifact = await this.#readVerifiedArtifact(request);
+    const workspace = await realpath(request.workspace);
+    const runs = await this.list(workspace);
+    const selectedRun = runs.find((run) => run.runId === request.runId);
+    if (selectedRun === undefined) throw new Error(`Run history does not exist: ${request.runId}`);
+
+    const childThreads = selectedRun.artifactRevision === undefined
+      ? new Set(runs
+          .filter((run) => run.artifactRevision?.parentRunId === request.runId
+            && run.artifactRevision.parentFileName === selectedArtifact.record.relativePath
+            && run.artifactRevision.parentSha256 === selectedArtifact.record.sha256)
+          .map((run) => run.artifactRevision?.threadId)
+          .filter((threadId): threadId is string => threadId !== undefined))
+      : new Set<string>();
+    if (childThreads.size > 1) {
+      throw new Error("Artifact history contains conflicting Thread identities");
+    }
+    const threadId = selectedRun.artifactRevision?.threadId
+      ?? childThreads.values().next().value
+      ?? artifactThreadId({
+        parentRunId: request.runId,
+        parentFileName: selectedArtifact.record.relativePath,
+        parentSha256: selectedArtifact.record.sha256,
+        reason: "standalone Artifact identity",
+      });
+    const threadRuns = runs.filter((run) => run.artifactRevision?.threadId === threadId);
+    if (threadRuns.length > MAX_ARTIFACT_THREAD_VERSIONS) {
+      throw new Error(`Artifact Thread exceeds the ${MAX_ARTIFACT_THREAD_VERSIONS}-version display limit`);
+    }
+    const threadRunIds = new Set(threadRuns.map((run) => run.runId));
+    const rootReferences = threadRuns
+      .filter((run) => !threadRunIds.has(run.artifactRevision?.parentRunId ?? ""))
+      .map((run) => ({
+        revision: Math.max(1, (run.artifactRevision?.revision ?? 2) - 1),
+        runId: run.artifactRevision?.parentRunId ?? "",
+        fileName: run.artifactRevision?.parentFileName ?? "",
+        sha256: run.artifactRevision?.parentSha256 ?? "",
+      }));
+    if (threadRuns.length === 0) {
+      rootReferences.push({
+        revision: 1,
+        runId: request.runId,
+        fileName: selectedArtifact.record.relativePath,
+        sha256: selectedArtifact.record.sha256,
+      });
+    }
+    const uniqueRoots = [...new Map(rootReferences.map((root) => [
+      `${root.revision}:${root.runId}:${root.fileName}:${root.sha256}`,
+      root,
+    ])).values()];
+
+    const rootVersions = await Promise.all(uniqueRoots.map(async (root) => {
+      const rootRun = runs.find((run) => run.runId === root.runId);
+      let artifact: DesktopArtifactThreadVersionView["artifacts"][number];
+      try {
+        const verified = await this.#readVerifiedArtifact({
+          workspace,
+          runId: root.runId,
+          fileName: root.fileName,
+        });
+        artifact = verified.record.sha256 === root.sha256
+          ? {
+              fileName: root.fileName,
+              sha256: root.sha256,
+              bytes: verified.record.bytes,
+              verification: "verified",
+            }
+          : { fileName: root.fileName, sha256: root.sha256, verification: "unavailable" };
+      } catch {
+        artifact = { fileName: root.fileName, sha256: root.sha256, verification: "unavailable" };
+      }
+      return {
+        revision: root.revision,
+        runId: root.runId,
+        runStatus: rootRun?.status ?? "failed",
+        title: rootRun === undefined ? root.fileName : artifactThreadRunTitle(rootRun),
+        startedAt: rootRun?.startedAt,
+        artifacts: [artifact],
+      } satisfies DesktopArtifactThreadVersionView;
+    }));
+    const revisionVersions = await Promise.all(threadRuns.map(async (run) => {
+      if (run.artifacts.length > MAX_ARTIFACTS_PER_THREAD_VERSION) {
+        throw new Error(
+          `Artifact version ${run.runId} exceeds the ${MAX_ARTIFACTS_PER_THREAD_VERSION}-artifact display limit`,
+        );
+      }
+      const artifacts = await Promise.all(run.artifacts.map(async (artifact) => {
+        try {
+          const verified = await this.#readVerifiedArtifact({
+            workspace,
+            runId: run.runId,
+            fileName: artifact.fileName,
+          });
+          return {
+            fileName: artifact.fileName,
+            sha256: verified.record.sha256,
+            bytes: verified.record.bytes,
+            verification: "verified" as const,
+          };
+        } catch {
+          return {
+            fileName: artifact.fileName,
+            sha256: artifact.sha256,
+            bytes: artifact.bytes,
+            verification: "unavailable" as const,
+          };
+        }
+      }));
+      return {
+        revision: run.artifactRevision?.revision ?? 1,
+        runId: run.runId,
+        runStatus: run.status,
+        title: artifactThreadRunTitle(run),
+        startedAt: run.startedAt,
+        reason: run.artifactRevision?.reason,
+        parentRunId: run.artifactRevision?.parentRunId,
+        parentFileName: run.artifactRevision?.parentFileName,
+        artifacts,
+      } satisfies DesktopArtifactThreadVersionView;
+    }));
+    return {
+      version: 1,
+      threadId,
+      selectedRunId: request.runId,
+      selectedFileName: selectedArtifact.record.relativePath,
+      versions: [...rootVersions, ...revisionVersions].toSorted((left, right) =>
+        left.revision - right.revision
+          || (left.startedAt ?? "").localeCompare(right.startedAt ?? "")
+          || left.runId.localeCompare(right.runId)),
+    };
+  }
+
+  async loadArtifactRevisionDiff(
+    request: DesktopArtifactActionRequest,
+  ): Promise<DesktopArtifactRevisionDiffView> {
+    const workspace = await realpath(request.workspace);
+    const runRoot = resolve(workspace, ".localbuddy", "runs", request.runId);
+    const revision = await this.#requestStore.loadArtifactRevision(runRoot, request.runId);
+    if (revision === undefined) throw new Error("This Artifact is not part of a revision Run");
+    const current = await this.#readVerifiedArtifact({ ...request, workspace });
+    const parent = await this.#readVerifiedArtifact({
+      workspace,
+      runId: revision.parentRunId,
+      fileName: revision.parentFileName,
+    });
+    if (parent.record.sha256 !== revision.parentSha256) {
+      throw new Error("Artifact revision parent SHA-256 no longer matches its Thread identity");
+    }
+    const currentExtension = extname(current.record.relativePath).toLowerCase();
+    const parentExtension = extname(parent.record.relativePath).toLowerCase();
+    const docxComparison = currentExtension === ".docx" && parentExtension === ".docx";
+    const textComparison = TEXT_ARTIFACT_EXTENSIONS.has(currentExtension)
+      && TEXT_ARTIFACT_EXTENSIONS.has(parentExtension);
+    if (!docxComparison && !textComparison) {
+      throw new Error("Artifact revision diff requires two text artifacts or two supported DOCX artifacts");
+    }
+    const parentRevision = await this.#requestStore.loadArtifactRevision(
+      resolve(workspace, ".localbuddy", "runs", revision.parentRunId),
+      revision.parentRunId,
+    );
+    const parentRevisionNumber = parentRevision?.revision ?? 1;
+    if (
+      (parentRevision === undefined && revision.revision !== 2)
+      || (parentRevision !== undefined
+        && (parentRevision.threadId !== revision.threadId
+          || parentRevision.revision + 1 !== revision.revision))
+    ) {
+      throw new Error("Artifact revision parent has a conflicting Thread lineage");
+    }
+    const diff = docxComparison
+      ? createArtifactTextDiff(
+          Buffer.from(inspectDocxArtifact(parent.content).text, "utf8"),
+          Buffer.from(inspectDocxArtifact(current.content).text, "utf8"),
+        )
+      : createArtifactTextDiff(parent.content, current.content);
+    return {
+      version: 1,
+      comparisonKind: docxComparison ? "docx-structure" : "text",
+      threadId: revision.threadId,
+      parent: {
+        runId: revision.parentRunId,
+        fileName: revision.parentFileName,
+        sha256: revision.parentSha256,
+        revision: parentRevisionNumber,
+      },
+      current: {
+        runId: request.runId,
+        fileName: current.record.relativePath,
+        sha256: current.record.sha256,
+        revision: revision.revision,
+      },
+      ...diff,
     };
   }
 
@@ -645,8 +952,15 @@ export class DesktopRunManager {
       projectRun(request.runId, workspace, events),
     );
     const eventCounts: Record<string, number> = {};
+    const toolFailureCounts: Record<string, number> = {};
     for (const event of events) {
       eventCounts[event.type] = (eventCounts[event.type] ?? 0) + 1;
+      if (event.type === "tool.failed") {
+        const toolName = typeof event.data?.toolName === "string"
+          ? event.data.toolName.slice(0, 100)
+          : "unknown";
+        toolFailureCounts[toolName] = (toolFailureCounts[toolName] ?? 0) + 1;
+      }
     }
     return {
       version: 1,
@@ -676,6 +990,14 @@ export class DesktopRunManager {
         completedAt: view.completedAt,
         recoveryOf: persisted.recoveryOf,
         goalCharacters: goalContractCharacterCount(persisted.goalContract),
+        artifactRevision: persisted.artifactRevision === undefined ? undefined : {
+          threadId: persisted.artifactRevision.threadId,
+          revision: persisted.artifactRevision.revision,
+          parentRunId: persisted.artifactRevision.parentRunId,
+          parentSha256: persisted.artifactRevision.parentSha256,
+          reason: "omitted",
+          parentFileName: "omitted",
+        },
         metrics: view.metrics,
       },
       extensions: {
@@ -695,6 +1017,7 @@ export class DesktopRunManager {
         bytes: artifact.bytes,
         sha256: artifact.sha256,
       })),
+      artifactReview: view.artifactReview,
       integration: view.integration === undefined ? undefined : {
         status: view.integration.status,
         changedPathCount: view.integration.changedPaths.length,
@@ -712,6 +1035,12 @@ export class DesktopRunManager {
       worktrees: {
         total: view.worktrees.length,
         retained: view.worktrees.filter((item) => item.status === "retained").length,
+      },
+      failureSummary: {
+        failedTaskIds: view.tasks.filter((task) => task.status === "failed").map((task) => task.id),
+        blockedTaskIds: view.tasks.filter((task) => task.status === "blocked").map((task) => task.id),
+        toolFailureCounts,
+        terminalError: "omitted",
       },
       eventCounts,
       eventCount: events.length,
@@ -756,6 +1085,71 @@ export class DesktopRunManager {
       throw new Error("artifact content no longer matches its registered size and SHA-256");
     }
     return { record: { ...record, absolutePath: actualPath }, content };
+  }
+
+  async #prepareArtifactRevision(
+    workspace: string,
+    input: ArtifactContinuationRequest,
+    expectedContract?: ArtifactRevisionContract,
+  ): Promise<PreparedArtifactRevision> {
+    const continuation = normalizeArtifactContinuation(input);
+    const { record, content } = await this.#readVerifiedArtifact({
+      workspace,
+      runId: continuation.parentRunId,
+      fileName: continuation.parentFileName,
+    });
+    if (record.sha256 !== continuation.parentSha256) {
+      throw new Error("Artifact revision parent SHA-256 no longer matches the selected Artifact");
+    }
+    const parentRunRoot = resolve(
+      workspace,
+      ".localbuddy",
+      "runs",
+      continuation.parentRunId,
+    );
+    const parentRevision = await this.#requestStore.loadArtifactRevision(
+      parentRunRoot,
+      continuation.parentRunId,
+    );
+    const derived = createArtifactRevision(continuation, parentRevision);
+    if (expectedContract !== undefined) {
+      const expected = normalizeArtifactRevision(expectedContract);
+      if (JSON.stringify(derived) !== JSON.stringify(expected)) {
+        throw new Error("Artifact revision contract no longer matches its parent lineage");
+      }
+    }
+    return {
+      contract: derived,
+      content,
+      parentAbsolutePath: record.absolutePath,
+      verifiedParentArtifact: artifactReviewCandidate(record, content),
+    };
+  }
+
+  async #loadVerifiedRevisionParent(
+    runRoot: string,
+    request: PersistedRunRequest,
+  ): Promise<ArtifactReviewCandidate | undefined> {
+    const revision = request.artifactRevision;
+    if (revision === undefined || !revision.parentFileName.toLowerCase().endsWith(".docx")) {
+      return undefined;
+    }
+    const sourcePath = resolve(runRoot, revision.sourceRelativePath);
+    const content = await readFile(sourcePath);
+    const sha256 = createHash("sha256").update(content).digest("hex");
+    if (sha256 !== revision.parentSha256) {
+      throw new Error("Artifact revision source no longer matches the verified parent SHA-256");
+    }
+    return artifactReviewCandidate({
+      runId: revision.parentRunId,
+      taskId: "integrate",
+      agentId: "integrator",
+      relativePath: revision.parentFileName,
+      absolutePath: sourcePath,
+      mediaType: DOCX_MEDIA_TYPE,
+      bytes: content.length,
+      sha256,
+    }, content);
   }
 
   async list(workspace: string): Promise<readonly DesktopRunView[]> {
@@ -1176,6 +1570,38 @@ class NotifyingEventStore implements EventStore {
   }
 }
 
+function artifactThreadRunTitle(run: DesktopRunView): string {
+  return run.tasks.find((task) => task.id !== "integrate")?.title
+    ?? run.tasks[0]?.title
+    ?? run.runId;
+}
+
+function artifactReviewCandidate(
+  record: ArtifactRecord,
+  content: Buffer,
+): ArtifactReviewCandidate | undefined {
+  if (!record.relativePath.toLowerCase().endsWith(".docx")) return undefined;
+  const inspection = inspectDocxArtifact(content);
+  if (inspection.text.length > MAX_ARTIFACT_REVIEW_CHARACTERS) {
+    throw new Error(
+      `Artifact revision parent exceeds the ${MAX_ARTIFACT_REVIEW_CHARACTERS}-character semantic review limit`,
+    );
+  }
+  return {
+    fileName: record.relativePath,
+    mediaType: DOCX_MEDIA_TYPE,
+    text: inspection.text,
+    bytes: content.length,
+    sha256: record.sha256,
+    structure: {
+      paragraphCount: inspection.paragraphCount,
+      sectionCount: inspection.sectionCount,
+      tableCount: inspection.tableCount,
+      tableRowCount: inspection.tableRowCount,
+    },
+  };
+}
+
 function validateStartRequest(request: StartDesktopRunRequest): void {
   if (request.workspace.trim().length === 0) {
     throw new Error("Workspace is required");
@@ -1198,6 +1624,12 @@ function validateStartRequest(request: StartDesktopRunRequest): void {
     if (request.sourcePaths.length > 50
       || !request.sourcePaths.every((path) => typeof path === "string" && path.trim().length > 0)) {
       throw new Error("Research sources must contain at most 50 non-empty paths");
+    }
+  }
+  if (request.artifactContinuation !== undefined) {
+    normalizeArtifactContinuation(request.artifactContinuation);
+    if ((request.mode ?? "research") !== "research") {
+      throw new Error("Artifact revision currently requires Research mode");
     }
   }
 }

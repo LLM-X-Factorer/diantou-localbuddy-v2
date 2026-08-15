@@ -126,6 +126,9 @@ test("tag releases publish Windows only after installed-app synthetic gray passe
   assert.match(workflow, /RELEASES/);
   assert.match(workflow, /localbuddy-windows-gray-evidence/);
   assert.match(workflow, /--prerelease/);
+  assert.match(workflow, /online-update-smoke/);
+  assert.match(workflow, /update\.electronjs\.org/);
+  assert.match(workflow, /github\.event\.repository\.private == false/);
 });
 
 test("platform process execution has explicit Linux isolation and Windows fail-closed text", async () => {

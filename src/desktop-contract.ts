@@ -20,6 +20,8 @@ export const DESKTOP_CHANNELS = {
   revertIntegration: "localbuddy:revert-integration",
   loadIntegrationDiff: "localbuddy:load-integration-diff",
   loadArtifactPreview: "localbuddy:load-artifact-preview",
+  loadArtifactThread: "localbuddy:load-artifact-thread",
+  loadArtifactRevisionDiff: "localbuddy:load-artifact-revision-diff",
   exportDiagnostics: "localbuddy:export-diagnostics",
   resolveToolApproval: "localbuddy:resolve-tool-approval",
   resolvePlanReview: "localbuddy:resolve-plan-review",
@@ -83,6 +85,24 @@ export interface DesktopArtifactView {
   sha256?: string;
 }
 
+export interface DesktopArtifactReviewView {
+  status: "reviewing" | "accepted" | "revision_requested" | "failed";
+  attempts: number;
+  revisionRequests: number;
+  findingCount: number;
+  candidateSha256?: string;
+}
+
+export interface DesktopArtifactRevisionView {
+  version: 1;
+  threadId: string;
+  revision: number;
+  parentRunId: string;
+  parentFileName: string;
+  parentSha256: string;
+  reason: string;
+}
+
 export interface DesktopEventView {
   sequence: number;
   timestamp: string;
@@ -128,6 +148,8 @@ export interface DesktopRunView {
   completedAt?: string;
   tasks: readonly DesktopTaskView[];
   artifacts: readonly DesktopArtifactView[];
+  artifactReview?: DesktopArtifactReviewView;
+  artifactRevision?: DesktopArtifactRevisionView;
   recentEvents: readonly DesktopEventView[];
   eventCount: number;
   worktrees: readonly DesktopWorktreeView[];
@@ -260,6 +282,12 @@ export interface StartDesktopRunRequest {
   provider?: ProviderSelection;
   trustProfile?: DesktopTrustProfile;
   extensions?: RunExtensionSelection;
+  artifactContinuation?: {
+    parentRunId: string;
+    parentFileName: string;
+    parentSha256: string;
+    reason: string;
+  };
 }
 
 export interface StoreDesktopProviderCredentialRequest {
@@ -324,8 +352,72 @@ export interface DesktopArtifactPreviewView {
   fileName: string;
   sha256: string;
   bytes: number;
+  format: "text" | "docx";
   text: string;
   truncated: boolean;
+  document?: {
+    title?: string;
+    paragraphs: number;
+    sections: number;
+    tables: number;
+    tableRows: number;
+  };
+}
+
+export interface DesktopArtifactThreadArtifactView {
+  fileName: string;
+  sha256?: string;
+  bytes?: number;
+  verification: "verified" | "unavailable";
+}
+
+export interface DesktopArtifactThreadVersionView {
+  revision: number;
+  runId: string;
+  runStatus: DesktopRunStatus;
+  title: string;
+  startedAt?: string;
+  reason?: string;
+  parentRunId?: string;
+  parentFileName?: string;
+  artifacts: readonly DesktopArtifactThreadArtifactView[];
+}
+
+export interface DesktopArtifactThreadView {
+  version: 1;
+  threadId: string;
+  selectedRunId: string;
+  selectedFileName: string;
+  versions: readonly DesktopArtifactThreadVersionView[];
+}
+
+export interface DesktopArtifactRevisionDiffView {
+  version: 1;
+  comparisonKind: "text" | "docx-structure";
+  threadId: string;
+  parent: {
+    runId: string;
+    fileName: string;
+    sha256: string;
+    revision: number;
+  };
+  current: {
+    runId: string;
+    fileName: string;
+    sha256: string;
+    revision: number;
+  };
+  addedLines: number;
+  removedLines: number;
+  unchangedLines: number;
+  truncated: boolean;
+  lines: readonly {
+    kind: "equal" | "added" | "removed" | "context";
+    text: string;
+    beforeLine?: number;
+    afterLine?: number;
+    skippedLines?: number;
+  }[];
 }
 
 export interface ResolveDesktopToolApprovalRequest extends DesktopRunActionRequest {
@@ -365,6 +457,10 @@ export interface DesktopApi {
   revertIntegration(request: RevertDesktopIntegrationRequest): Promise<DesktopRunView | null>;
   loadIntegrationDiff(request: DesktopRunActionRequest): Promise<DesktopIntegrationDiffView>;
   loadArtifactPreview(request: DesktopArtifactActionRequest): Promise<DesktopArtifactPreviewView>;
+  loadArtifactThread(request: DesktopArtifactActionRequest): Promise<DesktopArtifactThreadView>;
+  loadArtifactRevisionDiff(
+    request: DesktopArtifactActionRequest,
+  ): Promise<DesktopArtifactRevisionDiffView>;
   exportDiagnostics(request: DesktopRunActionRequest): Promise<string | null>;
   resolveToolApproval(request: ResolveDesktopToolApprovalRequest): Promise<DesktopRunView>;
   resolvePlanReview(request: ResolveDesktopPlanReviewRequest): Promise<DesktopRunView>;

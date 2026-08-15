@@ -8,10 +8,12 @@ import test, { type TestContext } from "node:test";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
-import { InMemoryArtifactRegistry } from "../src/artifacts.js";
+import { InMemoryArtifactRegistry, JsonArtifactRegistry } from "../src/artifacts.js";
+import { isIndependentArtifactReviewRequest } from "../src/artifact-reviewer.js";
 import { ResearchCheckpointStore } from "../src/checkpoint-store.js";
 import { DesktopRunManager } from "../src/desktop-run-manager.js";
 import type { DesktopRunView } from "../src/desktop-contract.js";
+import { inspectDocxArtifact, type DocxArtifactSpec } from "../src/docx-artifact.js";
 import type {
   ChatMessage,
   ModelProvider,
@@ -25,6 +27,42 @@ import { IntegrationManager } from "../src/integration-manager.js";
 import { RunRequestStore } from "../src/run-request-store.js";
 
 const execFileAsync = promisify(execFile);
+
+const desktopDocxV1: DocxArtifactSpec = {
+  version: 1,
+  title: "CRM 内部试点会议纪要",
+  subtitle: "华东区试点执行版",
+  sections: [{
+    heading: "行动项",
+    blocks: [{
+      type: "table",
+      columns: ["负责人", "截止日期", "交付物"],
+      rows: [["李闻", "2026-08-12", "冻结试点功能清单"]],
+    }],
+  }],
+};
+
+const desktopDocxV2: DocxArtifactSpec = {
+  ...desktopDocxV1,
+  revisionNote: "新增执行摘要，并补充待确认的预算复核责任。",
+  sections: [
+    {
+      heading: "执行摘要",
+      blocks: [{ type: "paragraph", text: "第一周只开放线索录入和周报导出，不开放自动外呼。" }],
+    },
+    {
+      heading: "行动项",
+      blocks: [{
+        type: "table",
+        columns: ["负责人", "截止日期", "交付物"],
+        rows: [
+          ["李闻", "2026-08-12", "冻结试点功能清单"],
+          ["孙至", "待确认", "预算发生变化时负责复核"],
+        ],
+      }],
+    },
+  ],
+};
 
 test("runs a workflow, publishes projections, and recovers it from history", async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "localbuddy-desktop-manager-"));
@@ -89,6 +127,417 @@ test("runs a workflow, publishes projections, and recovers it from history", asy
   await assert.rejects(
     manager.loadArtifactPreview({ workspace, runId: initial.runId, fileName: "result.md" }),
     /no longer matches its registered size and SHA-256/,
+  );
+});
+
+test("previews, re-reads, and structurally diffs an editable DOCX revision", async (context) => {
+  const workspace = await mkdtemp(join(tmpdir(), "localbuddy-desktop-docx-revision-"));
+  context.after(async () => rm(workspace, { recursive: true, force: true }));
+  await writeFile(join(workspace, "meeting-notes.md"), "李闻在 2026-08-12 前冻结试点功能清单。", "utf8");
+  let providerStarts = 0;
+  const manager = new DesktopRunManager({
+    async createProvider() {
+      providerStarts += 1;
+      return new DesktopDocxProvider(
+        providerStarts === 1 ? desktopDocxV1 : desktopDocxV2,
+        providerStarts > 1,
+      );
+    },
+  });
+
+  const parentTerminal = waitForDesktopRun(manager, (run) =>
+    run.status === "succeeded" && run.artifactRevision === undefined);
+  await manager.start({
+    workspace,
+    sourcePaths: [join(workspace, "meeting-notes.md")],
+    goal: "生成可编辑的 crm-pilot.docx",
+    concurrency: 1,
+  });
+  const parent = await parentTerminal;
+  const parentArtifact = parent.artifacts[0];
+  assert.equal(parentArtifact?.fileName, "crm-pilot.docx");
+  const parentPreview = await manager.loadArtifactPreview({
+    workspace,
+    runId: parent.runId,
+    fileName: parentArtifact?.fileName ?? "",
+  });
+  assert.equal(parentPreview.format, "docx");
+  assert.equal(parentPreview.document?.tables, 1);
+  assert.equal(parentPreview.document?.tableRows, 1);
+  assert.match(parentPreview.text, /李闻\t2026-08-12\t冻结试点功能清单/u);
+
+  const revisionTerminal = waitForDesktopRun(manager, (run) =>
+    run.status === "succeeded" && run.artifactRevision?.revision === 2);
+  await manager.start({
+    workspace,
+    goal: "新增执行摘要，并补充孙至的待确认预算复核责任",
+    concurrency: 1,
+    mode: "research",
+    artifactContinuation: {
+      parentRunId: parent.runId,
+      parentFileName: parentArtifact?.fileName ?? "",
+      parentSha256: parentArtifact?.sha256 ?? "",
+      reason: "新增执行摘要，并补充孙至的待确认预算复核责任",
+    },
+  });
+  const revision = await revisionTerminal;
+  const revisionArtifact = revision.artifacts[0];
+  assert.equal(revisionArtifact?.fileName, "crm-pilot.docx");
+  const persisted = await new RunRequestStore().load(
+    join(workspace, ".localbuddy", "runs", revision.runId),
+    workspace,
+    revision.runId,
+  );
+  assert.equal(persisted.sourcePaths[0]?.endsWith("parent-artifact.docx"), true);
+  const sourceInspection = inspectDocxArtifact(await readFile(persisted.sourcePaths[0] ?? ""));
+  assert.match(sourceInspection.text, /李闻\t2026-08-12\t冻结试点功能清单/u);
+
+  const revisionPreview = await manager.loadArtifactPreview({
+    workspace,
+    runId: revision.runId,
+    fileName: revisionArtifact?.fileName ?? "",
+  });
+  assert.equal(revisionPreview.format, "docx");
+  assert.equal(revisionPreview.document?.tableRows, 2);
+  const diff = await manager.loadArtifactRevisionDiff({
+    workspace,
+    runId: revision.runId,
+    fileName: revisionArtifact?.fileName ?? "",
+  });
+  assert.equal(diff.comparisonKind, "docx-structure");
+  assert.equal(diff.parent.revision, 1);
+  assert.equal(diff.current.revision, 2);
+  assert.ok(diff.lines.some((line) => line.kind === "added" && line.text === "## 本轮修改说明"));
+  assert.ok(diff.lines.some((line) => line.kind === "added" && line.text.includes("孙至\t待确认")));
+  const thread = await manager.loadArtifactThread({
+    workspace,
+    runId: revision.runId,
+    fileName: revisionArtifact?.fileName ?? "",
+  });
+  assert.deepEqual(thread.versions.map((version) => version.revision), [1, 2]);
+  assert.ok(thread.versions.every((version) =>
+    version.artifacts.every((artifact) => artifact.verification === "verified")));
+});
+
+test("starts a verified Artifact revision, preserves lineage, and rejects a tampered parent", async (context) => {
+  const workspace = await mkdtemp(join(tmpdir(), "localbuddy-artifact-revision-"));
+  context.after(async () => rm(workspace, { recursive: true, force: true }));
+  await writeFile(join(workspace, "notes.md"), "verified local note", "utf8");
+  let providerStarts = 0;
+  const manager = new DesktopRunManager({
+    async createProvider() {
+      providerStarts += 1;
+      return new DesktopWorkflowProvider(providerStarts === 1
+        ? "# Result\n\nverified local note\n"
+        : "# Result\n\nverified local note\n\n## Executive summary\n\nReady for review.\n");
+    },
+  });
+
+  const firstTerminal = new Promise<DesktopRunView>((resolvePromise) => {
+    const unsubscribe = manager.subscribe((run) => {
+      if (run.status === "succeeded" && run.artifactRevision === undefined) {
+        unsubscribe();
+        resolvePromise(run);
+      }
+    });
+  });
+  await manager.start({
+    workspace,
+    sourcePaths: [join(workspace, "notes.md")],
+    goal: "Create a revision source",
+    concurrency: 1,
+  });
+  const parent = await firstTerminal;
+  const parentArtifact = parent.artifacts[0];
+  assert.ok(parentArtifact?.sha256);
+
+  const revisionTerminal = new Promise<DesktopRunView>((resolvePromise) => {
+    const unsubscribe = manager.subscribe((run) => {
+      if (run.status === "succeeded" && run.artifactRevision?.revision === 2) {
+        unsubscribe();
+        resolvePromise(run);
+      }
+    });
+  });
+  const revisionInitial = await manager.start({
+    workspace,
+    goal: "Add an executive summary to the parent result",
+    verificationCriteria: ["The parent Artifact remains traceable"],
+    concurrency: 1,
+    mode: "research",
+    artifactContinuation: {
+      parentRunId: parent.runId,
+      parentFileName: parentArtifact.fileName,
+      parentSha256: parentArtifact.sha256,
+      reason: "Add an executive summary to the parent result",
+    },
+  });
+  assert.equal(revisionInitial.artifactRevision?.revision, 2);
+  const revision = await revisionTerminal;
+  assert.equal(revision.artifactRevision?.parentRunId, parent.runId);
+  assert.equal(revision.artifactRevision?.parentFileName, parentArtifact.fileName);
+  assert.match(revision.artifactRevision?.threadId ?? "", /^thread-[a-f0-9]{24}$/);
+
+  const revisionRunRoot = join(workspace, ".localbuddy", "runs", revision.runId);
+  const persisted = await new RunRequestStore().load(revisionRunRoot, workspace, revision.runId);
+  assert.equal(persisted.version, 6);
+  assert.equal(persisted.artifactRevision?.revision, 2);
+  assert.equal(persisted.sourcePaths.length, 1);
+  assert.equal(
+    await readFile(persisted.sourcePaths[0] ?? "", "utf8"),
+    "# Result\n\nverified local note\n",
+  );
+  const revisionEvents = await new JsonlEventStore(join(revisionRunRoot, "events.jsonl"))
+    .list(revision.runId);
+  assert.ok(revisionEvents.some((event) => event.type === "artifact.revision_linked"));
+  const revisionArtifact = revision.artifacts[0];
+  assert.ok(revisionArtifact?.sha256);
+  const thread = await manager.loadArtifactThread({
+    workspace,
+    runId: revision.runId,
+    fileName: revisionArtifact.fileName,
+  });
+  assert.equal(thread.threadId, revision.artifactRevision?.threadId);
+  assert.deepEqual(thread.versions.map((version) => version.revision), [1, 2]);
+  assert.ok(thread.versions.every((version) =>
+    version.artifacts.every((artifact) => artifact.verification === "verified")));
+  const diff = await manager.loadArtifactRevisionDiff({
+    workspace,
+    runId: revision.runId,
+    fileName: revisionArtifact.fileName,
+  });
+  assert.equal(diff.parent.revision, 1);
+  assert.equal(diff.current.revision, 2);
+  assert.equal(diff.removedLines, 0);
+  assert.ok(diff.addedLines >= 2);
+  assert.ok(diff.lines.some((line) => line.kind === "added" && line.text === "## Executive summary"));
+
+  const recovered = await new DesktopRunManager({
+    async createProvider() {
+      return new DesktopWorkflowProvider();
+    },
+  }).list(workspace);
+  assert.equal(
+    recovered.find((run) => run.runId === revision.runId)?.artifactRevision?.threadId,
+    revision.artifactRevision?.threadId,
+  );
+
+  await writeFile(parentArtifact.absolutePath, "tampered parent\n", "utf8");
+  const degradedThread = await manager.loadArtifactThread({
+    workspace,
+    runId: revision.runId,
+    fileName: revisionArtifact.fileName,
+  });
+  assert.equal(degradedThread.versions[0]?.artifacts[0]?.verification, "unavailable");
+  await assert.rejects(
+    manager.loadArtifactRevisionDiff({
+      workspace,
+      runId: revision.runId,
+      fileName: revisionArtifact.fileName,
+    }),
+    /no longer matches its registered size and SHA-256/,
+  );
+  let providerCalls = 0;
+  const tamperManager = new DesktopRunManager({
+    async createProvider() {
+      providerCalls += 1;
+      return new DesktopWorkflowProvider();
+    },
+  });
+  await assert.rejects(
+    tamperManager.start({
+      workspace,
+      goal: "This revision must not start",
+      concurrency: 1,
+      mode: "research",
+      artifactContinuation: {
+        parentRunId: parent.runId,
+        parentFileName: parentArtifact.fileName,
+        parentSha256: parentArtifact.sha256,
+        reason: "Attempt to revise a changed parent",
+      },
+    }),
+    /no longer matches its registered size and SHA-256/,
+  );
+  assert.equal(providerCalls, 0);
+});
+
+test("replays a failed Artifact revision from the same verified parent lineage", async (context) => {
+  const workspace = await mkdtemp(join(tmpdir(), "localbuddy-artifact-revision-replay-"));
+  context.after(async () => rm(workspace, { recursive: true, force: true }));
+  const sourcePath = join(workspace, "notes.md");
+  await writeFile(sourcePath, "verified replay source", "utf8");
+
+  const parentManager = new DesktopRunManager({
+    async createProvider() {
+      return new DesktopWorkflowProvider();
+    },
+  });
+  const parentTerminal = new Promise<DesktopRunView>((resolvePromise) => {
+    const unsubscribe = parentManager.subscribe((run) => {
+      if (run.status === "succeeded") {
+        unsubscribe();
+        resolvePromise(run);
+      }
+    });
+  });
+  await parentManager.start({
+    workspace,
+    sourcePaths: [sourcePath],
+    goal: "Create the verified parent Artifact",
+    concurrency: 1,
+  });
+  const parent = await parentTerminal;
+  const parentArtifact = parent.artifacts[0];
+  assert.ok(parentArtifact?.sha256);
+
+  const failingManager = new DesktopRunManager({
+    async createProvider() {
+      return new FailingWorkflowProvider();
+    },
+  });
+  const failedTerminal = new Promise<DesktopRunView>((resolvePromise) => {
+    const unsubscribe = failingManager.subscribe((run) => {
+      if (run.status === "failed" && run.artifactRevision !== undefined) {
+        unsubscribe();
+        resolvePromise(run);
+      }
+    });
+  });
+  await failingManager.start({
+    workspace,
+    goal: "Add accountable owners to the verified parent Artifact",
+    concurrency: 1,
+    mode: "research",
+    artifactContinuation: {
+      parentRunId: parent.runId,
+      parentFileName: parentArtifact.fileName,
+      parentSha256: parentArtifact.sha256,
+      reason: "Add accountable owners to the verified parent Artifact",
+    },
+  });
+  const failed = await failedTerminal;
+  assert.equal(failed.artifactRevision?.revision, 2);
+
+  const replayManager = new DesktopRunManager({
+    async createProvider() {
+      return new DesktopWorkflowProvider();
+    },
+  });
+  const replayTerminal = new Promise<DesktopRunView>((resolvePromise) => {
+    const unsubscribe = replayManager.subscribe((run) => {
+      if (run.status === "succeeded" && run.recoveryOf === failed.runId) {
+        unsubscribe();
+        resolvePromise(run);
+      }
+    });
+  });
+  const replayInitial = await replayManager.restartRun({ workspace, runId: failed.runId });
+  const replay = await replayTerminal;
+  assert.equal(replayInitial.artifactRevision?.threadId, failed.artifactRevision?.threadId);
+  assert.equal(replay.artifactRevision?.revision, 2);
+  assert.equal(replay.artifactRevision?.parentRunId, parent.runId);
+  const replayArtifact = replay.artifacts[0];
+  assert.ok(replayArtifact?.sha256);
+  const replayThread = await replayManager.loadArtifactThread({
+    workspace,
+    runId: replay.runId,
+    fileName: replayArtifact.fileName,
+  });
+  assert.deepEqual(replayThread.versions.map((version) => version.revision), [1, 2, 2]);
+  assert.equal(replayThread.versions.filter((version) => version.runStatus === "failed").length, 1);
+  assert.equal(replayThread.versions.filter((version) => version.runStatus === "succeeded").length, 2);
+
+  const failedRequest = await new RunRequestStore().load(
+    join(workspace, ".localbuddy", "runs", failed.runId),
+    workspace,
+    failed.runId,
+  );
+  const replayRequest = await new RunRequestStore().load(
+    join(workspace, ".localbuddy", "runs", replay.runId),
+    workspace,
+    replay.runId,
+  );
+  assert.notEqual(replayRequest.sourcePaths[0], failedRequest.sourcePaths[0]);
+  assert.equal(
+    await readFile(replayRequest.sourcePaths[0] ?? "", "utf8"),
+    "# Result\n\nverified local note\n",
+  );
+});
+
+test("rejects a V3 text diff when its parent revision identity is missing", async (context) => {
+  const workspace = await mkdtemp(join(tmpdir(), "localbuddy-artifact-diff-lineage-"));
+  context.after(async () => rm(workspace, { recursive: true, force: true }));
+  const parentRunId = "run-missing-v2-lineage";
+  const currentRunId = "run-v3-lineage";
+  const parentRoot = join(workspace, ".localbuddy", "runs", parentRunId);
+  const currentRoot = join(workspace, ".localbuddy", "runs", currentRunId);
+  const parentPath = join(parentRoot, "artifacts", "parent.md");
+  const currentPath = join(currentRoot, "artifacts", "current.md");
+  const parentContent = "# Parent\n";
+  const currentContent = "# Current\n";
+  const parentSha256 = createHash("sha256").update(parentContent).digest("hex");
+  const currentSha256 = createHash("sha256").update(currentContent).digest("hex");
+  await mkdir(join(parentRoot, "artifacts"), { recursive: true });
+  await mkdir(join(currentRoot, "artifacts"), { recursive: true });
+  await writeFile(parentPath, parentContent, "utf8");
+  await writeFile(currentPath, currentContent, "utf8");
+  await new JsonArtifactRegistry(join(parentRoot, "checkpoint", "artifacts.json")).add({
+    runId: parentRunId,
+    taskId: "integrate",
+    agentId: "integrator",
+    relativePath: "parent.md",
+    absolutePath: parentPath,
+    mediaType: "text/markdown",
+    bytes: Buffer.byteLength(parentContent),
+    sha256: parentSha256,
+  });
+  await new JsonArtifactRegistry(join(currentRoot, "checkpoint", "artifacts.json")).add({
+    runId: currentRunId,
+    taskId: "integrate",
+    agentId: "integrator",
+    relativePath: "current.md",
+    absolutePath: currentPath,
+    mediaType: "text/markdown",
+    bytes: Buffer.byteLength(currentContent),
+    sha256: currentSha256,
+  });
+  const store = new RunRequestStore();
+  await store.save(parentRoot, {
+    runId: parentRunId,
+    workspace,
+    goal: "Persist a parent without revision lineage",
+    concurrency: 1,
+  });
+  await store.save(currentRoot, {
+    runId: currentRunId,
+    workspace,
+    goal: "Attempt an invalid V3 comparison",
+    concurrency: 1,
+    mode: "research",
+    artifactRevision: {
+      version: 1,
+      threadId: "thread-1234567890abcdef12345678",
+      revision: 3,
+      parentRunId,
+      parentFileName: "parent.md",
+      parentSha256,
+      reason: "Missing V2 lineage must fail closed",
+      sourceRelativePath: "revision-source/parent-artifact.md",
+    },
+  });
+  const manager = new DesktopRunManager({
+    async createProvider() {
+      throw new Error("Provider must not be created for a local diff");
+    },
+  });
+  await assert.rejects(
+    manager.loadArtifactRevisionDiff({
+      workspace,
+      runId: currentRunId,
+      fileName: "current.md",
+    }),
+    /parent has a conflicting Thread lineage/,
   );
 });
 
@@ -779,6 +1228,10 @@ async function runCodingCheckpointRecovery(
 }
 
 class DesktopWorkflowProvider implements ModelProvider {
+  constructor(
+    readonly artifactContent = "# Result\n\nverified local note\n",
+  ) {}
+
   async complete(request: ModelRequest): Promise<ModelResponse> {
     if (request.responseFormat === "json_object") {
       return response(JSON.stringify({
@@ -802,11 +1255,66 @@ class DesktopWorkflowProvider implements ModelProvider {
         ? response("done")
         : toolResponse("write-result-tool", "write_artifact", {
             fileName: "result.md",
-            content: "# Result\n\nverified local note\n",
+            content: this.artifactContent,
             calculationIds: [],
           });
     }
     throw new Error(`Unexpected prompt: ${prompt}`);
+  }
+}
+
+class DesktopDocxProvider implements ModelProvider {
+  constructor(
+    readonly document: DocxArtifactSpec,
+    readonly expectsDocxSource: boolean,
+  ) {}
+
+  async complete(request: ModelRequest): Promise<ModelResponse> {
+    if (isIndependentArtifactReviewRequest(request)) {
+      return response(JSON.stringify({ verdict: "accept", summary: "DOCX requirements are met.", findings: [] }));
+    }
+    if (request.responseFormat === "json_object") {
+      return response(JSON.stringify({
+        tasks: [{ id: "read-source", title: "Read selected source", instructions: "Read the selected source." }],
+        integration: { instructions: "Write the requested editable Word document.", fileName: "crm-pilot.docx" },
+      }));
+    }
+    const prompt = lastUserMessage(request.messages);
+    const toolMessages = request.messages.filter(
+      (message): message is Extract<ChatMessage, { role: "tool" }> => message.role === "tool",
+    );
+    const toolIds = new Set(toolMessages.map((message) => message.toolCallId));
+    if (prompt.includes("Task ID: read-source")) {
+      if (!toolIds.has("docx-read-source")) {
+        return toolResponse("docx-read-source", "read_file", { path: "source-1" });
+      }
+      const readResult = toolMessages.find((message) => message.toolCallId === "docx-read-source")?.content ?? "";
+      if (this.expectsDocxSource) {
+        assert.match(readResult, /"format":"docx"/u);
+        assert.match(readResult, /李闻\\t2026-08-12\\t冻结试点功能清单/u);
+      } else {
+        assert.match(readResult, /2026-08-12/u);
+      }
+      return response("Selected source was read and grounded.");
+    }
+    if (prompt.includes("Task ID: integrate")) {
+      assert.ok(request.tools?.some((tool) => tool.name === "write_docx_artifact"));
+      assert.equal(request.tools?.some((tool) => tool.name === "write_artifact"), false);
+      return toolIds.has("docx-write-result")
+        ? response("Editable DOCX written and registered.")
+        : toolResponse("docx-write-result", "write_docx_artifact", {
+            fileName: "crm-pilot.docx",
+            document: this.document,
+            calculationIds: [],
+          });
+    }
+    throw new Error(`Unexpected DOCX prompt: ${prompt}`);
+  }
+}
+
+class FailingWorkflowProvider implements ModelProvider {
+  async complete(_request: ModelRequest): Promise<ModelResponse> {
+    throw new Error("intentional Artifact revision failure");
   }
 }
 
@@ -898,6 +1406,19 @@ function lastUserMessage(messages: readonly ChatMessage[]): string {
     throw new Error("Missing user message");
   }
   return message.content;
+}
+
+function waitForDesktopRun(
+  manager: DesktopRunManager,
+  predicate: (run: DesktopRunView) => boolean,
+): Promise<DesktopRunView> {
+  return new Promise((resolvePromise) => {
+    const unsubscribe = manager.subscribe((run) => {
+      if (!predicate(run)) return;
+      unsubscribe();
+      resolvePromise(run);
+    });
+  });
 }
 
 async function desktopGit(cwd: string, args: readonly string[]): Promise<string> {

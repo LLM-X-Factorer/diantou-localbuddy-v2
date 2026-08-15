@@ -55,7 +55,7 @@ import {
   parseDesktopBuildIdentity,
   type DesktopBuildIdentity,
 } from "../src/build-identity.js";
-import { DesktopUpdateCoordinator } from "../src/desktop-update.js";
+import { DesktopUpdateCoordinator, resolveDesktopUpdateFeed } from "../src/desktop-update.js";
 import { electronDesktopUpdateTransport } from "./update-controller.js";
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url));
@@ -116,7 +116,12 @@ async function initializeBuildAndUpdates(): Promise<void> {
     buildIdentity = fallbackDesktopBuildIdentity(app.getVersion(), app.isPackaged);
   }
   const supported = process.platform === "win32" && app.isPackaged;
-  const feedUrl = process.env.LOCALBUDDY_UPDATE_FEED_URL?.trim() || undefined;
+  const feedUrl = resolveDesktopUpdateFeed({
+    build: buildIdentity,
+    platform: process.platform,
+    arch: process.arch,
+    override: process.env.LOCALBUDDY_UPDATE_FEED_URL?.trim() || undefined,
+  });
   updateCoordinator = new DesktopUpdateCoordinator({
     build: buildIdentity,
     supported,
@@ -486,6 +491,16 @@ function registerIpcHandlers(): void {
     return runManager.loadArtifactPreview(parseArtifactActionRequest(request));
   });
 
+  ipcMain.handle(DESKTOP_CHANNELS.loadArtifactThread, async (event, request: unknown) => {
+    assertTrustedSender(event);
+    return runManager.loadArtifactThread(parseArtifactActionRequest(request));
+  });
+
+  ipcMain.handle(DESKTOP_CHANNELS.loadArtifactRevisionDiff, async (event, request: unknown) => {
+    assertTrustedSender(event);
+    return runManager.loadArtifactRevisionDiff(parseArtifactActionRequest(request));
+  });
+
   ipcMain.handle(DESKTOP_CHANNELS.exportDiagnostics, async (event, request: unknown) => {
     assertTrustedSender(event);
     const parsed = parseRunActionRequest(request);
@@ -565,6 +580,20 @@ function parseStartRequest(value: unknown): StartDesktopRunRequest {
     provider: parseProviderSelection(record.provider),
     trustProfile: normalizeTrustProfile(record.trustProfile),
     extensions: parseRunExtensions(record.extensions),
+    artifactContinuation: parseArtifactContinuation(record.artifactContinuation),
+  };
+}
+
+function parseArtifactContinuation(
+  value: unknown,
+): StartDesktopRunRequest["artifactContinuation"] {
+  if (value === undefined) return undefined;
+  const record = expectRecord(value, "artifactContinuation");
+  return {
+    parentRunId: expectString(record.parentRunId, "artifactContinuation.parentRunId"),
+    parentFileName: expectString(record.parentFileName, "artifactContinuation.parentFileName"),
+    parentSha256: expectString(record.parentSha256, "artifactContinuation.parentSha256"),
+    reason: expectString(record.reason, "artifactContinuation.reason"),
   };
 }
 

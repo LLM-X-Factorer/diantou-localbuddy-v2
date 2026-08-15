@@ -1,9 +1,17 @@
 {
   "name": "@diantou/localbuddy-v2",
-  "version": "0.12.2",
+  "version": "0.12.3",
   "private": true,
   "description": "Local-first multi-agent desktop runtime with remote LLM providers",
   "author": "Diantou Education",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LLM-X-Factorer/diantou-localbuddy-v2.git"
+  },
+  "homepage": "https://github.com/LLM-X-Factorer/diantou-localbuddy-v2",
+  "bugs": {
+    "url": "https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues"
+  },
   "type": "module",
   "main": "dist/desktop/main.js",
   "packageManager": "pnpm@9.15.9",
@@ -34,6 +42,8 @@
     "verify:windows-gray-installer": "pwsh -NoLogo -NoProfile -File scripts/verify-windows-installer-gray.ps1",
     "verify:windows-upgrade-installer": "pwsh -NoLogo -NoProfile -File scripts/verify-windows-installer-upgrade.ps1",
     "windows:canary": "pwsh -NoLogo -NoProfile -File scripts/sync-windows-canary.ps1",
+    "benchmark:materialize": "node scripts/materialize-workbuddy-benchmark.mjs",
+    "benchmark:trace": "pnpm build:core && node scripts/export-workbuddy-trace.mjs",
     "verify:mac-package": "node scripts/verify-macos-package.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
     "test": "pnpm build:core && node --test dist/test/*.test.js",
@@ -58,6 +68,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",
     "electron-squirrel-startup": "1.0.1",
+    "fflate": "0.8.3",
     "playwright": "1.62.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
