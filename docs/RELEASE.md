@@ -1,6 +1,6 @@
 # LocalBuddy V2 Release Runbook
 
-> 当前私有 Release：`v0.12.2 / Windows Canary + Safe Updates Engineering Alpha`，并继续包含 M11.1 Goal Contract + Plan Review。Git push、Tag 和 Release 都是外部状态变更，必须获得用户明确授权。
+> 当前公开但未签名的 Release：`v0.12.2 / Windows Canary + Safe Updates Engineering Alpha`，并继续包含 M11.1 Goal Contract + Plan Review。Git push、Tag 和 Release 都是外部状态变更，必须获得用户明确授权。
 
 ## 1. 发布真源
 
@@ -62,14 +62,14 @@ git push origin vX.Y.Z
 3. 下载上一稳定版 Setup，通过本地 Squirrel feed 原地升级到目标版本，并确认默认 profile 数据与新版本 UI；
 4. 安装真实目标 Setup，并执行 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 定义的 Credential Manager、Mock Provider、故障、Research Run、双 Run 取消、硬退出恢复与重启矩阵；
 5. 为 Setup、便携 ZIP、`RELEASES` 和 full `.nupkg` 生成 UTF-8、LF 行尾的 `SHA256SUMS-windows.txt`；
-6. 发布作业复核 Tag/包版本和 Windows SHA-256 后创建或更新 GitHub Release；
+6. 同一 Windows 作业复核 Tag/包版本和 Windows SHA-256 后直接创建或更新 GitHub Release，不通过临时 Actions Artifact 中转正式二进制；
 7. `vX.Y.Z-rc.N` 等带预发布后缀的 Tag 自动标记为 prerelease。
 
-仓库公开后，稳定 Windows 包会把 `update.electronjs.org/<owner>/<repo>/win32-<arch>/<current-version>` 作为内置只读 feed。Tag Release 的独立 `online-update-smoke` 作业会从上一稳定版本查询该 endpoint，最多等待五分钟，并要求新 full nupkg 已可解析。仓库仍为 private 时该作业必须明确跳过，不能把私有 Release API 鉴权冒充普通用户可用的更新服务。
+稳定 Windows 包会把 `update.electronjs.org/<owner>/<repo>/win32-<arch>/<current-version>` 作为内置只读 feed。公开 Tag Release 的独立 `online-update-smoke` 作业会从上一稳定版本查询该 endpoint，最多等待五分钟，并要求新 full nupkg 已可解析；不能把带鉴权的 Release API 访问冒充普通用户可用的更新服务。
 
 `v0.12.2` 没有内置 feed，因此首次启用在线更新必须发布一个需要手动原地安装的桥接版本。桥接后的下一稳定版才是线上 OTA 真正验收目标；只验证 endpoint 或 CI 本地 feed 不等于用户升级成功。
 
-Windows 安装版的脱敏摘要和固定夹具截图作为 Actions artifact 上传；不上传 Run Request、事件日志、工作区或凭据内容。托管 Runner 不依赖固定 Windows 测试机，但仍不能验证 SmartScreen、Defender、标准用户/UAC、DPI、输入法和真实网络。
+Windows 安装版的脱敏摘要和固定夹具截图会尽力作为短期 Actions Artifact 上传；临时存储配额不足时保留日志中的验证结果，但不允许绕过构建、灰度、原地升级、校验和或正式 Release 上传。Run Request、事件日志、工作区和凭据内容始终不上传。托管 Runner 不依赖固定 Windows 测试机，但仍不能验证 SmartScreen、Defender、标准用户/UAC、DPI、输入法和真实网络。
 
 Linux 不再进入 Tag Release。`.github/workflows/linux-maintenance.yml` 只保留每周/手动构建，既不发布资产也不阻塞 Windows 候选。
 

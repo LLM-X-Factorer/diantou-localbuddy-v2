@@ -56,6 +56,7 @@ jobs:
         run: pwsh -NoLogo -NoProfile -File scripts/verify-windows-installer-upgrade.ps1 -BaseSetup $env:LOCALBUDDY_UPGRADE_BASE_SETUP
       - name: Upload sanitized installed-app evidence
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: localbuddy-windows-gray-evidence-${{ github.ref_name }}
@@ -64,6 +65,7 @@ jobs:
           retention-days: 90
       - name: Upload sanitized installed-upgrade evidence
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: localbuddy-windows-upgrade-evidence-${{ github.ref_name }}
@@ -96,50 +98,13 @@ jobs:
             (($checksumLines -join "`n") + "`n"),
             $utf8WithoutBom
           )
-      - uses: actions/upload-artifact@v7
-        with:
-          name: localbuddy-windows-${{ github.ref_name }}
-          path: release-assets/**
-          if-no-files-found: error
-
-  publish-release:
-    needs: [windows-release]
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
-        with:
-          name: localbuddy-windows-${{ github.ref_name }}
-          path: release-assets
-      - name: Verify release version and Windows checksums
-        shell: bash
-        run: |
-          set -euo pipefail
-          package_version=$(node -p "require('./package.json').version")
-          expected_tag="v${package_version}"
-          if [[ "$GITHUB_REF_NAME" != "$expected_tag" ]]; then
-            echo "Tag $GITHUB_REF_NAME does not match package version $expected_tag" >&2
-            exit 1
-          fi
-          cd release-assets
-          sha256sum --check SHA256SUMS-windows.txt
-      - name: Publish Windows-first GitHub Release
-        shell: bash
+      - name: Verify and publish Windows-first GitHub Release from verified Windows bytes
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          release_flags=(--verify-tag --generate-notes --title "LocalBuddy $GITHUB_REF_NAME")
-          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
-            release_flags+=(--prerelease)
-          fi
-          if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release create "$GITHUB_REF_NAME" "${release_flags[@]}"
-          fi
-          gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
+        run: node scripts/publish-windows-release.mjs
 
   online-update-smoke:
-    needs: [windows-release, publish-release]
+    needs: [windows-release]
     if: github.event.repository.private == false
     runs-on: ubuntu-24.04
     steps:

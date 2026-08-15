@@ -4,7 +4,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 
 这不是 Craft Agents 的分支，也不包含腾讯 WorkBuddy 的私有实现。仓库只参考公开产品行为、通用 Agent 架构模式，以及我们自行定义的验收契约。
 
-> **产品判断（2026-08-15）**：`v0.12.2 / Windows Canary + Safe Updates` 仍是当前私有 Engineering Alpha Release。未发布 `0.12.3` 源码候选加入 M12.1-M12.4 Artifact Thread、受限 DOCX、独立 DOCX Reviewer、脱敏 benchmark trace 和 stable Windows 公共 GitHub feed；WB-02 稳定性、仓库公开/许可证、桥接 Release、Windows 代码签名和 Windows 11 真人 OTA 继续开放。
+> **产品判断（2026-08-15）**：仓库已按 Apache License 2.0 公开；`v0.12.2 / Windows Canary + Safe Updates` 是当前公开但未签名的 Engineering Alpha Release。未发布 `0.12.3` 源码候选加入 M12.1-M12.4 Artifact Thread、受限 DOCX、独立 DOCX Reviewer、脱敏 benchmark trace 和 stable Windows 公共 GitHub feed；WB-02 稳定性、桥接 Release、Windows 代码签名和 Windows 11 真人 OTA 继续开放。
 
 ## 一页状态
 
@@ -19,7 +19,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 | 恢复 | Research/Coding 同 Run checkpoint resume；失败 Run 可恢复未完成 Task 链，并保留 replay 兜底 |
 | Artifact | 文本与受限 DOCX；已登记版本可预览、打开、继续修订并与直接父版本比较；DOCX 发布前经独立 Reviewer，当前只覆盖段落、项目符号和表格 |
 | 扩展 | 本地/签名 Skill、MCP stdio/HTTP/OAuth、受限 Playwright Browser |
-| 分发 | Windows `v0.12.2` Setup/ZIP/full nupkg/RELEASES 已发布；`0.12.3` 候选内置 stable 公共 GitHub feed，但仓库公开、桥接安装、线上读回、签名与 Windows 11 真人 OTA 尚未验收 |
+| 分发 | Windows `v0.12.2` Setup/ZIP/full nupkg/RELEASES 已公开；`0.12.3` 候选内置 stable 公共 GitHub feed，但桥接安装、线上读回、签名与 Windows 11 真人 OTA 尚未验收 |
 | 当前主动暂缓 | Developer ID、生产 Hardened Runtime、notarization、公开 Gatekeeper |
 
 M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M10.3 继续补齐 Provider 配置闭环；M10.4 把运行位置与资料范围分离；M11.1 再将目标与执行计划变成可检查、可批准的合同。保存不会自动联网；验证连接只请求模型列表；真实 Run 必须由用户生成计划并批准后才启动 Worker。连续真实 dogfooding 仍是开放验证门。
@@ -187,7 +187,7 @@ LocalBuddy V2 以 [Apache License 2.0](LICENSE) 开源；项目归属说明见 [
 - Integration Gate 增加受限 inline diff 阅读，而不只展示路径和哈希；
 - 增加脱敏诊断包导出，供内部 dogfooding 复盘；
 - Run Request 升级为 v3；旧 v1/v2 Request 读取时默认迁移为 `balanced`，但不会改写历史文件；resume/replay 固定复用原信任档。
-- 私有仓库已建立在 `LLM-X-Factorer/diantou-localbuddy-v2`；Linux DEB、Windows Squirrel Setup/ZIP 和跨平台合同已由 GitHub 原生 Runner 验收。
+- Apache-2.0 公开仓库位于 `LLM-X-Factorer/diantou-localbuddy-v2`；Linux DEB、Windows Squirrel Setup/ZIP 和跨平台合同已由 GitHub 原生 Runner 验收。
 - 连续 7-14 天的真实任务 dogfooding 尚未执行，计划与退出口径见 [`docs/DOGFOOD.md`](docs/DOGFOOD.md)。
 - 真实第三方 MCP OAuth 仍以指定生产服务和账户为外部验收门。
 - 规格和当前 macOS 验收见 [`docs/M10-SPEC.md`](docs/M10-SPEC.md) 与 [`docs/M10-VALIDATION.md`](docs/M10-VALIDATION.md)。
@@ -263,7 +263,7 @@ pnpm make:win
 
 它们应分别在 Linux/Windows Runner 上执行；仓库不会把交叉编译配置冒充成目标平台运行验收。
 
-推送 `v*` Tag 会在 `windows-2025` Runner 上执行生产依赖审计、完整测试、Squirrel Setup/ZIP 构建、上一稳定版原地升级和安装版合成灰度，并为 Setup、便携 ZIP、`RELEASES`、full `.nupkg` 生成 LF 格式的 `SHA256SUMS-windows.txt`。发布作业确认 Tag 与 `package.json` 完全一致并复核清单后发布 Windows 资产；预发布 Tag 自动标记 prerelease。Linux 仅在每周/手动维护工作流中构建，不进入 Tag Release。当前私有 Release 为 [`v0.12.2`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.2)，证据见 [`docs/WINDOWS-UPDATE-VALIDATION.md`](docs/WINDOWS-UPDATE-VALIDATION.md)。
+推送 `v*` Tag 会在 `windows-2025` Runner 上执行生产依赖审计、完整测试、Squirrel Setup/ZIP 构建、上一稳定版原地升级和安装版合成灰度，并为 Setup、便携 ZIP、`RELEASES`、full `.nupkg` 生成 LF 格式的 `SHA256SUMS-windows.txt`。同一 Windows 作业确认 Tag 与 `package.json` 完全一致并复核清单后直接发布 Release 资产，不再通过临时 Actions Artifact 中转；预发布 Tag 自动标记 prerelease。Linux 仅在每周/手动维护工作流中构建，不进入 Tag Release。当前公开 Release 为 [`v0.12.2`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.2)，证据见 [`docs/WINDOWS-UPDATE-VALIDATION.md`](docs/WINDOWS-UPDATE-VALIDATION.md)。
 
 ## Headless 真实运行
 

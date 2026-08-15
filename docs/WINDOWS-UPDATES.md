@@ -1,6 +1,6 @@
 # Windows 开发更新与安装升级
 
-> 状态：当前已发布基线仍是私有 `v0.12.2` Engineering Alpha。未发布 `0.12.3` 候选已让 packaged stable Windows 构建内置公开 GitHub Release 更新源；仓库公开、桥接安装、线上 feed 读回、代码签名和 Windows 11 真人 OTA 仍是发布门禁。
+> 状态：当前已发布基线是公开但未签名的 `v0.12.2` Engineering Alpha，仓库已采用 Apache License 2.0。未发布 `0.12.3` 候选已让 packaged stable Windows 构建内置公开 GitHub Release 更新源；桥接安装、线上 feed 读回、代码签名和 Windows 11 真人 OTA 仍是发布门禁。
 
 ## 一句话方案
 
@@ -24,7 +24,7 @@ pnpm windows:canary
 
 ## Canary 日常使用
 
-前置条件：Windows x64、Node.js 22、pnpm 9.15.9、GitHub CLI 已登录且能读取私有仓库。
+前置条件：Windows x64、Node.js 22、pnpm 9.15.9、GitHub CLI 已登录且能读取仓库 Actions。
 
 ```powershell
 gh auth status
@@ -95,7 +95,7 @@ Windows 安装包已经接入 Electron/Squirrel 更新控制器。`0.12.3` 起�
 - Renderer 不能设置 feed，也不能绕过 Main 的空闲检查；
 - 当前没有静默安装、强制更新或自动回滚。
 
-Release workflow 从 `0.12.2` 起发布 Setup、便携 ZIP、`RELEASES`、full NuGet package 和 SHA-256 清单。公开仓库的 Tag Release 还会从上一稳定版本请求 Electron feed，并等待新 full package 可被解析。代码签名和真实 Windows 11 OTA 仍是独立门禁，不能因为线上 endpoint 返回成功就写成“生产自动更新已验收”。
+Release workflow 从 `0.12.2` 起发布 Setup、便携 ZIP、`RELEASES`、full NuGet package 和 SHA-256 清单。`0.12.3` 起，验收通过的 Windows 作业直接把这些长期分发资产上传到 GitHub Release，不再用受配额约束的临时 Actions Artifact 中转；脱敏截图/摘要仍是尽力保存的短期证据，不阻断已通过完整验证的正式资产发布。公开仓库的 Tag Release 还会从上一稳定版本请求 Electron feed，并等待新 full package 可被解析。代码签名和真实 Windows 11 OTA 仍是独立门禁，不能因为线上 endpoint 返回成功就写成“生产自动更新已验收”。
 
 ## 验收记录
 

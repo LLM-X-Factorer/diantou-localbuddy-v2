@@ -1,6 +1,6 @@
 # LocalBuddy V2 Roadmap after M11.1
 
-> **状态真源**：2026-08-15。当前私有 Release 为 `v0.12.2 / Windows Canary + Safe Updates`。未发布 `0.12.3` 候选已加入 M12.1-M12.4 产品能力和 stable Windows 公共 GitHub feed 合同；仓库公开、许可证、桥接 Release、代码签名和 Windows 11 真人 OTA 仍开放。后续灰度保持 Windows-first，Linux 只做每周/手动维护。
+> **状态真源**：2026-08-15。仓库已按 Apache License 2.0 公开；当前 Release 为公开但未签名的 `v0.12.2 / Windows Canary + Safe Updates` Engineering Alpha。未发布 `0.12.3` 候选已加入 M12.1-M12.4 产品能力和 stable Windows 公共 GitHub feed 合同；桥接 Release、代码签名和 Windows 11 真人 OTA 仍开放。后续灰度保持 Windows-first，Linux 只做每周/手动维护。
 
 ## 当前里程碑
 
@@ -9,10 +9,10 @@
 - stable Windows 包固定接入 Electron 官方公开 GitHub Release feed，不再要求普通用户设置环境变量；
 - Canary、beta、dev、非 Windows 和 unpackaged 构建不接稳定 feed；安全的显式 feed 仍只用于安装验收；
 - Tag workflow 在公开仓库中新增线上 updater 读回；`v0.12.2` 用户仍需手动原地安装一次 `v0.12.3` 桥接版；
-- 仓库历史与当前候选凭证扫描通过，但许可证、历史作者邮箱/本机路径接受、仓库可见性和 Windows 代码签名尚未关闭；
+- 仓库历史与当前候选凭证扫描通过，Apache-2.0、历史作者邮箱/本机路径接受和公开可见性已关闭；Windows 代码签名仍开放；
 - 只有真实 Windows 11 从桥接版升级到后续稳定版并保留 profile 后，才进入真实用户连跑。
 
-### v0.12.2 · Windows Canary + Safe Updates — private Engineering Alpha
+### v0.12.2 · Windows Canary + Safe Updates — public unsigned Engineering Alpha
 
 - 日常 Windows 开发改用按成功 CI、Git SHA 和唯一 Canary 版本同步的便携包，不覆盖稳定版，也不要求每次卸载重装；
 - `main` 与 Tag Release 分别验证干净安装和 `上一稳定版 -> 当前目标版` 原地升级，profile 保留与新 UI 版本都必须读回；
