@@ -4,7 +4,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 
 这不是 Craft Agents 的分支，也不包含腾讯 WorkBuddy 的私有实现。仓库只参考公开产品行为、通用 Agent 架构模式，以及我们自行定义的验收契约。
 
-> **产品判断（2026-08-15）**：仓库已按 Apache License 2.0 公开；[`v0.12.4 / Product Truth + Public Update Bridge`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.4) 是当前公开但未签名的 Engineering Alpha Release，包含 M12.1-M12.4 Artifact Thread、受限 DOCX、独立 DOCX Reviewer、脱敏 benchmark trace 和 stable Windows 公共 GitHub feed。`v0.12.3` 仅保留失败 Tag 审计，没有 Release 或资产。WB-02 稳定性、代码签名、Windows 11 真人与 `v0.12.4 -> 后续稳定版` 应用内更新继续开放。
+> **产品判断（2026-08-16）**：仓库已按 Apache License 2.0 公开；[`v0.12.4 / Product Truth + Public Update Bridge`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.4) 是当前公开但未签名的 Engineering Alpha Release，包含 M12.1-M12.4 Artifact Thread、受限 DOCX、独立 DOCX Reviewer、脱敏 benchmark trace 和 stable Windows 公共 GitHub feed。当前进入 M13 Product Truth Sprint，默认冻结功能扩张，用 Research Desk 重复运行、不同主题和非作者用户决定 `advance/pause/stop`。`v0.12.3` 仅保留失败 Tag 审计；代码签名、Windows 11 真人与 `v0.12.4 -> 后续稳定版` 应用内更新继续开放。
 
 ## 一页状态
 
@@ -20,6 +20,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 | Artifact | 文本与受限 DOCX；已登记版本可预览、打开、继续修订并与直接父版本比较；DOCX 发布前经独立 Reviewer，当前只覆盖段落、项目符号和表格 |
 | 扩展 | 本地/签名 Skill、MCP stdio/HTTP/OAuth、受限 Playwright Browser |
 | 分发 | Windows `v0.12.4` Setup/ZIP/full nupkg/RELEASES 已公开并完成回下载校验；公开 updater endpoint 已读回 Setup 地址，但签名、Windows 11 真机和从桥接版到后续稳定版的真实 OTA 尚未验收 |
+| 当前阶段 | M13 Product Truth Sprint；固定 `v0.12.4`，默认不扩功能，只修真实任务证明的阻塞并作 `advance/pause/stop` 裁决 |
 | 当前主动暂缓 | Developer ID、生产 Hardened Runtime、notarization、公开 Gatekeeper |
 
 M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M10.3 继续补齐 Provider 配置闭环；M10.4 把运行位置与资料范围分离；M11.1 再将目标与执行计划变成可检查、可批准的合同。保存不会自动联网；验证连接只请求模型列表；真实 Run 必须由用户生成计划并批准后才启动 Worker。连续真实 dogfooding 仍是开放验证门。
@@ -40,6 +41,7 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 - [`docs/M12.3-VALIDATION.md`](docs/M12.3-VALIDATION.md)：DOCX 自动门禁、Pages 逐页目视和 Electron Artifact Workbench 证据；
 - [`docs/M12.4-SPEC.md`](docs/M12.4-SPEC.md)：独立 DOCX Reviewer、有界修订、事件隐私和脱敏 trace 合同；
 - [`docs/M12.4-VALIDATION.md`](docs/M12.4-VALIDATION.md)：Reviewer 接受/退回/上限/恢复与 trace 专项证据；
+- [`docs/M13-PRODUCT-TRUTH-SPRINT.md`](docs/M13-PRODUCT-TRUTH-SPRINT.md)：固定 `v0.12.4`、Research Desk 真实运行矩阵、非作者用户门和 `advance/pause/stop` 裁决；
 - [`docs/CODEX-BENCHMARK-2026-08-14.md`](docs/CODEX-BENCHMARK-2026-08-14.md)：基于 OpenAI 官方文档的 Codex 产品/Agent 基准、LocalBuddy 差距和优先级；
 - [`docs/WORKBUDDY-PRODUCT-BENCHMARK-2026-08-15.md`](docs/WORKBUDDY-PRODUCT-BENCHMARK-2026-08-15.md)：WorkBuddy 公开承诺、LocalBuddy 产品差距、六个黄金任务和统一评分合同；
 - [`benchmarks/workbuddy-core/README.md`](benchmarks/workbuddy-core/README.md)：可物化的产品对标夹具、运行规则和证据要求；

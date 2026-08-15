@@ -1,6 +1,6 @@
 # LocalBuddy Product Definition v2
 
-> 状态：2026-08-15 产品方向候选；用于约束后续 Issue、基准与实现优先级。
+> 状态：2026-08-16 已接受的 L0 产品方向；当前由 [`M13 Product Truth Sprint`](M13-PRODUCT-TRUTH-SPRINT.md) 验证，不构成 closed pilot、商业化或产品成立结论。
 > 边界：本文不把未发布源码、官方宣传、单次 Provider 成功或单一 DOCX 案例写成已验证产品能力。
 
 ## 1. 为什么需要重新定义
@@ -126,7 +126,7 @@ Core 是公共底座，Scenario Product 是用户购买和复用的工作方式�
 - WB-02 是 Research/Office 产物链的验证探针，不能单独接管产品路线；
 - WB-05 是 Builder Lab 的首个探针；
 - Teaching Studio 需要新增一组来源到课件、教师讲稿和试讲的场景基准；
-- M12.1-M12.4 是未发布的 Artifact 纵向候选，不自动构成任何场景产品通过；
+- M12.1-M12.4 已随公开但未签名的 `v0.12.4` Engineering Alpha 发布，但工程发布不自动构成任何场景产品通过；
 - Issue #2 只继续承载跨场景 Core 控制面与 trace Eval，不再作为所有产品功能的总篮子。
 
 ## 8. 近期决策顺序

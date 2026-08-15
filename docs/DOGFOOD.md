@@ -1,6 +1,6 @@
 # LocalBuddy V2 Dogfood Plan
 
-> 状态：`active`。当前源码版本为 `v0.12.1 / M11.1 Goal Contract + Plan Review` 私有 Engineering Alpha Release。macOS arm64 最终 App 与 Windows 安装版均已完成确定性 Plan Review 合成灰度；Windows Tag 自动门禁也已完成原生构建、恢复/重启矩阵和资产回下载校验。真实 Provider Goal Contract Run、连续 7-14 天使用和 Windows 11 真人灰度仍是独立门禁。Windows 自动化边界见 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md)。本文不把单元测试、静态 Guide、CI 产物或合成 Provider 重复计作真人 dogfooding。
+> 状态：`active`。固定产品事实基线为公开但未签名的 `v0.12.4 / Product Truth + Public Update Bridge` Engineering Alpha；当前进入 [`M13 Product Truth Sprint`](M13-PRODUCT-TRUTH-SPRINT.md)。M12.1-M12.4、Windows Tag 自动门禁、资产回下载和公开 feed 读回已经完成；真实 Provider 重复运行、非作者用户、连续使用、Windows 11 真人和桥接版到后续稳定版 OTA 仍是独立门禁。本文不把单元测试、静态 Guide、CI 产物或合成 Provider 重复计作真人 dogfooding。
 
 ## 目标
 
@@ -25,15 +25,15 @@
 | Extensions | Skill/MCP/Browser 按 Run 显式启用，外部副作用逐次审批 |
 | 诊断导出 | 不含目标正文、模型内容、工具参数、凭证和绝对路径 |
 
-建议连续运行 7-14 天后再决定 M11，而不是以单次成功结束。
+连续使用必须围绕同一个可重复 Job 记录；M13 先完成 Research Desk 固定三跑、两个不同主题和非作者运行，再根据真实频率决定是否需要延长为 7-14 天观察，而不是以单次成功结束。
 
 ## 阶段 B1 · Windows 托管合成灰度
 
 自动化范围、触发方式和证据边界以 [`WINDOWS-GRAY.md`](WINDOWS-GRAY.md) 为准。它持续验证真实 Setup、安装版 App、Credential Manager、loopback Mock Provider、故障矩阵、Research Run、两个活动 Run、取消、硬退出恢复和重启持久化。
 
-当前基线为提交 `d686cd6`：[`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610) 已完成完整故障矩阵和 5 次额外重启，脱敏摘要 9 项检查全部通过；配套 [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 的 Windows 合同、macOS 回归和 Setup 无凭据首启也全部通过。
+历史合成灰度提交 `d686cd6` 的 [`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610) 已完成完整故障矩阵和 5 次额外重启，脱敏摘要 9 项检查全部通过；配套 [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 的 Windows 合同、macOS 回归和 Setup 无凭据首启也全部通过。
 
-`v0.12.1` 的固定发布基线为提交 `7bd6e368c0e66770e8f6ff694754ed607b0a9acd`：[`Release Gate 31775672269`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31775672269) 已完成 Windows 原生 Setup/ZIP、真实页面 Plan Review 批准、安装版合成灰度、checkpoint 恢复、重启持久化、SHA-256 和发布；三项 Release 资产已回下载核验。该证据仍不等于 Windows 11 真人或真实 Provider dogfood。
+当前固定 Release `v0.12.4` 指向 `b9f1082772e43c13bde3fe0651ec41412bd1a1db`。Release workflow `31879716752` 的 Windows 作业完成生产依赖审计、204 项合同、安装版合成灰度、`v0.12.2 -> v0.12.4` 原地升级/profile 保留和五项资产发布/回下载校验；整体 workflow 因旧的线上 JSON 检查合同而保留红色，后续检查已在 `main` 修复。合并后的 `main` CI `31881058722` 又通过 `v0.12.4 -> 0.12.5-canary.51` 原地升级、`profilePreserved=true` 和 Canary/feed 上传。以上仍不等于 Windows 11 真人或真实 Provider dogfood。
 
 该阶段不使用真实 Provider Key，不产生模型费用，也不能证明 Windows 11 消费者桌面环境。
 
@@ -41,13 +41,14 @@
 
 设备到位后按顺序执行：
 
-1. 下载 Setup/ZIP 并核对 SHA-256；
-2. 安装、首次启动、退出、再次启动和卸载；
+1. 从 `v0.12.2` 保留非敏感 profile，下载 `v0.12.4` Setup/ZIP 并核对 SHA-256；
+2. 不卸载旧版，原地安装 `v0.12.4`，完成首次启动、退出、再次启动和最终卸载；
 3. Windows Credential Manager 写入并读取 DeepSeek/OpenAI 凭证；
 4. 真实 Research Run、两个活动 Run、取消和 checkpoint resume；
 5. Artifact 打开和诊断导出；
 6. 验证本地进程型工具明确 fail closed，不发生无隔离降级；
-7. 记录 SmartScreen、路径、中文文件名、长路径和杀进程恢复表现。
+7. 发布后续稳定版时完成应用内检查、下载、忙碌 Run 重启阻断、安装、版本/profile 读回；
+8. 记录 SmartScreen、路径、中文文件名、长路径和杀进程恢复表现。
 
 Windows 执行宿主不在本阶段临时补做；先用真机证据确定 WSL2、容器或 Windows 原生隔离方案的产品边界。
 
@@ -78,14 +79,17 @@ Windows 执行宿主不在本阶段临时补做；先用真机证据确定 WSL2�
 - 问题与下一步：
 ```
 
-## 退出口径
+## M13 退出口径
 
-M11 立项前至少满足：
+Research Desk 进入 closed pilot 前至少满足：
 
 - 没有凭证、Prompt 或私有 Artifact 泄漏；
 - Coding 未经批准不修改主工作区，批准后的 diff/commit 可核对；
 - 中断、取消、恢复和 replay 的结果符合各自语义；
 - 所有失败都有明确状态和可导出的脱敏诊断，不伪装成成功；
-- 真实任务数据足以判断下一阶段优先解决交互、资料摄取、Windows 执行宿主或 Provider 可靠性中的哪一项。
+- 同一 `v0.12.4` 合同完成三次逐次披露的真实 Provider 运行，并记录中位表现；
+- 两个不同主题完成可打开、可核查、可修订的 Artifact，排除半导体 Prompt 特调；
+- 至少一位非作者用户独立完成一次，并记录作者介入和再次使用意愿；
+- 真实任务数据足以作出 `advance/pause/stop`，并判断下一阶段优先解决交互、资料摄取、Windows 执行宿主或 Provider 可靠性中的哪一项。
 
-量化成功率、平均成本和时长目标在首轮样本形成后设定，当前不凭空填写阈值。
+完整矩阵、硬失败和裁决规则以 [`M13-PRODUCT-TRUTH-SPRINT.md`](M13-PRODUCT-TRUTH-SPRINT.md) 为准。量化成功率、平均成本和时长目标在首轮样本形成后设定，当前不凭空填写阈值。

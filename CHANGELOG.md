@@ -4,7 +4,10 @@
 
 ## Unreleased
 
-当前没有已承诺进入下一版本的变更。
+### Changed
+
+- 开发阶段转入 M13 Product Truth Sprint：固定 `v0.12.4` 为产品事实基线，默认冻结通用功能扩张，以 Research Desk 同合同三跑、两个独立主题、非作者用户和目标应用结果作 `advance/pause/stop` 裁决；
+- Dogfood、Quickstart、M12 规格/验证和产品方向文档统一回读 `v0.12.4` 已发布事实，并增加文档合同测试，避免当前 Release 与候选期口径再次漂移。
 
 ## 0.12.4 — 2026-08-15
 
