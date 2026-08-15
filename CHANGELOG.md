@@ -30,6 +30,7 @@
 
 ### Fixed
 
+- Desktop 的成功、失败和取消终态现在只在工作区运行锁释放、活动 Run 注销后通知订阅者；恢复、重放和 Plan Review 测试也显式等待 manager 完全 idle，避免 Windows 在测试清理临时目录时偶发 `EPERM`；
 - 正式 Windows Release 改为在原生 Windows 验收与 SHA-256 复核后直接上传 GitHub Release，不再把约 800 MB 的 Setup/ZIP/nupkg 先存入临时 Actions Artifact 再跨作业下载；脱敏安装证据上传为尽力保存，配额问题不能跳过功能门禁，也不再阻断已验证正式资产的发布；
 - Integrator 现在必须至少有一次最终 Artifact 写入通过才能成功结束，不能在写入/Reviewer 失败后只返回“完成”绕过后置条件；同 Run 恢复继续沿用已经消耗的三次 Artifact Gate 预算；
 - DOCX 写入失败现在与文本写入一样计入 Artifact Gate retry 和失败阶段，最近事件显示截断后的具体工具反馈；Research/Coding Run 失败会把首个失败 Task 的原因投影到顶层，不再只显示无原因的 `failed`；
@@ -44,6 +45,10 @@
 - Reviewer 明确候选 DOCX 在内存中完成结构编译、接受后才原子发布的语义，不再因为目标文件尚未落盘而误退回。
 - `search_source_text` 现在可对单个受限 DOCX 做本地安全抽取后的有界正文检索；DOCX 父稿中的 tab-separated 表格也可由本地 Markdown 编译器直接还原，消除二进制搜索和制表符控制字符误报；
 - 修复窄 Artifact Revision 被独立 Reviewer 接受却静默删掉大部分父稿的缺陷；保留 finding 使用同一三次有界修订预算，失败候选仍不落盘。
+
+## 0.12.3 — not released
+
+`v0.12.3` annotated Tag 固定指向 `3fbcbf3abb1e45aac4fd9ac80cd7df24d1d68b14`。Release Gate `31878639876` 在 Windows `pnpm check` 阶段暴露终态测试与 `runtime-lock` 清理的时序竞态，停止于打包前；没有创建 GitHub Release，也没有发布资产。Tag 保留为失败审计记录，不移动、不复用；修复和 Public Update Bridge 转入 `v0.12.4`。
 
 ## 0.12.2 — 2026-08-14
 

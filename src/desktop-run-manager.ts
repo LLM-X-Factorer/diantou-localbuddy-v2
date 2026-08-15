@@ -109,6 +109,11 @@ const MAX_ARTIFACT_PREVIEW_BYTES = 200_000;
 const MAX_ARTIFACT_THREAD_VERSIONS = 200;
 const MAX_ARTIFACTS_PER_THREAD_VERSION = 20;
 const TEXT_ARTIFACT_EXTENSIONS = new Set([".md", ".json", ".txt", ".patch", ".diff"]);
+const TERMINAL_RUN_STATUSES = new Set<DesktopRunView["status"]>([
+  "succeeded",
+  "failed",
+  "cancelled",
+]);
 
 export class DesktopRunManager {
   readonly #createProvider: (selection: ProviderSelection) => Promise<ModelProvider>;
@@ -240,7 +245,10 @@ export class DesktopRunManager {
           },
         });
         events.push(blocked);
-        this.#emit(projectRun(request.runId, workspace, events));
+        const blockedView = projectRun(request.runId, workspace, events);
+        this.#launching.delete(request.runId);
+        await lease.release();
+        this.#emit(blockedView);
         throw new Error(reason);
       }
       const eventStore = new NotifyingEventStore(persistentStore, (event) => {
@@ -254,7 +262,9 @@ export class DesktopRunManager {
           active.approvalBroker?.list(),
           active.planReviewBroker?.current,
         );
-        this.#emit(active.view);
+        if (!TERMINAL_RUN_STATUSES.has(active.view.status)) {
+          this.#emit(active.view);
+        }
       });
       const abortController = new AbortController();
       const initialView = await this.#withPersistentRunState({ ...source, status: "starting" });
@@ -328,8 +338,8 @@ export class DesktopRunManager {
             const current = this.#active.get(request.runId);
             if (current !== undefined) {
               current.view = await this.#withRecoveryInspection(current.view);
-              this.#emit(current.view);
               this.#active.delete(request.runId);
+              this.#emit(current.view);
             }
           });
         return initialView;
@@ -351,10 +361,12 @@ export class DesktopRunManager {
         const current = this.#active.get(request.runId);
         if (current !== undefined) {
           current.view = await this.#withRecoveryInspection(current.view);
+        }
+        await lease.release();
+        if (current !== undefined) {
+          this.#active.delete(request.runId);
           this.#emit(current.view);
         }
-        this.#active.delete(request.runId);
-        await lease.release();
         throw error;
       }
     } catch (error) {
@@ -501,7 +513,9 @@ export class DesktopRunManager {
         active.approvalBroker?.list(),
         active.planReviewBroker?.current,
       );
-      this.#emit(active.view);
+      if (!TERMINAL_RUN_STATUSES.has(active.view.status)) {
+        this.#emit(active.view);
+      }
     });
     const abortController = new AbortController();
     const initialView: DesktopRunView = {
@@ -584,8 +598,8 @@ export class DesktopRunManager {
           const current = this.#active.get(runId);
           if (current !== undefined) {
             current.view = await this.#withRecoveryInspection(current.view);
-            this.#emit(current.view);
             this.#active.delete(runId);
+            this.#emit(current.view);
           }
         });
       return initialView;
@@ -609,10 +623,12 @@ export class DesktopRunManager {
       const current = this.#active.get(runId);
       if (current !== undefined) {
         current.view = await this.#withRecoveryInspection(current.view);
+      }
+      await lease.release();
+      if (current !== undefined) {
+        this.#active.delete(runId);
         this.#emit(current.view);
       }
-      this.#active.delete(runId);
-      await lease.release();
       throw error;
     }
   }

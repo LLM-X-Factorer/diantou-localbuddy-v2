@@ -82,6 +82,7 @@ test("Desktop does not start a Worker until the exact plan is approved", async (
 
   await manager.resolvePlanReview({ workspace, runId: started.runId, decision: "approve" });
   const completed = await terminal;
+  await manager.waitForIdle();
   assert.equal(completed.status, "succeeded");
   assert.equal(completed.planReview?.status, "approved");
   assert.equal(await readFile(completed.artifacts[0]?.absolutePath ?? "", "utf8"), "# Result\n\nofficial policy evidence\n");
@@ -209,6 +210,7 @@ test("a pending Plan Review survives a Desktop restart and can resume", async (c
   assert.equal(provider.calls, 0, "resume must restore the persisted plan instead of replanning");
   await manager.resolvePlanReview({ workspace, runId, decision: "approve" });
   assert.equal((await terminal).status, "succeeded");
+  await manager.waitForIdle();
   assert.equal((await new PlanReviewStore(join(runRoot, "plan-review.json")).load()).status, "approved");
 });
 

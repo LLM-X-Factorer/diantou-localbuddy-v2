@@ -1,6 +1,6 @@
 # Windows 开发更新与安装升级
 
-> 状态：当前已发布基线是公开但未签名的 `v0.12.2` Engineering Alpha，仓库已采用 Apache License 2.0。未发布 `0.12.3` 候选已让 packaged stable Windows 构建内置公开 GitHub Release 更新源；桥接安装、线上 feed 读回、代码签名和 Windows 11 真人 OTA 仍是发布门禁。
+> 状态：当前已发布基线是公开但未签名的 `v0.12.2` Engineering Alpha，仓库已采用 Apache License 2.0。未发布 `0.12.4` 候选已让 packaged stable Windows 构建内置公开 GitHub Release 更新源；`v0.12.3` 只有失败 Tag，没有 Release 或资产。桥接安装、线上 feed 读回、代码签名和 Windows 11 真人 OTA 仍是发布门禁。
 
 ## 一句话方案
 
@@ -72,7 +72,7 @@ Canary 的 UI 会显示 `channel + version + short SHA`，用于确认“我实�
 
 ## 稳定版在线更新
 
-`0.12.3` 候选不再要求普通用户设置环境变量。packaged、stable、Windows 构建会由 Main 固定使用以下只读服务地址，并带上运行中的版本和架构：
+`0.12.4` 候选不再要求普通用户设置环境变量。packaged、stable、Windows 构建会由 Main 固定使用以下只读服务地址，并带上运行中的版本和架构：
 
 ```text
 https://update.electronjs.org/LLM-X-Factorer/diantou-localbuddy-v2/win32-x64/<current-version>
@@ -80,11 +80,11 @@ https://update.electronjs.org/LLM-X-Factorer/diantou-localbuddy-v2/win32-x64/<cu
 
 该服务从公开 GitHub Releases 解析下一稳定版；Renderer 仍不能修改更新源。Canary、beta、开发包和非 Windows 包默认不接稳定 feed。`LOCALBUDDY_UPDATE_FEED_URL` 只保留给打包验收时的显式 HTTPS/loopback 夹具，不作为用户配置或私有仓库鉴权方案。
 
-`v0.12.2` 本身没有内置更新地址，因此已有用户必须对 `v0.12.3` 做最后一次手动原地安装；不需要先卸载。只有在真实 Windows 11 上完成 `v0.12.3 -> 后续稳定版` 的线上检查、下载、重启、版本读回和 profile 保留后，才可以宣称以后无需回仓库下载。
+`v0.12.2` 本身没有内置更新地址，因此已有用户必须对 `v0.12.4` 做最后一次手动原地安装；不需要先卸载。只有在真实 Windows 11 上完成 `v0.12.4 -> 后续稳定版` 的线上检查、下载、重启、版本读回和 profile 保留后，才可以宣称以后无需回仓库下载。
 
 ## 应用内更新的安全规则
 
-Windows 安装包已经接入 Electron/Squirrel 更新控制器。`0.12.3` 起，正式 stable 包默认使用构建内置的公开 GitHub 更新源；其余 channel 默认关闭。验收覆盖使用的显式 feed 必须是 HTTPS，开发夹具可使用 loopback HTTP；URL 中禁止用户名、密码、query 和 hash，避免把 token 留在日志或进程参数中。
+Windows 安装包已经接入 Electron/Squirrel 更新控制器。`0.12.4` 起，正式 stable 包默认使用构建内置的公开 GitHub 更新源；其余 channel 默认关闭。验收覆盖使用的显式 feed 必须是 HTTPS，开发夹具可使用 loopback HTTP；URL 中禁止用户名、密码、query 和 hash，避免把 token 留在日志或进程参数中。
 
 更新规则：
 
@@ -95,7 +95,7 @@ Windows 安装包已经接入 Electron/Squirrel 更新控制器。`0.12.3` 起�
 - Renderer 不能设置 feed，也不能绕过 Main 的空闲检查；
 - 当前没有静默安装、强制更新或自动回滚。
 
-Release workflow 从 `0.12.2` 起发布 Setup、便携 ZIP、`RELEASES`、full NuGet package 和 SHA-256 清单。`0.12.3` 起，验收通过的 Windows 作业直接把这些长期分发资产上传到 GitHub Release，不再用受配额约束的临时 Actions Artifact 中转；脱敏截图/摘要仍是尽力保存的短期证据，不阻断已通过完整验证的正式资产发布。公开仓库的 Tag Release 还会从上一稳定版本请求 Electron feed，并等待新 full package 可被解析。代码签名和真实 Windows 11 OTA 仍是独立门禁，不能因为线上 endpoint 返回成功就写成“生产自动更新已验收”。
+Release workflow 从 `0.12.2` 起发布 Setup、便携 ZIP、`RELEASES`、full NuGet package 和 SHA-256 清单。`0.12.4` 起，验收通过的 Windows 作业直接把这些长期分发资产上传到 GitHub Release，不再用受配额约束的临时 Actions Artifact 中转；脱敏截图/摘要仍是尽力保存的短期证据，不阻断已通过完整验证的正式资产发布。公开仓库的 Tag Release 还会从上一稳定版本请求 Electron feed，并等待新 full package 可被解析。代码签名和真实 Windows 11 OTA 仍是独立门禁，不能因为线上 endpoint 返回成功就写成“生产自动更新已验收”。
 
 ## 验收记录
 

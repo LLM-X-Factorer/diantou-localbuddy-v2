@@ -91,6 +91,7 @@ test("runs a workflow, publishes projections, and recovers it from history", asy
   });
   assert.equal(initial.status, "starting");
   const completed = await terminal;
+  await manager.waitForIdle();
 
   assert.equal(completed.tasks.length, 2);
   assert.equal(completed.artifacts[0]?.fileName, "result.md");
@@ -878,6 +879,7 @@ test("marks a nonterminal persisted Run interrupted once and replays it as a new
   assert.notEqual(replay.runId, sourceRunId);
   assert.equal(replay.recoveryOf, sourceRunId);
   const completed = await terminal;
+  await manager.waitForIdle();
   assert.equal(completed.status, "succeeded");
   const history = await manager.list(workspace);
   assert.equal(history.find((run) => run.runId === sourceRunId)?.restartedAs, replay.runId);
@@ -994,6 +996,7 @@ test("resumes the same research Run from a child-process checkpoint after a hard
   const resumed = await manager.resumeRun({ workspace, runId });
   assert.equal(resumed.runId, runId);
   const completed = await terminal;
+  await manager.waitForIdle();
   assert.equal(completed.status, "succeeded");
   assert.equal(completed.artifacts[0]?.fileName, "result.md");
   const events = await new JsonlEventStore(join(runRoot, "events.jsonl")).list(runId);
@@ -1042,14 +1045,20 @@ test("retries unfinished Tasks on a failed Run from its safe checkpoint", async 
   const failed = (await manager.list(workspace)).find((run) => run.runId === runId);
   assert.equal(failed?.status, "failed");
   assert.equal(failed?.checkpoint?.status, "available");
+  let terminalObservedAfterCleanup = false;
   const terminal = new Promise<DesktopRunView>((resolvePromise) => {
     manager.subscribe((run) => {
-      if (run.runId === runId && run.status === "succeeded") resolvePromise(run);
+      if (run.runId === runId && run.status === "succeeded") {
+        terminalObservedAfterCleanup = manager.isIdle();
+        resolvePromise(run);
+      }
     });
   });
   const retrying = await manager.resumeRun({ workspace, runId });
   assert.equal(retrying.runId, runId);
   const completed = await terminal;
+  await manager.waitForIdle();
+  assert.equal(terminalObservedAfterCleanup, true);
   assert.equal(completed.status, "succeeded");
   assert.equal(completed.tasks.find((task) => task.id === "read-note")?.error, undefined);
   const events = await store.list(runId);
@@ -1213,6 +1222,7 @@ async function runCodingCheckpointRecovery(
   const resumed = await manager.resumeRun({ workspace, runId });
   assert.equal(resumed.runId, runId);
   const completed = await terminal;
+  await manager.waitForIdle();
   assert.equal(completed.status, "succeeded", completed.error ?? "Coding resume did not succeed");
   assert.equal(completed.integration?.status, "awaiting_approval");
   assert.ok(completed.artifacts.some((artifact) => artifact.fileName === "patches/change-greeting.patch"));

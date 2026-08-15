@@ -40,7 +40,9 @@ The current candidate does not rewrite published Git history or move historical 
 
 ## Release and updater sequence
 
-1. Existing `v0.12.2` users perform one final manual in-place install of the bridge Release; uninstall is not required.
+`v0.12.3` stopped in the Windows test gate before packaging, so its immutable Tag is retained as failure evidence and no Release/assets exist. The bridge candidate moved to `v0.12.4`.
+
+1. Existing `v0.12.2` users perform one final manual in-place install of the `v0.12.4` bridge Release; uninstall is not required.
 2. The bridge stable build derives its feed from `https://update.electronjs.org/LLM-X-Factorer/diantou-localbuddy-v2/win32-<arch>/<current-version>`.
 3. A later stable Tag publishes Setup, ZIP, `RELEASES`, full nupkg and checksums.
 4. The post-release workflow asks the public update service for an update from the prior stable version and requires the new full package to appear.
