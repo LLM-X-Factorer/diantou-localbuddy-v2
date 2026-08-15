@@ -4,6 +4,12 @@
 
 ## Unreleased
 
+当前没有已承诺进入下一版本的变更。
+
+## 0.12.4 — 2026-08-15
+
+公开但未签名的 Product Truth + Public Update Bridge Engineering Alpha。现有 `v0.12.2` 用户仍需手动原地安装一次本版本；真正的应用内更新验收目标是 `v0.12.4 -> 后续稳定版`。
+
 ### Added
 
 - 项目采用 Apache License 2.0，仓库加入官方完整许可证文本、`NOTICE` 归属说明和 SPDX 包元数据；
@@ -45,6 +51,13 @@
 - Reviewer 明确候选 DOCX 在内存中完成结构编译、接受后才原子发布的语义，不再因为目标文件尚未落盘而误退回。
 - `search_source_text` 现在可对单个受限 DOCX 做本地安全抽取后的有界正文检索；DOCX 父稿中的 tab-separated 表格也可由本地 Markdown 编译器直接还原，消除二进制搜索和制表符控制字符误报；
 - 修复窄 Artifact Revision 被独立 Reviewer 接受却静默删掉大部分父稿的缺陷；保留 finding 使用同一三次有界修订预算，失败候选仍不落盘。
+
+### Evidence
+
+- annotated Tag `v0.12.4` 解引用到 `b9f1082772e43c13bde3fe0651ec41412bd1a1db`；非 draft、非 prerelease Release 已发布 Setup、ZIP、full nupkg、`RELEASES` 和 SHA-256 清单；
+- Windows 发布作业完成生产依赖审计、204 项合同、稳定安装版合成灰度、`v0.12.2 -> v0.12.4` 原地升级和 `profilePreserved=true`；全部资产已回下载并通过清单核验；
+- 发布流水线的后置线上冒烟因旧断言错误地在 JSON 中查找 full nupkg、且五分钟缓存窗口短约 42 秒而标红；公开 endpoint 随后返回 HTTP 200 和精确的 `v0.12.4` Setup 地址。该失败不改写，后续版本改为解析 JSON 并最多等待十分钟；
+- Windows 11 真机、代码签名和 `v0.12.4 -> 后续稳定版` 应用内更新仍未验收。
 
 ## 0.12.3 — not released
 

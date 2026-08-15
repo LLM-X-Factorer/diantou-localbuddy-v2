@@ -1,23 +1,27 @@
 # Windows Update Validation
 
-> 当前已发布版本：公开但未签名的 `v0.12.2 / Windows Canary + Safe Updates` Engineering Alpha。未发布 `0.12.4` 候选已接入公开 GitHub Release feed 合同；`v0.12.3` 只有失败 Tag，没有 Release 或资产。桥接 Release、Windows 11 线上 OTA 与代码签名仍是开放门禁。
+> 当前已发布版本：公开但未签名的 `v0.12.4 / Product Truth + Public Update Bridge` Engineering Alpha。`v0.12.3` 只有失败 Tag，没有 Release 或资产。公开 endpoint 已读回，但 Windows 11 上 `v0.12.4 -> 后续稳定版` 的真实线上 OTA 与代码签名仍是开放门禁。
 
-## 0.12.4 在线更新候选
+## 0.12.4 公开更新桥接版
 
 - packaged stable Windows 根据运行时版本和架构固定生成 `update.electronjs.org/LLM-X-Factorer/diantou-localbuddy-v2/...` feed；Canary、beta、dev、非 Windows 和未打包构建不接稳定 feed；
 - 显式 `LOCALBUDDY_UPDATE_FEED_URL` 继续只用于安全的 HTTPS/loopback 验收夹具，仍由 Coordinator 统一验证并在错误时 fail closed；
-- Tag workflow 在公开仓库中发布资产后，以上一稳定版本请求线上 feed，最多等待五分钟并要求新 full nupkg 可见；
+- Tag workflow 在公开仓库中发布资产后，以上一稳定版本请求线上 feed；后续发布会最多等待十分钟、解析 JSON 并精确核对新版本 Setup 地址，full nupkg 与 `RELEASES` 由发布资产合同单独保证；
 - `v0.12.2` 没有内置 feed，必须先手动原地安装一次桥接版；本地合同不能替代 `v0.12.4 -> 后续稳定版` 的真实 Windows 11 OTA。
 
-当前候选在 macOS 本机通过 `pnpm check`：204 项中 202 passed、2 项 Windows-only 跳过、0 failed；`pnpm build`、`pnpm audit --prod --audit-level high` 和 `git diff --check` 通过。终态/运行锁恢复与 Plan Review 文件在完整测试基础上连续 10 轮通过，触发发布失败的单项恢复案例另连续 25 轮通过。以上只证明源码、合同、构建和本地时序回归，不证明 Release、线上 endpoint 或真机升级。
+发布提交在 macOS 本机通过 `pnpm check`：204 项中 202 passed、2 项 Windows-only 跳过、0 failed；`pnpm build`、`pnpm audit --prod --audit-level high` 和 `git diff --check` 通过。终态/运行锁恢复与 Plan Review 文件在完整测试基础上连续 10 轮通过，触发发布失败的单项恢复案例另连续 25 轮通过。以上本机证据证明源码、合同、构建和时序回归；Release 与 endpoint 另以线上回读为准，仍不证明真机升级。
 
 PR #6 首轮 Windows 全量测试暴露一条只接受 LF 的源码合同；Windows checkout 的 CRLF 导致该断言失败，产品逻辑未失败。断言改为同时接受 LF/CRLF 后，本机 203 项复验通过。第二轮 Windows 构建和干净安装通过，但上传临时首启证据时命中 GitHub Actions artifact quota；44 个已结束作业中大于 10 MiB、可由固定提交重建的旧临时包已按明确 ID 删除，共 21,056,090,408 bytes。PR 不再重复上传安装证据，push/main 和 Tag Gate 仍保留脱敏证据尝试。
 
 合并提交 `c158fd2fa02efe473b10d0905d3ac2202be7dad8` 的 `main` CI `31877363554` 在 Windows Server 2025 完成干净安装，并把 `LocalBuddy-0.12.2-Setup.exe` 原地升级到 `0.12.3-canary.45`；日志读回 `profilePreserved=true`。作业随后仅在上传两份临时 Actions Artifact 时因配额停止，Canary 分发/Feed 上传未执行，因此整条 CI 必须保留为红色外部存储失败，不能写成全绿。两份上一轮、可由固定提交重建的 Canary/Feed Artifact（ID `9213130027`、`9213135624`）随后删除约 805 MB；正式 Release、Tag、源码和校验和未删除，API 读回剩余 48 项约 7.1 MB，但 GitHub 需要 6-12 小时重算配额。
 
-这次失败暴露正式发布不应依赖临时 Artifact 配额。`0.12.4` 候选把 Setup、ZIP、full nupkg、`RELEASES` 和清单保留在同一 Windows Runner，完成 Tag/版本与 SHA-256 复核后直接上传 GitHub Release；脱敏截图和摘要仍尽力上传，但配额失败不会绕过或替代功能门禁，也不会再阻断已验证正式资产。
+这次失败暴露正式发布不应依赖临时 Artifact 配额。`0.12.4` 把 Setup、ZIP、full nupkg、`RELEASES` 和清单保留在同一 Windows Runner，完成 Tag/版本与 SHA-256 复核后直接上传 GitHub Release；脱敏截图和摘要仍尽力上传，但配额失败不会绕过或替代功能门禁，也不会再阻断已验证正式资产。
 
 合并提交 `3fbcbf3abb1e45aac4fd9ac80cd7df24d1d68b14` 的 `main` CI `31878390204` 全绿：Windows/macOS 全量合同、干净安装和 `v0.12.2 -> 0.12.3-canary.47` 原地升级均通过，UI 读回 `CANARY v0.12.3-canary.47 · 3fbcbf3a`，升级摘要为 `profilePreserved=true`。随后固定在同一提交的 `v0.12.3` Release Gate `31878639876` 在 Windows `pnpm check` 中暴露测试生命周期竞态：测试收到 `run.succeeded` 后立即删除临时工作区，而 `runtime-lock` 仍在异步释放，触发 `EPERM`。流水线停止于打包前，没有创建 Release 或资产；Tag 不移动、不复用。`0.12.4` 将终态通知收紧为锁已释放且 Run 已注销，并让同类测试显式等待 manager idle。
+
+修复合并提交 `b9f1082772e43c13bde3fe0651ec41412bd1a1db` 的 `main` CI `31879482738` 全绿：macOS 与 Windows 全量合同通过，Windows 干净安装和 `v0.12.2 -> 0.12.4-canary.49` 原地升级通过，UI 读回 `CANARY v0.12.4-canary.49 · b9f10827`，升级摘要为 `profilePreserved=true`。
+
+固定在同一提交的 `v0.12.4` Release workflow `31879716752` 中，Windows 发布作业 `95000490148` 通过生产依赖审计、204 项合同、stable 构建、安装版确定性 Provider 灰度、`v0.12.2 -> v0.12.4` 原地升级和五项资产复核，并直接创建 GitHub Release。独立 `online-update-smoke` 作业 `95001024268` 仍以旧合同在服务 JSON 中寻找 full nupkg，且五分钟缓存窗口比实际刷新少约 42 秒，因此整体 workflow 保留红色。随后对公开地址的无鉴权请求返回 HTTP 200、名称 `LocalBuddy v0.12.4` 和精确 Setup URL。该错误检查不会通过重跑、移动 Tag 或替换资产抹掉；后续 workflow 改为解析 JSON、核对 Setup URL 并等待十分钟。
 
 ## 已实现合同
 
@@ -35,10 +39,10 @@ PR #6 首轮 Windows 全量测试暴露一条只接受 LF 的源码合同；Wind
 |---|---|---|
 | TypeScript/静态合同 | 通过 | `pnpm check` 共 204 项：202 passed、2 项 Windows-only 跳过、0 failed；覆盖构建身份、Canary 高于最新稳定版、更新状态机、不安全 feed、忙碌重启阻断、终态后运行锁清理和 workflow/PowerShell 合同 |
 | macOS 本机开发构建 | 通过 | `pnpm build` 通过；`0.12.2` App/ZIP/DMG、ad-hoc 签名、DMG 完整性、Fuse、ASAR、内置浏览器和真实 Renderer 首启通过。首次回归还发现本地脏工作区只显示旧 HEAD 的歧义，现已改为显式 `+dirty`；不能运行 Windows Squirrel |
-| Windows Server 2025 原生 CI | 通过 | CI `31784118614`：macOS/Windows 157 项合同、`0.12.3-canary.39` Setup/ZIP、干净安装首启、`v0.12.2 -> 0.12.3-canary.39` 原地升级、profile 保留和两类 Canary artifact 全部通过 |
-| Windows Tag Release | 通过 | Gate `31781917106`：生产依赖审计、156 项合同、安装版合成灰度、`v0.12.1 -> v0.12.2` 原地升级/profile 保留、五项 Release 资产和发布作业全部通过 |
+| Windows Server 2025 原生 CI | 通过 | CI `31879482738`：macOS/Windows 204 项合同、`0.12.4-canary.49` Setup/ZIP、干净安装首启、`v0.12.2 -> 0.12.4-canary.49` 原地升级和 `profilePreserved=true` 全部通过 |
+| Windows Tag Release | 资产发布通过；后置冒烟合同失败 | workflow `31879716752` 的 Windows 作业通过 204 项合同、stable 灰度、`v0.12.2 -> v0.12.4` 升级和五项资产发布；独立线上作业因错误期待 full nupkg JSON 且等待窗口短 42 秒而失败，失败记录保留 |
 | Windows 11 真机 | 未验收 | Canary 同步、稳定安装升级、Credential Manager、SmartScreen/UAC、真实 Provider |
-| 生产更新源 | 候选已接线、未上线 | 仓库已公开且 `0.12.4` 源码已生成公开 GitHub feed；尚无桥接 Release、线上读回或真机 OTA |
+| 生产更新源 | 桥接版与公开 endpoint 已上线，真机 OTA 未验收 | `v0.12.4` 已公开；从 `0.12.2` 请求 endpoint 返回 HTTP 200 和精确 Setup URL。尚无 `v0.12.4 -> 后续稳定版` 的 Windows 11 检查、下载、重启和 profile 保留证据 |
 
 生产依赖审计未发现已知漏洞。完整开发依赖审计仍命中 Electron Forge 打包链中的 `extract-zip <= 2.0.1` symlink path traversal 公告；上游没有已修复版本。当前继续只在干净受控 Runner 打包，并保留该已知 Engineering Alpha 风险，不做静默 ignore。
 
@@ -50,7 +54,23 @@ PR #6 首轮 Windows 全量测试暴露一条只接受 LF 的源码合同；Wind
 
 修复后的 `main` CI `31780762643` 已复验完整链路：干净安装 UI 读回 `CANARY / v0.12.2-canary.35 / 5251353f`；随后从 `LocalBuddy-0.12.1-Setup.exe` 安装的稳定版通过本地 Squirrel feed 升级，新版本 UI 再次读回同一身份，非敏感 profile 标记保留。GitHub 保存了 120,114-byte 干净首启证据、244,068-byte 升级证据、540,102,786-byte Canary 分发 artifact 和 265,242,749-byte feed artifact。
 
-## v0.12.2 Release 读回
+## v0.12.4 Release 读回
+
+- annotated Tag `v0.12.4` 解引用到 `b9f1082772e43c13bde3fe0651ec41412bd1a1db`；Release 于 2026-08-15 发布，非 draft、非 prerelease；
+- Windows 发布作业完成生产依赖审计、stable 安装版合成灰度、`v0.12.2 -> v0.12.4` 升级和 `profilePreserved=true`；
+- 五项 Release 资产已下载到新的临时目录，清单中的四项文件全部通过 `shasum -a 256 -c SHA256SUMS-windows.txt`；清单自身哈希也与 GitHub digest 一致：
+
+| 资产 | Bytes | SHA-256 |
+|---|---:|---|
+| `LocalBuddy-0.12.4-Setup.exe` | 266,484,224 | `665d4674997e70d69fa8a3be39aa46266e97501ea65e7621f078a435188eda34` |
+| `LocalBuddy-win32-x64-0.12.4.zip` | 274,423,175 | `b964204fc02bd8ebe31aab657af63bcc53fc9254829f3d23c739ed15502821e4` |
+| `LocalBuddy-0.12.4-full.nupkg` | 265,761,246 | `c9f6dd4647ddcea9b560f1796def59e814381311085fdf802c7f33f11bcb84b6` |
+| `RELEASES` | 82 | `8be21cb002cb03a2b415da405d5ed90e4251a3af50f53e7f7e6cb4cbba7c51ba` |
+| `SHA256SUMS-windows.txt` | 362 | `57cf6a12c64b969373dc04e930d65e97d10a85d2faabeda1cf5cadca3275f1d7` |
+
+公开 endpoint `https://update.electronjs.org/LLM-X-Factorer/diantou-localbuddy-v2/win32-x64/0.12.2` 已无鉴权返回 HTTP 200，并把 `url` 指向 `LocalBuddy-0.12.4-Setup.exe`。这只证明服务端可发现桥接版本；`v0.12.2` 自身没有内置 feed，且没有 Windows 11 从 `v0.12.4` 升级到后续稳定版的真实证据。
+
+## v0.12.2 Release 历史读回
 
 - annotated Tag `v0.12.2` 解引用到 `7c1ce1f18ed1e9a838444ef04e08e17dfb123f95`；Release 非 draft、非 prerelease；
 - Release Gate `31781917106` 的合成灰度覆盖 Credential Manager、故障矩阵、真实安装版 Research Run、Plan Review、双 Run 取消、checkpoint 恢复、重启历史和凭据脱敏；
@@ -75,4 +95,4 @@ PR #6 首轮 Windows 全量测试暴露一条只接受 LF 的源码合同；Wind
 6. 记录 Windows 版本、标准用户/管理员、SmartScreen、Defender、DPI、输入法、代理、安装/升级/卸载结果；
 7. 导出脱敏证据，不上传 Prompt、API Key、工作区正文或 `.localbuddy/` 私有运行状态。
 
-完成上述真机清单前，`v0.12.2` 只能称为公开但未签名的 Engineering Alpha，不称为 Windows 11 已验收或生产自动更新。
+完成上述真机清单前，`v0.12.4` 只能称为公开但未签名的 Engineering Alpha 和更新桥接版，不称为 Windows 11 已验收或生产自动更新。
