@@ -30,6 +30,7 @@
 
 ### Fixed
 
+- 正式 Windows Release 改为在原生 Windows 验收与 SHA-256 复核后直接上传 GitHub Release，不再把约 800 MB 的 Setup/ZIP/nupkg 先存入临时 Actions Artifact 再跨作业下载；脱敏安装证据上传为尽力保存，配额问题不能跳过功能门禁，也不再阻断已验证正式资产的发布；
 - Integrator 现在必须至少有一次最终 Artifact 写入通过才能成功结束，不能在写入/Reviewer 失败后只返回“完成”绕过后置条件；同 Run 恢复继续沿用已经消耗的三次 Artifact Gate 预算；
 - DOCX 写入失败现在与文本写入一样计入 Artifact Gate retry 和失败阶段，最近事件显示截断后的具体工具反馈；Research/Coding Run 失败会把首个失败 Task 的原因投影到顶层，不再只显示无原因的 `failed`；
 - WB-02 实跑 grader 的章节匹配允许“一、执行摘要”“五、风险”等带序号标题，避免把内容齐全的文档误判为缺章节；历史无结论运行不因修正评分器而被事后改写为通过；

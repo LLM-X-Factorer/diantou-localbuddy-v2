@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
@@ -113,23 +114,70 @@ test("declares Windows-first CI plus low-frequency Linux maintenance boundaries"
 test("tag releases publish Windows only after installed-app synthetic gray passes", async () => {
   const workflow = await readFile(resolve(repository, ".github", "workflows", "release.yml"), "utf8");
   assert.match(workflow, /windows-release:/);
-  assert.match(workflow, /publish-release:/);
+  assert.doesNotMatch(workflow, /publish-release:/);
+  assert.doesNotMatch(workflow, /actions\/download-artifact/);
   assert.match(workflow, /needs: \[windows-release\]/);
   assert.match(workflow, /pnpm make:win/);
   assert.doesNotMatch(workflow, /pnpm make:linux/);
   assert.equal((workflow.match(/pnpm audit --prod --audit-level high/g) ?? []).length, 1);
   assert.match(workflow, /SHA256SUMS-windows\.txt/);
   assert.doesNotMatch(workflow, /SHA256SUMS-linux\.txt/);
-  assert.match(workflow, /expected_tag="v\$\{package_version\}"/);
+  assert.match(workflow, /Verify and publish Windows-first GitHub Release from verified Windows bytes/);
+  assert.match(workflow, /node scripts\/publish-windows-release\.mjs/);
+  assert.match(workflow, /continue-on-error: true/);
   assert.match(workflow, /pnpm verify:windows-gray-installer/);
   assert.match(workflow, /verify-windows-installer-upgrade\.ps1/);
   assert.match(workflow, /\.nupkg/);
   assert.match(workflow, /RELEASES/);
   assert.match(workflow, /localbuddy-windows-gray-evidence/);
-  assert.match(workflow, /--prerelease/);
   assert.match(workflow, /online-update-smoke/);
   assert.match(workflow, /update\.electronjs\.org/);
   assert.match(workflow, /github\.event\.repository\.private == false/);
+  const publishScript = await readFile(resolve(repository, "scripts", "publish-windows-release.mjs"), "utf8");
+  assert.match(publishScript, /--prerelease/);
+  assert.match(publishScript, /Checksum mismatch/);
+  assert.match(publishScript, /shell: false/);
+});
+
+test("verifies Windows Release bytes without an Actions artifact handoff", async () => {
+  const workingDirectory = await mkdtemp(resolve(tmpdir(), "localbuddy-release-publish-"));
+  const assetsDirectory = resolve(workingDirectory, "release-assets");
+  const script = resolve(repository, "scripts", "publish-windows-release.mjs");
+  const assets = new Map([
+    ["LocalBuddy-0.12.3-Setup.exe", "setup"],
+    ["LocalBuddy-win32-x64-0.12.3.zip", "portable"],
+    ["LocalBuddy-0.12.3-full.nupkg", "squirrel"],
+    ["RELEASES", "metadata"],
+  ]);
+  try {
+    await mkdir(assetsDirectory);
+    await writeFile(resolve(workingDirectory, "package.json"), '{"version":"0.12.3"}\n', "utf8");
+    for (const [name, contents] of assets) {
+      await writeFile(resolve(assetsDirectory, name), contents, "utf8");
+    }
+    const checksums = [...assets]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([name, contents]) => `${createHash("sha256").update(contents).digest("hex")}  ${name}`)
+      .join("\n");
+    await writeFile(resolve(assetsDirectory, "SHA256SUMS-windows.txt"), `${checksums}\n`, "utf8");
+
+    const verified = await execFileAsync(process.execPath, [script, "--verify-only"], {
+      cwd: workingDirectory,
+      env: { ...process.env, GITHUB_REF_NAME: "v0.12.3" },
+    });
+    assert.match(verified.stdout, /Verified 5 Windows release files for v0\.12\.3/);
+
+    await writeFile(resolve(assetsDirectory, "RELEASES"), "tampered", "utf8");
+    await assert.rejects(
+      execFileAsync(process.execPath, [script, "--verify-only"], {
+        cwd: workingDirectory,
+        env: { ...process.env, GITHUB_REF_NAME: "v0.12.3" },
+      }),
+      /Checksum mismatch for RELEASES/,
+    );
+  } finally {
+    await rm(workingDirectory, { recursive: true, force: true });
+  }
 });
 
 test("platform process execution has explicit Linux isolation and Windows fail-closed text", async () => {

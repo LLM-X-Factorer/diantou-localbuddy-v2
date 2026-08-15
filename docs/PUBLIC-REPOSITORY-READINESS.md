@@ -32,8 +32,8 @@ The current candidate does not rewrite published Git history or move historical 
 - [x] Choose and commit Apache License 2.0 in `LICENSE`, with project attribution in `NOTICE` and SPDX metadata in `package.json`;
 - [x] Accept the existing commit author identity and low-sensitivity historical paths as public metadata;
 - [x] Confirm Issues, PR, Actions history and old Release notes/assets are suitable for public access;
-- [ ] Merge the updater bridge on the intended immutable commit;
-- [ ] Change repository visibility only after the preceding gates are closed;
+- [x] Merge the updater bridge on immutable merge commit `c158fd2fa02efe473b10d0905d3ac2202be7dad8`;
+- [x] Change repository visibility after the preceding gates are closed, then verify unauthenticated API access and GitHub's `Apache-2.0` detection;
 - [ ] Publish the bridge Release and read back Tag, assets, checksums and the public update endpoint;
 - [ ] Complete a real Windows 11 online upgrade from the bridge version to a later stable version;
 - [ ] Add trusted Windows code signing before describing installation as suitable for ordinary public users.
