@@ -46,7 +46,7 @@ LocalBuddy already has strong foundations in append-only audit, effect approval,
 | Agent visibility | Each subagent has an inspectable thread and lifecycle | Task cards expose status but not the Agent's distilled working thread | P0: Agent Session projection, cost/status, interrupt and follow-up |
 | Parallel safety | Read-heavy work parallelizes well; write-heavy work needs care | Research shares reads; Coding uses isolated worktrees and serialized integration | Preserve; make the reason visible in UI |
 | Permissions | Sandbox and approval reviewer are orthogonal controls | Seven permissions, three trust profiles and per-call approval already exist | Keep; explain as scope × reviewer rather than one vague “trust” slider |
-| Review | Dedicated review reports findings without changing the tree | Integration preflight checks patches but no independent Reviewer stage | P0: read-only Reviewer/Critic with explicit acceptance criteria |
+| Review | Dedicated review reports findings without changing the tree | M12.4 adds a read-only semantic Reviewer before DOCX publication; text/code scopes and human disposition remain open | P0: expand Reviewer/Critic to all Artifact types with explicit acceptance/override semantics |
 | Worktree lifecycle | Background worktree, foreground Local, Handoff, restore after cleanup | Per-task detached worktrees, retained/cleanup states, apply/commit/revert | P1: Run-to-foreground handoff and recoverable cleanup snapshot |
 | Reusable workflows | Skill for instructions/resources; plugin for installable tool bundles | Signed local Skills plus MCP/Browser exist, but selection is ID-centric | P1: discoverable capability cards and per-Run permission preview |
 | Quality improvement | Traces first, then graders, datasets and repeatable eval runs | Rich JSONL events and many tests, but no named agent-quality dataset | P0: local trace grader and versioned regression cases |
@@ -114,7 +114,7 @@ Child agents inherit the parent Run boundary by default. A specialized child may
 
 Official Codex review runs as a dedicated reviewer, reports prioritized findings and does not modify the working tree. It supports exact scopes such as uncommitted changes, one commit or a branch diff.
 
-LocalBuddy's Artifact Gate and Coding preflight validate structure and repository state, but they do not provide an independent semantic review. Add a Reviewer/Critic Task that:
+M12.4 now provides the first narrow independent semantic review: a no-tool `artifact-reviewer` compares the Goal Contract, Worker evidence and extracted DOCX candidate before publication, and can send it back through a three-attempt loop. It does not yet cover text Artifacts, coding diffs or human disposition. The complete Reviewer/Critic product should:
 
 - is read-only;
 - receives the original Goal Contract and verification criteria;

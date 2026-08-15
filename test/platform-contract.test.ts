@@ -83,6 +83,7 @@ test("declares Windows-first CI plus low-frequency Linux maintenance boundaries"
   assert.match(workflow, /prepare-windows-canary-version\.mjs/);
   assert.match(workflow, /LOCALBUDDY_UPGRADE_BASE_TAG/);
   assert.match(workflow, /localbuddy-windows-canary-feed/);
+  assert.match(workflow, /if: always\(\) && github\.event_name == 'push'/);
   assert.match(workflow, /verify-windows-installer-upgrade\.ps1/);
   assert.match(workflow, /Windows install and in-place upgrade/);
   assert.match(workflow, /\.localbuddy\/first-run-smoke\/win32-installer\/\*\*/);
@@ -126,6 +127,9 @@ test("tag releases publish Windows only after installed-app synthetic gray passe
   assert.match(workflow, /RELEASES/);
   assert.match(workflow, /localbuddy-windows-gray-evidence/);
   assert.match(workflow, /--prerelease/);
+  assert.match(workflow, /online-update-smoke/);
+  assert.match(workflow, /update\.electronjs\.org/);
+  assert.match(workflow, /github\.event\.repository\.private == false/);
 });
 
 test("platform process execution has explicit Linux isolation and Windows fail-closed text", async () => {

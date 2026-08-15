@@ -4,21 +4,22 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 
 这不是 Craft Agents 的分支，也不包含腾讯 WorkBuddy 的私有实现。仓库只参考公开产品行为、通用 Agent 架构模式，以及我们自行定义的验收契约。
 
-> **产品判断（2026-08-14）**：`v0.12.2 / Windows Canary + Safe Updates` 是当前私有 Engineering Alpha Release，并继续包含 M11.1 Goal Contract + Plan Review。Windows Canary、稳定版原地升级和 Release feed 资产已由原生 Runner 验收；生产更新源、Windows 代码签名、Windows 11 真人灰度和真实 Provider 连续试用仍开放。
+> **产品判断（2026-08-15）**：`v0.12.2 / Windows Canary + Safe Updates` 仍是当前私有 Engineering Alpha Release。未发布 `0.12.3` 源码候选加入 M12.1-M12.4 Artifact Thread、受限 DOCX、独立 DOCX Reviewer、脱敏 benchmark trace 和 stable Windows 公共 GitHub feed；WB-02 稳定性、仓库公开/许可证、桥接 Release、Windows 代码签名和 Windows 11 真人 OTA 继续开放。
 
 ## 一页状态
 
 | 维度 | 当前事实 |
 |---|---|
 | 工作形态 | Desktop + CLI；Desktop 使用 Goal Contract 并在 Worker 前审阅计划，真实工作仍以单次 Run 为主，不是持续聊天线程 |
-| Agent | Orchestrator、Research/Code Worker、Integrator、Merge Agent |
+| Agent | Orchestrator、Research/Code Worker、Integrator、Merge Agent；DOCX 候选另经只读 Artifact Reviewer |
 | 并发 | 每个计划 1-3 个 Worker；Desktop 默认最多 2 个活动 Run；全局 Task 容量默认 3 |
 | Provider | DeepSeek、OpenAI；独立设置入口展示环境变量/系统凭据/未配置状态，API Key 不进入 Renderer 持久状态 |
 | 本地安全 | macOS Seatbelt；Linux 固定容器镜像；Windows 本地进程型工具 fail closed |
 | 代码写回 | 独立 worktree、组合预检、人工 Gate、apply/commit/revert commit |
 | 恢复 | Research/Coding 同 Run checkpoint resume；失败 Run 可恢复未完成 Task 链，并保留 replay 兜底 |
+| Artifact | 文本与受限 DOCX；已登记版本可预览、打开、继续修订并与直接父版本比较；DOCX 发布前经独立 Reviewer，当前只覆盖段落、项目符号和表格 |
 | 扩展 | 本地/签名 Skill、MCP stdio/HTTP/OAuth、受限 Playwright Browser |
-| 分发 | Windows `v0.12.2` Setup/ZIP/full nupkg/RELEASES 已发布并完成 `v0.12.1 -> v0.12.2` 原地升级及资产回下载校验；生产更新源与 Windows 11 真人升级仍未验收 |
+| 分发 | Windows `v0.12.2` Setup/ZIP/full nupkg/RELEASES 已发布；`0.12.3` 候选内置 stable 公共 GitHub feed，但仓库公开、桥接安装、线上读回、签名与 Windows 11 真人 OTA 尚未验收 |
 | 当前主动暂缓 | Developer ID、生产 Hardened Runtime、notarization、公开 Gatekeeper |
 
 M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M10.3 继续补齐 Provider 配置闭环；M10.4 把运行位置与资料范围分离；M11.1 再将目标与执行计划变成可检查、可批准的合同。保存不会自动联网；验证连接只请求模型列表；真实 Run 必须由用户生成计划并批准后才启动 Worker。连续真实 dogfooding 仍是开放验证门。
@@ -26,10 +27,22 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 ## 文档入口
 
 - [`docs/QUICKSTART.md`](docs/QUICKSTART.md)：内部试用者从安装、凭证到第一个 Run 的最短路径；
-- [`docs/KNOWN-LIMITATIONS.md`](docs/KNOWN-LIMITATIONS.md)：`v0.12.2` 私有 Engineering Alpha 的已知限制和不能宣称的能力；
+- [`docs/PRODUCT-DEFINITION-V2.md`](docs/PRODUCT-DEFINITION-V2.md)：LocalBuddy“可信本地工作台 + 场景产品包”的产品定义、首批候选场景和晋级门禁；
+- [`docs/PRODUCT-PORTFOLIO-DECISION-2026-08-15.md`](docs/PRODUCT-PORTFOLIO-DECISION-2026-08-15.md)：Research Desk 切入口、Teaching Studio 旗舰假设与 Builder Lab 基准角色的 L0 组合裁决；
+- [`docs/KNOWN-LIMITATIONS.md`](docs/KNOWN-LIMITATIONS.md)：`v0.12.2` 分发基线与未发布 `0.12.3` 源码候选的已知限制；
 - [`docs/M11.1-SPEC.md`](docs/M11.1-SPEC.md)：Goal Contract、Plan Review、批准身份和恢复语义；
 - [`docs/M11.1-VALIDATION.md`](docs/M11.1-VALIDATION.md)：M11.1 本机、原生 Windows 发布与仍开放的真人门禁；
+- [`docs/M12.1-SPEC.md`](docs/M12.1-SPEC.md)：Artifact Thread、父产物身份、只读修订快照和版本 UI 的本地实现合同；
+- [`docs/M12.1-VALIDATION.md`](docs/M12.1-VALIDATION.md)：M12.1 自动门禁、macOS 开发版真实界面读回和未完成边界；
+- [`docs/M12.2-SPEC.md`](docs/M12.2-SPEC.md)：Artifact Thread 版本/尝试列表、有界文本 diff 与 WB-02 DOCX 边界；
+- [`docs/M12.2-VALIDATION.md`](docs/M12.2-VALIDATION.md)：M12.2 自动测试、macOS 真实界面和篡改降级证据；
+- [`docs/M12.3-SPEC.md`](docs/M12.3-SPEC.md)：受限 DOCX 编译、解析、安全边界和 WB-02 纵向合同；
+- [`docs/M12.3-VALIDATION.md`](docs/M12.3-VALIDATION.md)：DOCX 自动门禁、Pages 逐页目视和 Electron Artifact Workbench 证据；
+- [`docs/M12.4-SPEC.md`](docs/M12.4-SPEC.md)：独立 DOCX Reviewer、有界修订、事件隐私和脱敏 trace 合同；
+- [`docs/M12.4-VALIDATION.md`](docs/M12.4-VALIDATION.md)：Reviewer 接受/退回/上限/恢复与 trace 专项证据；
 - [`docs/CODEX-BENCHMARK-2026-08-14.md`](docs/CODEX-BENCHMARK-2026-08-14.md)：基于 OpenAI 官方文档的 Codex 产品/Agent 基准、LocalBuddy 差距和优先级；
+- [`docs/WORKBUDDY-PRODUCT-BENCHMARK-2026-08-15.md`](docs/WORKBUDDY-PRODUCT-BENCHMARK-2026-08-15.md)：WorkBuddy 公开承诺、LocalBuddy 产品差距、六个黄金任务和统一评分合同；
+- [`benchmarks/workbuddy-core/README.md`](benchmarks/workbuddy-core/README.md)：可物化的产品对标夹具、运行规则和证据要求；
 - [`docs/AGENT-PRODUCT-PRINCIPLES.md`](docs/AGENT-PRODUCT-PRINCIPLES.md)：从真实故障、恢复、并发和发布中沉淀的长期 Agent 产品原则；
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)：当前 `v0.12.2` 架构事实；
 - [`docs/ROADMAP.md`](docs/ROADMAP.md)：已完成里程碑、外部门禁和待确认的下一阶段；
@@ -38,7 +51,12 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 - [`docs/WINDOWS-GRAY.md`](docs/WINDOWS-GRAY.md)：Windows 自动化合成灰度、RC 和真人灰度分层；
 - [`docs/WINDOWS-UPDATES.md`](docs/WINDOWS-UPDATES.md)：Windows 高频 Canary、安装升级门禁和稳定版更新源的三通道设计；
 - [`docs/WINDOWS-UPDATE-VALIDATION.md`](docs/WINDOWS-UPDATE-VALIDATION.md)：`v0.12.2` Canary、稳定升级、Release 和 Windows 11 开放门禁；
+- [`docs/PUBLIC-REPOSITORY-READINESS.md`](docs/PUBLIC-REPOSITORY-READINESS.md)：公开前凭证、历史元数据、许可证、Release 和在线更新门禁；
 - [`CHANGELOG.md`](CHANGELOG.md)：已发布版本的变更记录。
+
+## 许可证
+
+LocalBuddy V2 以 [Apache License 2.0](LICENSE) 开源；项目归属说明见 [NOTICE](NOTICE)。该许可证不授予对项目名称、商标或品牌标识的额外使用许可。
 
 ## 当前状态
 

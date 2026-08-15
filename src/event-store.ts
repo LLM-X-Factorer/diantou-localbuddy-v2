@@ -57,7 +57,11 @@ export type RuntimeEventType =
   | "integration.revert_failed"
   | "integration.failed"
   | "integration.recovery_required"
-  | "artifact.created";
+  | "artifact.created"
+  | "artifact.revision_linked"
+  | "artifact.review_requested"
+  | "artifact.review_completed"
+  | "artifact.review_failed";
 
 export interface RuntimeEvent {
   sequence: number;

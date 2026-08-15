@@ -2,6 +2,8 @@ import { readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import type {
+  DesktopArtifactRevisionView,
+  DesktopArtifactReviewView,
   DesktopArtifactView,
   DesktopCheckpointView,
   DesktopEventView,
@@ -36,6 +38,8 @@ export function projectRun(
   let providerId: string | undefined;
   let trustProfile: DesktopRunView["trustProfile"];
   let extensions: DesktopRunView["extensions"];
+  let artifactRevision: DesktopArtifactRevisionView | undefined;
+  let artifactReview: DesktopArtifactReviewView | undefined;
 
   for (const event of events) {
     if (event.type === "run.started") {
@@ -108,6 +112,61 @@ export function projectRun(
         browserOrigins: getStringArray(event.data?.browserOrigins),
         browserActionsAllowed: event.data?.browserActionsAllowed === true,
         mcpWritesAllowed: event.data?.mcpWritesAllowed === true,
+      };
+    } else if (event.type === "artifact.revision_linked") {
+      const threadId = getString(event.data?.threadId);
+      const revision = getNumber(event.data?.revision);
+      const parentRunId = getString(event.data?.parentRunId);
+      const parentFileName = getString(event.data?.parentFileName);
+      const parentSha256 = getString(event.data?.parentSha256);
+      const reason = getString(event.data?.reason);
+      if (
+        event.data?.version === 1
+        && threadId !== undefined
+        && /^thread-[a-f0-9]{24}$/.test(threadId)
+        && revision !== undefined
+        && Number.isInteger(revision)
+        && revision >= 2
+        && parentRunId !== undefined
+        && parentFileName !== undefined
+        && parentSha256 !== undefined
+        && /^[a-f0-9]{64}$/.test(parentSha256)
+        && reason !== undefined
+      ) {
+        artifactRevision = {
+          version: 1,
+          threadId,
+          revision,
+          parentRunId,
+          parentFileName,
+          parentSha256,
+          reason,
+        };
+      }
+    } else if (event.type === "artifact.review_requested") {
+      artifactReview = {
+        status: "reviewing",
+        attempts: (artifactReview?.attempts ?? 0) + 1,
+        revisionRequests: artifactReview?.revisionRequests ?? 0,
+        findingCount: 0,
+        candidateSha256: getString(event.data?.sha256),
+      };
+    } else if (event.type === "artifact.review_completed") {
+      const revisionRequested = event.data?.verdict === "revise";
+      artifactReview = {
+        status: revisionRequested ? "revision_requested" : "accepted",
+        attempts: artifactReview?.attempts ?? 1,
+        revisionRequests: (artifactReview?.revisionRequests ?? 0) + (revisionRequested ? 1 : 0),
+        findingCount: getNumber(event.data?.findingCount) ?? 0,
+        candidateSha256: getString(event.data?.sha256),
+      };
+    } else if (event.type === "artifact.review_failed") {
+      artifactReview = {
+        status: "failed",
+        attempts: artifactReview?.attempts ?? 1,
+        revisionRequests: artifactReview?.revisionRequests ?? 0,
+        findingCount: 0,
+        candidateSha256: getString(event.data?.sha256),
       };
     }
 
@@ -209,6 +268,8 @@ export function projectRun(
     completedAt,
     tasks: [...tasks.values()],
     artifacts: [...artifacts.values()],
+    artifactReview,
+    artifactRevision,
     recentEvents: events.slice(-14).map(toEventView),
     eventCount: events.length,
     worktrees: [...worktrees.values()],
@@ -247,7 +308,10 @@ function projectMetrics(
       modelFailures += 1;
     } else if (event.type === "tool.failed") {
       toolFailures += 1;
-      if (event.data?.toolName === "write_artifact") artifactGateRetries += 1;
+      if (
+        event.data?.toolName === "write_artifact"
+        || event.data?.toolName === "write_docx_artifact"
+      ) artifactGateRetries += 1;
     }
   }
   const startMs = startedAt === undefined ? undefined : Date.parse(startedAt);
@@ -404,16 +468,27 @@ export async function loadWorkspaceRunHistory(
 
 function toEventView(event: RuntimeEvent): DesktopEventView {
   const toolName = getString(event.data?.toolName);
-  const toolFailure = event.type === "tool.failed" && toolName === "write_artifact"
+  const toolFailure = event.type === "tool.failed"
+    && (toolName === "write_artifact" || toolName === "write_docx_artifact")
     ? getString(event.data?.error)?.slice(0, 240)
     : undefined;
+  const artifactReviewDetail = event.type === "artifact.review_completed"
+    ? event.data?.verdict === "accept"
+      ? "独立审核通过"
+      : `退回修订 · ${getNumber(event.data?.findingCount) ?? 0} 项`
+    : event.type === "artifact.review_requested"
+      ? "正在核对目标、证据与最终产物"
+      : event.type === "artifact.review_failed"
+        ? "独立审核未能形成有效结论"
+        : undefined;
   return {
     sequence: event.sequence,
     timestamp: event.timestamp,
     type: event.type,
     taskId: event.taskId,
     agentId: event.agentId,
-    detail: (toolFailure === undefined ? toolName : `${toolName} · ${toolFailure}`)
+    detail: artifactReviewDetail
+      ?? (toolFailure === undefined ? toolName : `${toolName} · ${toolFailure}`)
       ?? (event.type === "extensions.loaded" ? getStringArray(event.data?.skillIds).join(", ") || "extensions" : undefined)
       ?? getString(event.data?.fileName)
       ?? getString(event.data?.commitSha)

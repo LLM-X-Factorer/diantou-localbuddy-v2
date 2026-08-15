@@ -7,7 +7,7 @@ import type {
 import type { TaskExecutionContext, TaskExecutor } from "./domain.js";
 import { AuditedModelClient } from "./model-runtime.js";
 import type { ChatMessage, ModelStreamOptions } from "./provider.js";
-import { ToolRuntime } from "./tool-runtime.js";
+import { isFinalArtifactToolName, ToolRuntime } from "./tool-runtime.js";
 
 export interface AgentTaskInput {
   instructions: string;
@@ -23,7 +23,8 @@ export interface AgentLoopOptions {
   onCheckpoint?: (checkpoint: AgentTaskCheckpoint) => void | Promise<void>;
 }
 
-const MAX_ARTIFACT_GATE_FAILURES = 3;
+const MAX_ARTIFACT_REVIEW_REVISIONS = 3;
+const ARTIFACT_REVIEW_REVISION_MARKER = "Independent Artifact Reviewer requested revision";
 
 export class AgentLoopExecutor implements TaskExecutor {
   readonly #modelClient: AuditedModelClient;
@@ -85,9 +86,12 @@ export class AgentLoopExecutor implements TaskExecutor {
     let turn = saved?.turn ?? 0;
     let pendingToolCalls = saved?.pendingToolCalls;
     let nextToolIndex = saved?.nextToolIndex;
-    let artifactGateFailures = countArtifactGateFailures(messages);
-    if (artifactGateFailures >= MAX_ARTIFACT_GATE_FAILURES) {
-      throw artifactGateBudgetError(artifactGateFailures, lastArtifactGateFeedback(messages));
+    const turnLimit = saved === undefined
+      ? this.#maxTurns
+      : turn + this.#maxTurns;
+    let artifactReviewRevisions = countArtifactReviewRevisions(messages);
+    if (artifactReviewRevisions >= MAX_ARTIFACT_REVIEW_REVISIONS) {
+      throw artifactReviewBudgetError(artifactReviewRevisions);
     }
     if (saved === undefined) {
       await this.#saveCheckpoint({
@@ -100,8 +104,27 @@ export class AgentLoopExecutor implements TaskExecutor {
         messages,
       });
     }
+    const restoredArtifactOutput = phase === "tool_inflight"
+      ? undefined
+      : successfulArtifactWriteOutput(messages);
+    if (
+      input.availableTools.some(isFinalArtifactToolName)
+      && restoredArtifactOutput !== undefined
+    ) {
+      await this.#saveCheckpoint({
+        runId: context.runId,
+        taskId: context.task.id,
+        agentId: context.agent.id,
+        contractSha256,
+        phase: "succeeded",
+        turn,
+        messages,
+        output: restoredArtifactOutput,
+      });
+      return restoredArtifactOutput;
+    }
 
-    while (turn < this.#maxTurns) {
+    while (turn < turnLimit) {
       if (phase === "tool_inflight") {
         if (pendingToolCalls === undefined || nextToolIndex === undefined) {
           throw new Error(`tool checkpoint cursor is missing for ${context.task.id}`);
@@ -117,6 +140,7 @@ export class AgentLoopExecutor implements TaskExecutor {
               runId: context.runId,
               taskId: context.task.id,
               agent: context.agent,
+              dependencyOutputs: context.dependencyOutputs,
               signal: context.signal,
             },
             input.availableTools,
@@ -138,14 +162,35 @@ export class AgentLoopExecutor implements TaskExecutor {
             pendingToolCalls,
             nextToolIndex,
           });
-          if (toolCall.name === "write_artifact" && result.isError) {
-            artifactGateFailures += 1;
-            if (artifactGateFailures >= MAX_ARTIFACT_GATE_FAILURES) {
-              throw artifactGateBudgetError(artifactGateFailures, result.content);
+          if (
+            isFinalArtifactToolName(toolCall.name)
+            && result.isError
+            && isArtifactReviewRevision(result.content)
+          ) {
+            artifactReviewRevisions += 1;
+            if (artifactReviewRevisions >= MAX_ARTIFACT_REVIEW_REVISIONS) {
+              throw artifactReviewBudgetError(artifactReviewRevisions);
             }
           }
         }
         turn += 1;
+        const artifactOutput = successfulArtifactWriteOutput(messages);
+        if (
+          input.availableTools.some(isFinalArtifactToolName)
+          && artifactOutput !== undefined
+        ) {
+          await this.#saveCheckpoint({
+            runId: context.runId,
+            taskId: context.task.id,
+            agentId: context.agent.id,
+            contractSha256,
+            phase: "succeeded",
+            turn,
+            messages,
+            output: artifactOutput,
+          });
+          return artifactOutput;
+        }
         phase = "ready_for_model";
         pendingToolCalls = undefined;
         nextToolIndex = undefined;
@@ -183,6 +228,7 @@ export class AgentLoopExecutor implements TaskExecutor {
           messages,
           tools: toolDefinitions,
           temperature: 0.2,
+          maxTokens: 8_000,
         },
         streamOptions,
       );
@@ -193,6 +239,14 @@ export class AgentLoopExecutor implements TaskExecutor {
         }
         if (response.content === null || response.content.trim().length === 0) {
           throw new Error(`Agent ${context.agent.id} returned no content or tool calls`);
+        }
+        if (
+          input.availableTools.some(isFinalArtifactToolName)
+          && successfulArtifactWriteOutput(messages) === undefined
+        ) {
+          throw new Error(
+            `Agent ${context.agent.id} returned before a final Artifact passed its write gate`,
+          );
         }
         messages.push({ role: "assistant", content: response.content });
         await this.#saveCheckpoint({
@@ -229,7 +283,11 @@ export class AgentLoopExecutor implements TaskExecutor {
       });
     }
 
-    throw new Error(`Agent ${context.agent.id} exceeded ${this.#maxTurns} model turns`);
+    throw new Error(
+      saved === undefined
+        ? `Agent ${context.agent.id} exceeded ${this.#maxTurns} model turns`
+        : `Agent ${context.agent.id} used its ${this.#maxTurns}-turn continuation budget after ${turnLimit} total model turns`,
+    );
   }
 
   async #saveCheckpoint(
@@ -274,41 +332,57 @@ export class AgentLoopExecutor implements TaskExecutor {
   }
 }
 
-function countArtifactGateFailures(messages: readonly ChatMessage[]): number {
+function countArtifactReviewRevisions(messages: readonly ChatMessage[]): number {
   const artifactCallIds = new Set<string>();
   for (const message of messages) {
     if (message.role !== "assistant") continue;
     for (const call of message.toolCalls ?? []) {
-      if (call.name === "write_artifact") artifactCallIds.add(call.id);
+      if (isFinalArtifactToolName(call.name)) artifactCallIds.add(call.id);
     }
   }
   return messages.filter((message) =>
     message.role === "tool"
     && artifactCallIds.has(message.toolCallId)
-    && message.content.startsWith("Tool error:"),
+    && isArtifactReviewRevision(message.content),
   ).length;
 }
 
-function lastArtifactGateFeedback(messages: readonly ChatMessage[]): string {
+function isArtifactReviewRevision(content: string): boolean {
+  return content.includes(ARTIFACT_REVIEW_REVISION_MARKER);
+}
+
+function artifactReviewBudgetError(attempts: number): Error {
+  return new Error(
+    `Independent Artifact Reviewer rejected ${attempts} candidates; stopping the bounded revision loop. `
+    + "Detailed findings remain in the private task checkpoint.",
+  );
+}
+
+function successfulArtifactWriteOutput(
+  messages: readonly ChatMessage[],
+): string | undefined {
   const artifactCallIds = new Set<string>();
   for (const message of messages) {
     if (message.role !== "assistant") continue;
     for (const call of message.toolCalls ?? []) {
-      if (call.name === "write_artifact") artifactCallIds.add(call.id);
+      if (isFinalArtifactToolName(call.name)) artifactCallIds.add(call.id);
     }
   }
-  return messages.toReversed().find((message) =>
-    message.role === "tool"
-    && artifactCallIds.has(message.toolCallId)
-    && message.content.startsWith("Tool error:"),
-  )?.content ?? "Artifact Gate rejected the write";
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (
+      message?.role === "tool"
+      && artifactCallIds.has(message.toolCallId)
+      && !isToolFailureContent(message.content)
+    ) {
+      return message.content;
+    }
+  }
+  return undefined;
 }
 
-function artifactGateBudgetError(attempts: number, feedback: string): Error {
-  return new Error(
-    `Artifact Gate rejected ${attempts} write attempts; stopping to prevent an unbounded model loop. `
-    + `Last feedback: ${feedback.replace(/^Tool error:\s*/u, "").slice(0, 500)}`,
-  );
+function isToolFailureContent(content: string): boolean {
+  return content.startsWith("Tool error:") || content.startsWith("Tool denied:");
 }
 
 function cloneMessage(message: ChatMessage): ChatMessage {

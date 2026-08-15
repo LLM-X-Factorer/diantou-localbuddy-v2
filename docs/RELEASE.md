@@ -11,6 +11,7 @@
 - Windows-first 自动发布：`.github/workflows/release.yml`；
 - Windows 合成灰度合同：[`WINDOWS-GRAY.md`](WINDOWS-GRAY.md)；
 - Windows Canary、安装升级与应用内更新合同：[`WINDOWS-UPDATES.md`](WINDOWS-UPDATES.md)；
+- 仓库公开、许可证、历史元数据与线上 updater 门禁：[`PUBLIC-REPOSITORY-READINESS.md`](PUBLIC-REPOSITORY-READINESS.md)；
 - 安装包配置：`forge.config.cjs`。
 
 同一动态状态只在上述 owner 文件维护；README 只提供摘要和入口。
@@ -64,6 +65,10 @@ git push origin vX.Y.Z
 6. 发布作业复核 Tag/包版本和 Windows SHA-256 后创建或更新 GitHub Release；
 7. `vX.Y.Z-rc.N` 等带预发布后缀的 Tag 自动标记为 prerelease。
 
+仓库公开后，稳定 Windows 包会把 `update.electronjs.org/<owner>/<repo>/win32-<arch>/<current-version>` 作为内置只读 feed。Tag Release 的独立 `online-update-smoke` 作业会从上一稳定版本查询该 endpoint，最多等待五分钟，并要求新 full nupkg 已可解析。仓库仍为 private 时该作业必须明确跳过，不能把私有 Release API 鉴权冒充普通用户可用的更新服务。
+
+`v0.12.2` 没有内置 feed，因此首次启用在线更新必须发布一个需要手动原地安装的桥接版本。桥接后的下一稳定版才是线上 OTA 真正验收目标；只验证 endpoint 或 CI 本地 feed 不等于用户升级成功。
+
 Windows 安装版的脱敏摘要和固定夹具截图作为 Actions artifact 上传；不上传 Run Request、事件日志、工作区或凭据内容。托管 Runner 不依赖固定 Windows 测试机，但仍不能验证 SmartScreen、Defender、标准用户/UAC、DPI、输入法和真实网络。
 
 Linux 不再进入 Tag Release。`.github/workflows/linux-maintenance.yml` 只保留每周/手动构建，既不发布资产也不阻塞 Windows 候选。
@@ -77,7 +82,8 @@ Linux 不再进入 Tag Release。`.github/workflows/linux-maintenance.yml` 只�
 3. 用 Release 清单重新计算并验证 SHA-256；
 4. 核对 GitHub asset digest、文件字节数和清单；
 5. 在真实 Windows 11 设备执行安装、从上一稳定版升级、启动、凭证、真实 Provider Run、忙碌时更新阻断、恢复和卸载矩阵；
-6. 把真实结果写入 Validation 和 [`DOGFOOD.md`](DOGFOOD.md)。
+6. 若仓库已公开，从上一稳定版请求公共 updater endpoint，并在真实安装版完成检查、下载、重启和版本读回；
+7. 把真实结果写入 Validation 和 [`DOGFOOD.md`](DOGFOOD.md)。
 
 发布后的下一次 `main` CI 会读取最新稳定 Tag。若 `package.json` 仍等于该稳定版，Canary 自动使用下一个 patch 的预发布版本，例如 `v0.12.2` 之后生成 `0.12.3-canary.*`；这样文档提交也不会因为 Squirrel 拒绝稳定版降级为同号 prerelease 而失败。
 
@@ -85,7 +91,7 @@ Linux 不再进入 Tag Release。`.github/workflows/linux-maintenance.yml` 只�
 
 ## 5. 回滚与修复
 
-- 平台无关的 Ed25519 更新协议仍只 staging；Windows Squirrel updater 在没有显式 feed 时保持关闭，当前没有生产更新源或强制更新；
+- 平台无关的 Ed25519 更新协议仍只 staging；未发布 `0.12.3` stable Windows 候选已内置公共 GitHub feed，其余 channel 默认关闭，当前没有强制更新；
 - 发现错误资产时停止传播，保留证据并判断是否属于未交付的发布恢复；
 - 已交付版本使用新的 patch 版本修复，不重写 Git 历史；
 - 集成代码回滚使用普通 revert commit，不 amend 已推送提交；

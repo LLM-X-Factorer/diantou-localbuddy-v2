@@ -1,6 +1,6 @@
-# LocalBuddy V2 0.12.2 Known Limitations
+# LocalBuddy V2 Known Limitations
 
-> 本文覆盖当前私有 `v0.12.2 / Windows Canary + Safe Updates` Engineering Alpha Release。当前灰度与发布优先 Windows，macOS 保留本机回归，Linux 降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
+> 分发基线仍是私有 `v0.12.2 / Windows Canary + Safe Updates` Engineering Alpha Release；M12.1-M12.4 与公开 GitHub stable feed 属于未发布的 `0.12.3` 本地源码候选。当前灰度与发布优先 Windows，macOS 保留本机回归，Linux降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
 
 ## Platform and distribution
 
@@ -14,22 +14,28 @@
 - 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。`0.12.2` Tag 前已复查并继续在干净 Runner 上隔离打包；private Engineering Alpha 跟踪稳定上游迁移；
 - 平台无关的 Ed25519 更新协议仍只下载、验签并 staging；Windows Squirrel updater 只有显式配置 feed 时才启用，当前没有生产 feed、静默安装或自动回滚；
 - `pnpm windows:canary` 只隔离 Electron user-data 和构建目录，不隔离系统 Credential Manager 或工作区 `.localbuddy/`；Canary 与稳定版不应同时写同一测试工作区；
+- `v0.12.2` 没有内置线上 feed，已有用户仍需手动原地安装一次 `v0.12.3` 桥接版；源码中的公开 feed 合同尚未经过 GitHub endpoint 和 Windows 11 OTA 验收；
+- Windows Release 仍未完成可信代码签名；公开下载和在线更新都可能触发 SmartScreen，不能称为面向普通用户的无摩擦安装；
 - CI 的上一稳定版原地升级使用 Windows Server 2025 一次性管理员 Runner，只能证明安装器与 profile 保留合同，不能代替 Windows 11 真人升级。
 
 ## Product experience
 
-- 产品仍以一次目标对应一个 Run；“基于此产物继续”只显式预填一个新 Run，不是持久聊天线程；
+- 产品仍以一次目标对应一个 Run；本地候选已让“基于此产物继续”保存父 Artifact、Thread ID、版本和修改原因，但这只是 Research 文本 Artifact 的修订链，不是通用持久聊天线程；
 - “指引与示例”是本地确定性导航，不是可自由问答或使用工具的 Guide Agent；
 - 教程材料是合成内容，只有用户点击开始后的 Provider/Agent 执行才是真实 Run；
 - 没有 Project/Workspace 首页、跨工作区统一搜索或 SQLite 投影；
-- 已登记的有限文本 Artifact 可在哈希/大小复核后内嵌预览；PDF/DOCX、超限文件和通用编辑仍依赖外部应用；
-- 没有通用附件上传、PDF/DOCX 解析或语义索引/RAG；
-- Research 本地资料目前最多显式选择 50 个根；目录发现只搜索文件名，不做正文索引；单次搜索最多返回 50 条并检查 10,000 个目录项；单文件 UTF-8 读取上限为 200,000 bytes；
+- 已登记的文本和受限 DOCX Artifact 可在哈希/大小复核后预览；DOCX 内嵌的是正文/表格结构，不是分页渲染，视觉版式仍通过系统 Word/Pages/LibreOffice 打开检查；
+- DOCX 只支持版本化段落、项目符号和表格生成/读取/修订；不支持任意 Word 文档保真编辑、图片、批注、修订痕迹、嵌入对象、宏、外部关系或复杂模板。PDF 解析、语义索引/RAG、XLSX 和 PPTX 尚未支持；
+- 独立语义 Reviewer 当前只保护 Research DOCX，候选正文和修订父正文各上限 80,000 字符、Worker 结果合计上限 40,000 字符；Markdown/JSON/TXT、Coding patch、人工 override、分块长文 Review 和跨模型合判尚未支持；
+- Artifact Revision 当前按“保守修改父稿”处理：长父稿至少保留 50% 正文和 80% 段落，章节、表格和表格行不得减少。还没有用户可选的 replace 模式；确需大幅删减或完全改写时应新建 Artifact；
+- 一条 8 份明确资料的真实 DeepSeek Research Desk 首版与窄修订已在 macOS 开发应用完成。最终 V5 为 12,002 bytes、8,428 字符、99 个段落、6 章、1 个 8 行表格和 7/7 正确原始 URL，并由 Pages 接受打开；运行使用 12 次模型调用、132,995 provider-reported tokens，仍经历两次父版本保留退回和一次 80-block 编译上限。它证明该纵向案例可达，不证明三次连续首轮通过、打包版本质量或通用复杂 Word 修订；
+- Research 本地资料目前最多显式选择 50 个根；目录发现只搜索文件名，不做持久正文索引；单次搜索最多返回 50 条并检查 10,000 个目录项；单文件 UTF-8 读取上限为 200,000 bytes。受限 DOCX 可单文件读取或有界正文搜索，但仍受安全解包、5 MB 压缩包和 120,000 字符正文上限；
 - v1-v3 whole-workspace Research Run 不会自动转换为 v4 explicit-sources checkpoint。用户必须新建 Run 并重新选择资料；
 - M11.1 可以在 Worker 前查看并批准/拒绝计划，但不能直接编辑计划、带理由退回重规划或在运行中动态 steering；失败 Run 只能从安全 checkpoint 恢复未完成 Task 链，不支持任意单 Task 手工重跑；
 - Desktop 的 Plan Review 发生在 Orchestrator 规划调用之后，因此即使用户拒绝计划，仍会产生一次规划模型调用；CLI/Core 非交互入口默认跳过此 Gate；
-- Goal Contract 当前固定为 revision 1，没有 append-only 目标修订、资料/权限漂移 replan 或跨 Run Thread；
+- Goal Contract 当前固定为 revision 1，没有 append-only 目标修订、资料/权限漂移 replan 或通用跨 Run Thread；Artifact Revision 不能替代 Goal revision；
 - Desktop 只展示单 Run 的调用、Provider token、耗时和失败投影，没有币种成本换算、跨 Run 聚合或趋势阈值。
+- WorkBuddy 产品能力基准目前完成六题协议、合成夹具和 WB-02 确定性 pilot。真实 DeepSeek 两轮实跑当前为 2 次接受、1 次失败、1 次因 grader 缺陷无法定论，尚未形成三次连续稳定通过；这些运行早于独立 Reviewer，不能事后改写为 Reviewer 通过。WorkBuddy 客户端黑盒与 LocalBuddy 六题正式实跑也未完成，不能据此宣称产品能力已对标。LocalBuddy 仍缺少 XLSX/PPTX、完整分支图、通用 DOCX 保真编辑和跨 Artifact Reviewer；
 
 ## Extensions and external services
 

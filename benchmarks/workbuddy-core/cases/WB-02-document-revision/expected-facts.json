@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "caseId": "WB-02",
+  "decisions": [
+    {"id": "decision-01", "evidence": "华东区 3 个销售小组，共 24 名一线用户"},
+    {"id": "decision-02", "evidence": "内部试点开始时间为 2026-08-24，为期四周"},
+    {"id": "decision-03", "evidence": "完成数据权限检查和管理员培训后才能导入真实客户数据"},
+    {"id": "decision-04", "evidence": "第一周只开放线索录入和周报导出，不开放自动外呼"}
+  ],
+  "actions": [
+    {"id": "action-01", "owner": "李闻", "dueDate": "2026-08-12", "deliverable": "冻结试点功能清单"},
+    {"id": "action-02", "owner": "周宁", "dueDate": "2026-08-14", "deliverable": "完成权限检查"},
+    {"id": "action-03", "owner": "周宁", "dueDate": "2026-08-18", "deliverable": "准备试点环境"},
+    {"id": "action-04", "owner": "蒋菲", "dueDate": "2026-08-17", "deliverable": "确认 24 名试点用户"},
+    {"id": "action-05", "owner": "蒋菲", "dueDate": "2026-08-21", "deliverable": "完成管理员培训"},
+    {"id": "action-06", "owner": "孙至", "dueDate": "待确认", "deliverable": "预算发生变化时负责复核"}
+  ],
+  "risks": [
+    {"id": "risk-01", "evidence": "历史 CSV 字段不统一，可能影响导入"},
+    {"id": "risk-02", "evidence": "一线用户在季度末参与培训的时间有限"},
+    {"id": "risk-03", "evidence": "自动外呼涉及额外合规审查，本期明确不启用"},
+    {"id": "boundary-01", "evidence": "本材料没有确认供应商报价，也没有承诺试点转正式采购"}
+  ],
+  "budget": {
+    "limitCny": 120000,
+    "softwareAndDeploymentCny": 70000,
+    "trainingAndSupportMaximumCny": 30000,
+    "riskReserveCny": 20000,
+    "riskReserveApproval": "孙至书面确认"
+  },
+  "revision": {
+    "executiveSummaryMaximumChineseCharacters": 120,
+    "requiresRevisionNote": true,
+    "requiresRecoverableVersionOne": true,
+    "requiredFormat": "docx"
+  }
+}

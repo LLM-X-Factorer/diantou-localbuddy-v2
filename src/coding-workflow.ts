@@ -13,12 +13,13 @@ import {
 } from "./coding-checkpoint-store.js";
 import { CodingWorkflowPlanner, type CodingPlan } from "./coding-planner.js";
 import { CodingSandboxApprovalPolicy, createCodingTools } from "./coding-tools.js";
-import type {
-  AgentDefinition,
-  RunDefinition,
-  RunSummary,
-  TaskExecutionContext,
-  TaskExecutor,
+import {
+  summarizeRunFailure,
+  type AgentDefinition,
+  type RunDefinition,
+  type RunSummary,
+  type TaskExecutionContext,
+  type TaskExecutor,
 } from "./domain.js";
 import type { EventStore } from "./event-store.js";
 import { ExecutionCoordinator } from "./execution-coordinator.js";
@@ -418,6 +419,7 @@ export class CodingWorkflow {
           });
         }
       }
+      const failure = summarizeRunFailure(summary);
       await eventStore.append({
         type: summary.status === "succeeded"
           ? "run.succeeded"
@@ -425,6 +427,7 @@ export class CodingWorkflow {
             ? "run.cancelled"
             : "run.failed",
         runId,
+        data: failure === undefined ? undefined : { error: failure },
       });
       return {
         summary,

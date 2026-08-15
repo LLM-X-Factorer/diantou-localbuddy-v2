@@ -1,8 +1,16 @@
 # LocalBuddy V2 Roadmap after M11.1
 
-> **状态真源**：2026-08-14。当前私有 Release 为 `v0.12.2 / Windows Canary + Safe Updates`，并继续包含 M11.1 Goal Contract + Plan Review。Windows 原生 Canary、稳定版合成灰度、`v0.12.1 -> v0.12.2` 原地升级、Release 和资产回下载均已完成；生产 feed 与 Windows 11 真人升级仍开放。后续灰度保持 Windows-first，Linux 只做每周/手动维护。
+> **状态真源**：2026-08-15。当前私有 Release 为 `v0.12.2 / Windows Canary + Safe Updates`。未发布 `0.12.3` 候选已加入 M12.1-M12.4 产品能力和 stable Windows 公共 GitHub feed 合同；仓库公开、许可证、桥接 Release、代码签名和 Windows 11 真人 OTA 仍开放。后续灰度保持 Windows-first，Linux 只做每周/手动维护。
 
 ## 当前里程碑
+
+### v0.12.3 · Product Truth Candidate + Public Update Bridge — unreleased
+
+- stable Windows 包固定接入 Electron 官方公开 GitHub Release feed，不再要求普通用户设置环境变量；
+- Canary、beta、dev、非 Windows 和 unpackaged 构建不接稳定 feed；安全的显式 feed 仍只用于安装验收；
+- Tag workflow 在公开仓库中新增线上 updater 读回；`v0.12.2` 用户仍需手动原地安装一次 `v0.12.3` 桥接版；
+- 仓库历史与当前候选凭证扫描通过，但许可证、历史作者邮箱/本机路径接受、仓库可见性和 Windows 代码签名尚未关闭；
+- 只有真实 Windows 11 从桥接版升级到后续稳定版并保留 profile 后，才进入真实用户连跑。
 
 ### v0.12.2 · Windows Canary + Safe Updates — private Engineering Alpha
 
@@ -187,21 +195,58 @@ M10.3 不改变 Provider 调用协议、Run 审计合同或外部副作用审批
 4. Windows 代码签名与 SmartScreen 信誉：公开分发前再决策；
 5. Linux 图形桌面安装/启动验收：当前降为非优先，不阻塞 Windows 灰度和 Release。
 
-## M11 后续增量
+## 产品能力基准与下一阶段
 
-M11.1 已按 [`CODEX-BENCHMARK-2026-08-14.md`](CODEX-BENCHMARK-2026-08-14.md) 启动 Goal Contract revision 1 和 approve/reject Plan Review。尚未完成的 P0 是：
+[`WORKBUDDY-PRODUCT-BENCHMARK-2026-08-15.md`](WORKBUDDY-PRODUCT-BENCHMARK-2026-08-15.md) 把外部公开承诺转成六个固定真实任务、统一评分、硬失败条件和可物化合成夹具。WB-02 真实 DeepSeek 当前有 2 次接受、1 次失败和 1 次因 grader 缺陷无法定论，尚未达到三次连续稳定通过；WorkBuddy 黑盒和 LocalBuddy 其余五题正式实跑也未完成，因此不能宣称已经达到产品能力对标。
 
-- Goal Contract append-only revision 2+ 和资料/权限变化时的显式 replan Gate；
-- Plan Review 计划编辑、理由化退回和重新规划；
-- 可检查和可 steering 的 Agent Session：阶段、预算、蒸馏结果、中断/追问/重试；
-- 独立只读 Reviewer/Critic：Artifact/patch 发现、退回、接受或带理由 override；
-- 基于现有 JSONL trace 的版本化 Eval 数据集和 deterministic graders。
+[`PRODUCT-DEFINITION-V2.md`](PRODUCT-DEFINITION-V2.md) 进一步把下一阶段定义为“可信本地工作台 + 可验证场景产品包”。六个黄金任务继续验证公共能力和用户结果，但不再被解释为六个产品；WB-02 也只是 Artifact/Research 链路的一条探针，不能单独接管产品路线。当前首批候选为 Research Desk、Teaching Studio 和 Builder Lab，必须先通过命名用户、重复 Job、场景合同、真实 Provider、目标应用和多任务/用户 dogfood 门禁，再决定实现扩张。
 
-P1 候选是 Project/Thread/Run 分层、Project 资料集合但 Run 精确选集、Coding 前后台 Handoff/可恢复清理，以及可发现的 Skills/Plugins 权限卡。PDF/DOCX 摄取、非纯文本 Artifact 预览和跨 Run 趋势可按真实需求进入相邻增量。
+[`PRODUCT-PORTFOLIO-DECISION-2026-08-15.md`](PRODUCT-PORTFOLIO-DECISION-2026-08-15.md) 已把三个候选从平级清单改为有资源顺序的 L0 组合：Research Desk 是当前切入口，Teaching Studio 是教育旗舰假设并先做教师发现，Builder Lab 只承担跨场景基准与开发教学资产。当前不创建三个并行产品实现项目。
 
-本地 Memory、Record-and-Replay 与 scheduled/background tasks 属于 P2。它们必须在 Goal、Review、Eval、通知/待处理入口和最小权限模型成熟后再立项；不能为了功能对标提前开放无人值守副作用。
+M11.1 已完成 Goal Contract revision 1 和 approve/reject Plan Review。M12.4 再完成独立 DOCX Reviewer 与脱敏 trace 的第一条纵向切片；Goal revision 2+、可 steering 的 Agent Session、跨 Artifact Reviewer 和可直接执行的 trace graders 仍然重要，但不再单独构成下一阶段的用户价值叙事。它们要服务于可见的办公结果和连续修改闭环。
 
-远程 Skill 市场、云同步、团队账号、无人值守外部副作用和完全自动更新不属于已批准的 M11 范围。
+### M12.1 · Artifact Workbench + Threaded Revision — first slice implemented locally
+
+第一切片已把“基于此产物继续”升级为显式 Artifact Revision：Run Request v6 保存父身份、Thread、版本和修改原因；父文件在 Provider 调用前复核并复制为新 Run 的只读 Research Source 快照；Desktop 显示版本关系和上一版入口。父产物篡改会 fail closed，失败修订 replay 会重新复核父产物并保持版本身份，旧 Run Request 继续兼容读取。规格与本机证据见 [`M12.1-SPEC.md`](M12.1-SPEC.md) 和 [`M12.1-VALIDATION.md`](M12.1-VALIDATION.md)。
+
+### M12.2 · Artifact Thread History + Verified Text Diff — second slice implemented locally
+
+第二切片已按 Thread 汇总 V1、后续 revision、失败/replay 和同版分支尝试；历史 Artifact 逐个复核，漂移项保留但标为不可用。当前文本 Artifact 可与直接父版本做有界本机 diff，V3 缺父合同、Thread 冲突或父 SHA 漂移都会 fail closed。规格与证据见 [`M12.2-SPEC.md`](M12.2-SPEC.md) 和 [`M12.2-VALIDATION.md`](M12.2-VALIDATION.md)。
+
+### M12.3 · Bounded DOCX Artifact + WB-02 pilot — third slice implemented locally
+
+第三切片把 `.docx` 从文件名承诺变成受限但完整的产品链路：模型提交有界 Markdown 内容，本地编译器解析为段落/项目符号/表格结构，再确定性生成并回读 OOXML；明确选择的 DOCX 可作为资料，Desktop 可做结构预览、系统打开、版本历史和直接父版本正文/表格差异。宏、外链、嵌入内容和复杂富文档 fail closed。WB-02 两轮确定性 pilot与 macOS Pages 逐页目视已通过；真实 DeepSeek 为 2 次接受、1 次失败、1 次无结论，readiness 为 `provider-stability-not-passed`。三次连续正式评分和跨平台 Word/LibreOffice 仍未通过。规格与证据见 [`M12.3-SPEC.md`](M12.3-SPEC.md) 和 [`M12.3-VALIDATION.md`](M12.3-VALIDATION.md)。
+
+### M12.4 · Independent DOCX Reviewer + Retained Benchmark Trace — fourth slice implemented locally
+
+第四切片在 DOCX 原子写入前增加独立只读 Reviewer，比较完整 Goal Contract、Worker 证据和候选文件抽取正文；退回后 Integrator 在同一私有 checkpoint 内最多修订三次，未通过候选不发布，无成功写入也不能用纯文本收尾。Artifact Revision 进一步把已验证父正文和结构直接交给 Integrator/Reviewer，并在模型审核前确定性检查正文、段落、章节、表格和表格行保留，阻止窄修改静默删稿。Desktop 投影审核状态和退回次数。`pnpm benchmark:trace` 可在清理一次性工作区前，把不含 Goal/模型/工具参数/正文/绝对路径的诊断摘要以新文件保留到工作区之外。
+
+2026-08-15 用 8 份明确资料完成一条真实 DeepSeek/macOS Research Desk 首版与窄修订。首版 21 次模型调用、389,277 provider-reported tokens，但人工发现两处来源范围错误；第一次修订虽被 Reviewer 接受，却把 8,443 字符父稿缩成 1,381 字符并丢掉 A/B/C 主体，由此补上父版本直接上下文和本地保留门槛。最终 V5 为 12,002 bytes、8,428 字符、99 个段落、6 章、1 个 8 行表格、7/7 正确深链接；12 次模型调用、132,995 tokens，先经两次本地保留退回再由语义 Reviewer 接受，并被 Pages 打开。路线判断是“单条修订闭环已通过，首轮效率与连续稳定性仍开放”。它不更新 WB-02 三次连续稳定性结论，也不替代打包 App、Windows Word 或真实用户验收。规格与证据见 [`M12.4-SPEC.md`](M12.4-SPEC.md) 和 [`M12.4-VALIDATION.md`](M12.4-VALIDATION.md)。
+
+尚未完成的 Artifact Workbench P0 是：
+
+- 完整分支图、版本合并、任意两版比较，以及覆盖文本/代码/超长文档和人工 disposition 的通用语义 Reviewer；
+- HTML/代码专用渲染与 diff；当前只支持已有文本预览扩展；
+- XLSX/PPTX 的真实生成、打开、抽取、版式/公式检查和二次修改；DOCX 仍需真实 Provider、跨平台和复杂文档能力；
+- 把 Goal revision、验收标准变化和 Artifact revision 更明确地联合展示；
+- 确定性 grader 直接运行黄金任务的打开、公式、引用、网页行为和恢复检查。
+
+WB-02 已证明“真实 Provider 可以走通”，但没有证明“连续稳定走通”。完整纵向验收仍以 WB-02、WB-03、WB-05 为准；零散接受运行和单机 Pages 目视不能替代三次连续正式评分、跨平台验收或竞品黑盒结果。
+
+### 相邻增量
+
+- P0 产品组合：由 [Issue #3](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/3) 确认 Research Desk、Teaching Studio、Builder Lab 的用户、重复 Job、场景合同、非目标和晋级/停止条件；
+- P0 场景合同：由 [Issue #4](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/4) 把 Expert、Expert Team、Skill、Source、Artifact、Review 和 Eval 组成可检查、可发现的 Scenario Product Contract；
+- P0 产品证据：由 [Issue #5](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/5) 管理跨场景真实 Provider、目标应用和用户 dogfood，避免用 WB-02 或单一作者调试代替产品结论；
+- P0 控制面：Goal revision 2+、资料/权限变化 replan、人工理由化退回/override、运行中追问/中断/重试、跨 Artifact 只读 Reviewer；
+- P1 Office Skills：富文档、工作簿和演示文稿的生成、预览、检查与修订；
+- P1 可发现能力：面向任务展示专家/Skills/MCP 的能力、来源、权限和选择理由，而不是只给工程配置；
+- P1 项目组织：Project/Thread/Run 分层、Project 资料集合但 Run 精确选集、Coding Handoff 与可恢复清理；
+- P2 本地 Memory、Record-and-Replay、scheduled/background tasks。
+
+自动化必须等 Goal、Review、通知/待处理入口、幂等回执和最小权限模型成熟后再立项。远程 Skill 市场、云同步、团队账号、无人值守外部副作用和完全自动更新不属于当前批准范围。
+
+下一阶段不允许从上述“相邻增量”直接挑组件开发。新增实现 Issue 必须链接已批准的场景方向 Issue，说明它服务的用户 Job 和产品证据门；只有被两个以上入选场景共同拉动的能力，才可提升为独立 Core 优先级。
 
 ## 里程碑完成口径
 

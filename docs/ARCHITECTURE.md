@@ -177,6 +177,10 @@ MCP transport 支持本地 stdio 与 Streamable HTTP。HTTP 只接受 HTTPS 或 
 
 这道闸门来自真实 smoke：模型第一次把 `46/128` 和 `39/104` 的大小关系判断反了；仅加入计算工具后，模型又出现“声称已验证但未留底稿”和擅自缩写精确值的问题。最终以“确定性计算 + 登记 ID + 产物写入验证”闭环。
 
+最终 Artifact 写入工具现在统一按 `write_artifact` / `write_docx_artifact` 计量：失败进入同一个三次重试预算、`artifactGateRetries` 和 `artifact_gate` 失败阶段。Scheduler 返回失败 summary 时，Research/Coding Workflow 会把首个失败 Task 的有界原因写入终态 `run.failed`；Desktop 最近事件对 DOCX 写入失败也显示截断后的工具反馈。这样既不把 Prompt/正文写进事件，也不会只留下无法行动的“失败”。
+
+M12.4 在 DOCX 的确定性编译/回读与原子写入之间插入独立 `artifact-reviewer`。它没有工具，只接收完整 Goal Contract、Integrator 的 Worker 依赖结果和候选抽取正文；`accept` 后才写盘/登记，`revise` 则把具体 finding 留在私有 checkpoint 并占用一次三次预算。Event Store 只保存 Reviewer 身份、候选哈希、verdict 和数量。Integrator 未出现成功的最终写入回执时不能以纯文本结束 Task；checkpoint resume 也不会重置已消耗预算。
+
 ## 5. 默认产品边界
 
 - 本地单用户。
@@ -218,7 +222,7 @@ trusted runtime feed -> Electron autoUpdater -> update state machine
                                               -> Squirrel restart/install
 ```
 
-Main 只在 packaged Windows 且存在显式 feed 时配置 updater。Renderer 不能提交 URL 或直接调用 `autoUpdater`。下载与安装分离：检查/下载可以发生在应用打开期间，真正退出安装必须再次确认 `DesktopRunManager.isIdle()`；该状态同时覆盖启动中/运行中的 Run 和正在写回的 Integration。
+Main 只在 packaged Windows 配置 updater：stable 构建根据固定公开仓库、当前版本和架构生成 `update.electronjs.org` feed，Canary/beta/dev 默认关闭；显式 feed 只保留给 HTTPS/loopback 验收夹具。Renderer 不能提交 URL 或直接调用 `autoUpdater`。下载与安装分离：检查/下载可以发生在应用打开期间，真正退出安装必须再次确认 `DesktopRunManager.isIdle()`；该状态同时覆盖启动中/运行中的 Run 和正在写回的 Integration。
 
 开发 Canary 不走安装覆盖。CI 的便携 ZIP 按 Git SHA 解压到并存目录并使用独立 Electron user-data；稳定版安装目录不变。安装器正确性则由另一条 `上一稳定版 -> 候选版` Squirrel 原地升级验证负责。这两个通道故意不合并，因为便携包不能证明安装升级，反复干净安装也不能证明旧 profile 被保留。
 
@@ -244,6 +248,10 @@ Main 只在 packaged Windows 且存在显式 feed 时配置 updater。Renderer �
 18. **M10.3 Provider Setup（已发布）**：独立 Provider 一级入口、来源状态、安全保存/替换/删除、显式 `/models` 连接探针、紧凑 Composer 状态和缺失凭据启动拦截。Skills/MCP/Browser 继续作为可选扩展单独配置；Windows `v0.11.1` 已完成 Tag Release，终端用户设备验收仍开放。
 19. **M10.4 Explicit Research Sources（已发布）**：运行位置与本次资料分离；本地 Research 工具只面向明确 source scope；目录按需有界搜索；checkpoint 只复核 read evidence；旧 implicit-workspace Run fail closed。macOS 包与 GUI 已验收，Windows `v0.11.2` Tag Gate、安装版合成灰度和资产回下载核验已完成；真实 Provider v4 dogfood 仍待完成。
 20. **M11.1 Goal Contract + Plan Review（已发布）**：Run Request v5 持久化 outcome、constraints 和 verification criteria；Desktop Orchestrator 计划写入 checkpoint 后等待人工 approve/reject；审批指纹绑定 Goal、Plan 和 scope；pending/approved 决定可恢复。CLI/Core 默认跳过交互 Gate，旧 goal/checkpoint 身份保持兼容。
-21. **v0.12.2 Windows Canary + Safe Updates（已发布）**：可追踪构建身份、按 SHA 并存 Canary、上一稳定版 Squirrel 原地升级门禁、默认关闭的应用内更新入口和 Run/Integration 空闲重启 Gate。Tag Release 已验证 `v0.12.1 -> v0.12.2` 和 profile 保留；生产 feed、代码签名和 Windows 11 真人升级仍开放。
+21. **v0.12.2 Windows Canary + Safe Updates（已发布）/ v0.12.3 Public Update Bridge（候选）**：可追踪构建身份、按 SHA 并存 Canary、上一稳定版 Squirrel 原地升级门禁和 Run/Integration 空闲重启 Gate。`0.12.3` stable 候选已内置公开 GitHub feed；仓库公开、桥接 Release、代码签名和 Windows 11 真人 OTA 仍开放。
+22. **M12.1 Artifact Revision 第一切片（本地候选）**：Run Request v6 可选绑定父 Artifact、Thread ID、版本和修改原因；Main 复核父 Registry/bytes/SHA-256 后复制为新 Run 的私有只读 Research Source 快照；Renderer 不再把预览正文拼进 Goal，并展示版本关系与上一版入口。富文档编辑、通用 Thread 和版本 diff 尚未完成。
+23. **M12.2 Artifact Thread History + Verified Text Diff（本地候选）**：Main 只从 `.localbuddy/runs` 审计历史汇总同 Thread 的根版本、revision、失败/replay 与分支尝试，并逐 Artifact 复核 Registry/bytes/SHA-256；文本 diff 在 Core 内受 bytes、行数、LCS cells 和渲染行数限制，父合同缺失或漂移时 fail closed。Renderer 只消费结构化历史/diff，不读取文件系统。
+24. **M12.3 Bounded DOCX Artifact（本地候选）**：Integrator 只调用 `write_docx_artifact` 提交有界 Markdown，Core 将其解析为受限段落/项目符号/表格结构，确定性编译 OOXML、回读规范文本并以原子写入登记 Artifact。DOCX 读取限制 ZIP 条目、压缩/展开大小和文本量，拒绝宏、外部关系、嵌入对象及复杂富内容；Desktop 只接收经 SHA-256 复核后的结构预览和 DOCX 直接父版本正文/表格 diff。
+25. **M12.4 Independent DOCX Reviewer + Retained Trace（本地候选）**：DOCX 候选完成本地编译/回读后、原子写入前，先确定性检查父正文、段落、章节和表格保留，再由无工具的 `artifact-reviewer` 比较完整 Goal Contract、Worker 依赖结果、已验证父稿和候选正文；`revise` 复用三次 Artifact Gate 预算，finding 只进私有 checkpoint，事件只保留 verdict/计数/哈希。Benchmark trace 可脱敏导出到一次性 workspace 之外且拒绝覆盖。
 
-M11 已从最小 Goal/Plan 控制面开始，但持久化多轮工作线程、计划编辑、Goal revision 2+、独立 Reviewer、Project/Workspace 首页、资料摄取和非纯文本产物预览仍未完成，不能写成已支持能力。
+M11 已完成最小 Goal/Plan 控制面，M12.1-M12.4 已建立显式 Artifact 修订链、历史列表、直接父版本差异、受限 DOCX 纵向链路及独立 DOCX Reviewer；通用多轮工作线程、计划编辑、Goal revision 2+、跨 Artifact/人工 Reviewer、Project/Workspace 首页、PDF/XLSX/PPTX 和复杂 Word 保真编辑仍未完成，不能写成已支持能力。

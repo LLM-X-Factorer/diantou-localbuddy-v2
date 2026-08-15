@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Northstar Task Board</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Northstar Task Board</h1>
+      <form id="task-form">
+        <input id="task-input" aria-label="新任务" placeholder="输入任务" />
+        <button id="add-button" type="submit">新增任务</button>
+      </form>
+      <p>剩余 <strong id="remaining-count">0</strong> 项</p>
+      <ul id="task-list"></ul>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
