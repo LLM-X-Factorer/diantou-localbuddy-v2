@@ -7,7 +7,7 @@
 | 平台 | 当前可用入口 | 已证明范围 |
 |---|---|---|
 | macOS arm64 | 从仓库执行 `pnpm desktop`，或使用本机生成的 ad-hoc ZIP/DMG | 本机 Renderer、Fuse、ASAR、内置浏览器和包完整性烟测 |
-| Windows x64 | 使用公开 [`v0.12.2` Release](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.2) 的 Setup/ZIP | Release Runner 已完成合同、无凭据首启、Plan Review 合成灰度、`v0.12.1 -> v0.12.2` 原地升级/profile 保留和卸载；终端用户设备仍待验收 |
+| Windows x64 | 使用公开 [`v0.12.4` Release](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.4) 的 Setup/ZIP | Release Runner 已完成合同、无凭据首启、安装版合成灰度、`v0.12.2 -> v0.12.4` 原地升级/profile 保留和五项资产校验；终端用户 Windows 11、代码签名和真实 OTA 仍待验收 |
 | Linux x64 | 当前不提供新 Release | 每周/手动构建维护；真实图形桌面验收暂不优先 |
 
 Windows 包未签名。只有明确获准参与内部测试时才下载；不要把 SmartScreen 提示解释为已完成发布信誉或代码签名。
@@ -88,7 +88,7 @@ Coding 工作区必须：
 
 Code Worker 只在 detached worktree 中修改授权路径。组合补丁通过预检后仍停在 `awaiting_approval`；必须阅读 inline diff，再决定仅应用、应用并提交或拒绝。LocalBuddy 不会把 Agent 判断当成人类批准。
 
-Windows `0.11.x` 没有受支持的本地进程隔离宿主，涉及检查命令或 stdio 进程的能力会 fail closed；不要把 Windows 包当成 Coding 全功能版本。
+Windows 当前没有受支持的本地进程隔离宿主，涉及检查命令或 stdio 进程的能力会 fail closed；不要把 Windows 包当成 Coding 全功能版本。
 
 ## 6. 中断、恢复与诊断
 

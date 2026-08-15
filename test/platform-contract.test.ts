@@ -144,6 +144,40 @@ test("tag releases publish Windows only after installed-app synthetic gray passe
   assert.match(publishScript, /shell: false/);
 });
 
+test("current product-truth documents stay aligned with the released package", async () => {
+  const packageJson = JSON.parse(await readFile(resolve(repository, "package.json"), "utf8")) as {
+    version: string;
+  };
+  const release = `v${packageJson.version}`;
+  const releasePattern = new RegExp(release.replaceAll(".", "\\."));
+  const [readme, quickstart, dogfood, roadmap, productDefinition, portfolioDecision, sprint] = await Promise.all([
+    readFile(resolve(repository, "README.md"), "utf8"),
+    readFile(resolve(repository, "docs", "QUICKSTART.md"), "utf8"),
+    readFile(resolve(repository, "docs", "DOGFOOD.md"), "utf8"),
+    readFile(resolve(repository, "docs", "ROADMAP.md"), "utf8"),
+    readFile(resolve(repository, "docs", "PRODUCT-DEFINITION-V2.md"), "utf8"),
+    readFile(resolve(repository, "docs", "PRODUCT-PORTFOLIO-DECISION-2026-08-15.md"), "utf8"),
+    readFile(resolve(repository, "docs", "M13-PRODUCT-TRUTH-SPRINT.md"), "utf8"),
+  ]);
+
+  for (const document of [readme, quickstart, dogfood, roadmap]) {
+    assert.match(document, releasePattern);
+  }
+  assert.ok(quickstart.includes("[`" + release + "` Release]"));
+  assert.match(dogfood, /M13 Product Truth Sprint/);
+  assert.match(roadmap, /M13 · Product Truth Sprint — active/);
+  assert.match(productDefinition, /M13 Product Truth Sprint/);
+  assert.match(portfolioDecision, /转入 M13 产品事实验证/);
+  assert.match(sprint, /判断 Research Desk 应该 `advance`、`pause` 还是 `stop`/);
+  assert.doesNotMatch(productDefinition, /M12\.1-M12\.4 是未发布/);
+  assert.doesNotMatch(portfolioDecision, /未发布的 M12\.1-M12\.4/);
+
+  for (const fileName of ["M12.1-SPEC.md", "M12.2-SPEC.md", "M12.3-SPEC.md", "M12.4-SPEC.md"]) {
+    const specification = await readFile(resolve(repository, "docs", fileName), "utf8");
+    assert.match(specification, /已随公开但未签名的 `v0\.12\.4` Engineering Alpha 发布/);
+  }
+});
+
 test("verifies Windows Release bytes without an Actions artifact handoff", async () => {
   const workingDirectory = await mkdtemp(resolve(tmpdir(), "localbuddy-release-publish-"));
   const assetsDirectory = resolve(workingDirectory, "release-assets");

@@ -127,11 +127,11 @@ LocalBuddy 对标的是 WorkBuddy 公开承诺中的本地个人办公 Agent 主
 4. 保留现有 Source Set、权限、审计、checkpoint 和人工写回边界；
 5. 用 WB-02、WB-03、WB-05 作为首批产品验收，而不是只统计新增组件和接口。
 
-当前本地候选已经完成显式父 Artifact、Thread/版本、父 SHA-256、私有只读资料快照、历史列表、受限差异，以及段落/项目符号/表格 DOCX 的确定性生成、结构回读和系统打开。WB-02 确定性两轮 pilot 和 macOS Pages 目视通过；真实 DeepSeek 已证明可完成，但稳定性结果混合，readiness 为 `provider-stability-not-passed`。三次连续评分、复杂富文档、另外两道首批黄金任务和竞品黑盒仍未完成，不能写成 Artifact Workbench 或产品能力对标已经完整交付。
+当前公开但未签名的 `v0.12.4` 已包含显式父 Artifact、Thread/版本、父 SHA-256、私有只读资料快照、历史列表、受限差异，以及段落/项目符号/表格 DOCX 的确定性生成、结构回读和系统打开。WB-02 确定性两轮 pilot 和 macOS Pages 目视通过；真实 DeepSeek 已证明可完成，但稳定性结果混合，readiness 为 `provider-stability-not-passed`。M13 仍需同版本三次评分、两个独立 Research 主题和非作者用户；复杂富文档、另外两道首批黄金任务和竞品黑盒也未完成，不能写成 Artifact Workbench 或产品能力对标已经完整交付。
 
 WB-02 只是一条纵向验证探针，不是 LocalBuddy 的产品定义，也不能因为该题失败或通过就独自决定后续全部开发。它应与 Research Desk 的完整研究闭环、Teaching Studio 的教学交付，以及 Builder Lab/WB-05 的构建修复场景共同形成跨场景证据。
 
-M12.4 本地候选增加了独立 DOCX Reviewer、有界自动退回和可保留到一次性工作区之外的脱敏 trace。该增量只有确定性状态/隐私测试，四次历史 DeepSeek 运行发生在 Reviewer 之前，不能追溯标记为 Reviewer 通过，也不改变 `provider-stability-not-passed`。
+`v0.12.4` 中的 M12.4 增加了独立 DOCX Reviewer、有界自动退回和可保留到一次性工作区之外的脱敏 trace。四次历史 WB-02 DeepSeek 运行发生在 Reviewer 之前，不能追溯标记为 Reviewer 通过，也不改变 `provider-stability-not-passed`；另一个 8 份资料 Research Desk 开发应用案例虽通过 Reviewer，仍不是同合同三次稳定证据或非作者验收。
 
 随后才是 Office Skills（富文档、表格、演示文稿）和更易发现的专家/工具配置。定时和无人值守执行继续放在 Review、通知、幂等和副作用回执成熟之后。
 

@@ -1,6 +1,6 @@
 # LocalBuddy Product Portfolio Decision · 2026-08-15
 
-> 状态：L0 产品发现决策；不批准新功能实现、公开发布、商业化或企业产品。
+> 状态：L0 产品发现决策，2026-08-16 转入 M13 产品事实验证；公开 Engineering Alpha 已由独立分发决策完成，本文不批准新增功能扩张、closed pilot、商业化或企业产品。
 > 依赖：公司级 D027、[`PRODUCT-DEFINITION-V2.md`](PRODUCT-DEFINITION-V2.md)、GitHub [Issue #3](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/3)。
 
 ## 1. 本轮裁决
@@ -31,7 +31,7 @@
 已经有证据支持：
 
 - Grounded Research、明确 Source Set、Artifact、恢复和受限 Browser 已在安装应用与确定性测试中走通；
-- 受限 DOCX、Artifact Revision 和 Reviewer 已形成未发布的 M12.1-M12.4 纵向候选；
+- 受限 DOCX、Artifact Revision 和 Reviewer 已随公开但未签名的 `v0.12.4` Engineering Alpha 发布；这只证明可用于产品验证，不证明 Research Desk 已成立；
 - Coding worktree、预检、人工 Integration、commit/revert 和恢复已有真实 GUI/dogfood 与自动测试；
 - 原始 whole-workspace snapshot 故障暴露了真实研究任务的产品边界问题，并已按显式资料和按需读取修复。
 
