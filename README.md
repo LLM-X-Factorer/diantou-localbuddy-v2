@@ -4,7 +4,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 
 这不是 Craft Agents 的分支，也不包含腾讯 WorkBuddy 的私有实现。仓库只参考公开产品行为、通用 Agent 架构模式，以及我们自行定义的验收契约。
 
-> **产品判断（2026-08-15）**：仓库已按 Apache License 2.0 公开；`v0.12.2 / Windows Canary + Safe Updates` 是当前公开但未签名的 Engineering Alpha Release。未发布 `0.12.3` 源码候选加入 M12.1-M12.4 Artifact Thread、受限 DOCX、独立 DOCX Reviewer、脱敏 benchmark trace 和 stable Windows 公共 GitHub feed；WB-02 稳定性、桥接 Release、Windows 代码签名和 Windows 11 真人 OTA 继续开放。
+> **产品判断（2026-08-15）**：仓库已按 Apache License 2.0 公开；`v0.12.2 / Windows Canary + Safe Updates` 是当前公开但未签名的 Engineering Alpha Release。未发布 `0.12.4` 源码候选加入 M12.1-M12.4 Artifact Thread、受限 DOCX、独立 DOCX Reviewer、脱敏 benchmark trace 和 stable Windows 公共 GitHub feed；`v0.12.3` 仅保留失败 Tag 审计，没有 Release 或资产。WB-02 稳定性、桥接 Release、Windows 代码签名和 Windows 11 真人 OTA 继续开放。
 
 ## 一页状态
 
@@ -19,7 +19,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 | 恢复 | Research/Coding 同 Run checkpoint resume；失败 Run 可恢复未完成 Task 链，并保留 replay 兜底 |
 | Artifact | 文本与受限 DOCX；已登记版本可预览、打开、继续修订并与直接父版本比较；DOCX 发布前经独立 Reviewer，当前只覆盖段落、项目符号和表格 |
 | 扩展 | 本地/签名 Skill、MCP stdio/HTTP/OAuth、受限 Playwright Browser |
-| 分发 | Windows `v0.12.2` Setup/ZIP/full nupkg/RELEASES 已公开；`0.12.3` 候选内置 stable 公共 GitHub feed，但桥接安装、线上读回、签名与 Windows 11 真人 OTA 尚未验收 |
+| 分发 | Windows `v0.12.2` Setup/ZIP/full nupkg/RELEASES 已公开；`0.12.4` 候选内置 stable 公共 GitHub feed，但桥接安装、线上读回、签名与 Windows 11 真人 OTA 尚未验收 |
 | 当前主动暂缓 | Developer ID、生产 Hardened Runtime、notarization、公开 Gatekeeper |
 
 M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M10.3 继续补齐 Provider 配置闭环；M10.4 把运行位置与资料范围分离；M11.1 再将目标与执行计划变成可检查、可批准的合同。保存不会自动联网；验证连接只请求模型列表；真实 Run 必须由用户生成计划并批准后才启动 Worker。连续真实 dogfooding 仍是开放验证门。
@@ -29,7 +29,7 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 - [`docs/QUICKSTART.md`](docs/QUICKSTART.md)：内部试用者从安装、凭证到第一个 Run 的最短路径；
 - [`docs/PRODUCT-DEFINITION-V2.md`](docs/PRODUCT-DEFINITION-V2.md)：LocalBuddy“可信本地工作台 + 场景产品包”的产品定义、首批候选场景和晋级门禁；
 - [`docs/PRODUCT-PORTFOLIO-DECISION-2026-08-15.md`](docs/PRODUCT-PORTFOLIO-DECISION-2026-08-15.md)：Research Desk 切入口、Teaching Studio 旗舰假设与 Builder Lab 基准角色的 L0 组合裁决；
-- [`docs/KNOWN-LIMITATIONS.md`](docs/KNOWN-LIMITATIONS.md)：`v0.12.2` 分发基线与未发布 `0.12.3` 源码候选的已知限制；
+- [`docs/KNOWN-LIMITATIONS.md`](docs/KNOWN-LIMITATIONS.md)：`v0.12.2` 分发基线与未发布 `0.12.4` 源码候选的已知限制；
 - [`docs/M11.1-SPEC.md`](docs/M11.1-SPEC.md)：Goal Contract、Plan Review、批准身份和恢复语义；
 - [`docs/M11.1-VALIDATION.md`](docs/M11.1-VALIDATION.md)：M11.1 本机、原生 Windows 发布与仍开放的真人门禁；
 - [`docs/M12.1-SPEC.md`](docs/M12.1-SPEC.md)：Artifact Thread、父产物身份、只读修订快照和版本 UI 的本地实现合同；

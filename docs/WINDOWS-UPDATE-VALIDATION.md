@@ -1,21 +1,23 @@
 # Windows Update Validation
 
-> 当前已发布版本：公开但未签名的 `v0.12.2 / Windows Canary + Safe Updates` Engineering Alpha。未发布 `0.12.3` 候选已接入公开 GitHub Release feed 合同；桥接 Release、Windows 11 线上 OTA 与代码签名仍是开放门禁。
+> 当前已发布版本：公开但未签名的 `v0.12.2 / Windows Canary + Safe Updates` Engineering Alpha。未发布 `0.12.4` 候选已接入公开 GitHub Release feed 合同；`v0.12.3` 只有失败 Tag，没有 Release 或资产。桥接 Release、Windows 11 线上 OTA 与代码签名仍是开放门禁。
 
-## 0.12.3 在线更新候选
+## 0.12.4 在线更新候选
 
 - packaged stable Windows 根据运行时版本和架构固定生成 `update.electronjs.org/LLM-X-Factorer/diantou-localbuddy-v2/...` feed；Canary、beta、dev、非 Windows 和未打包构建不接稳定 feed；
 - 显式 `LOCALBUDDY_UPDATE_FEED_URL` 继续只用于安全的 HTTPS/loopback 验收夹具，仍由 Coordinator 统一验证并在错误时 fail closed；
 - Tag workflow 在公开仓库中发布资产后，以上一稳定版本请求线上 feed，最多等待五分钟并要求新 full nupkg 可见；
-- `v0.12.2` 没有内置 feed，必须先手动原地安装一次桥接版；本地合同不能替代 `v0.12.3 -> 后续稳定版` 的真实 Windows 11 OTA。
+- `v0.12.2` 没有内置 feed，必须先手动原地安装一次桥接版；本地合同不能替代 `v0.12.4 -> 后续稳定版` 的真实 Windows 11 OTA。
 
-当前候选在 macOS 本机通过 `pnpm check`：203 项中 201 passed、2 项 Windows-only 跳过、0 failed；`pnpm build` 通过，Renderer 为 18 modules、44.90 kB CSS、255.93 kB JS；`pnpm audit --prod --audit-level high` 未发现已知漏洞，`git diff --check` 通过。`gitleaks 8.30.1` 对 42 个历史提交及当前 tracked/untracked 候选分别做全量脱敏扫描，均为 0 finding。以上只证明源码、合同、构建和公开前凭证审计，不证明 Release、线上 endpoint 或真机升级。
+当前候选在 macOS 本机通过 `pnpm check`：204 项中 202 passed、2 项 Windows-only 跳过、0 failed；`pnpm build`、`pnpm audit --prod --audit-level high` 和 `git diff --check` 通过。终态/运行锁恢复与 Plan Review 文件在完整测试基础上连续 10 轮通过，触发发布失败的单项恢复案例另连续 25 轮通过。以上只证明源码、合同、构建和本地时序回归，不证明 Release、线上 endpoint 或真机升级。
 
 PR #6 首轮 Windows 全量测试暴露一条只接受 LF 的源码合同；Windows checkout 的 CRLF 导致该断言失败，产品逻辑未失败。断言改为同时接受 LF/CRLF 后，本机 203 项复验通过。第二轮 Windows 构建和干净安装通过，但上传临时首启证据时命中 GitHub Actions artifact quota；44 个已结束作业中大于 10 MiB、可由固定提交重建的旧临时包已按明确 ID 删除，共 21,056,090,408 bytes。PR 不再重复上传安装证据，push/main 和 Tag Gate 仍保留脱敏证据尝试。
 
 合并提交 `c158fd2fa02efe473b10d0905d3ac2202be7dad8` 的 `main` CI `31877363554` 在 Windows Server 2025 完成干净安装，并把 `LocalBuddy-0.12.2-Setup.exe` 原地升级到 `0.12.3-canary.45`；日志读回 `profilePreserved=true`。作业随后仅在上传两份临时 Actions Artifact 时因配额停止，Canary 分发/Feed 上传未执行，因此整条 CI 必须保留为红色外部存储失败，不能写成全绿。两份上一轮、可由固定提交重建的 Canary/Feed Artifact（ID `9213130027`、`9213135624`）随后删除约 805 MB；正式 Release、Tag、源码和校验和未删除，API 读回剩余 48 项约 7.1 MB，但 GitHub 需要 6-12 小时重算配额。
 
-这次失败暴露正式发布不应依赖临时 Artifact 配额。`0.12.3` 候选把 Setup、ZIP、full nupkg、`RELEASES` 和清单保留在同一 Windows Runner，完成 Tag/版本与 SHA-256 复核后直接上传 GitHub Release；脱敏截图和摘要仍尽力上传，但配额失败不会绕过或替代功能门禁，也不会再阻断已验证正式资产。
+这次失败暴露正式发布不应依赖临时 Artifact 配额。`0.12.4` 候选把 Setup、ZIP、full nupkg、`RELEASES` 和清单保留在同一 Windows Runner，完成 Tag/版本与 SHA-256 复核后直接上传 GitHub Release；脱敏截图和摘要仍尽力上传，但配额失败不会绕过或替代功能门禁，也不会再阻断已验证正式资产。
+
+合并提交 `3fbcbf3abb1e45aac4fd9ac80cd7df24d1d68b14` 的 `main` CI `31878390204` 全绿：Windows/macOS 全量合同、干净安装和 `v0.12.2 -> 0.12.3-canary.47` 原地升级均通过，UI 读回 `CANARY v0.12.3-canary.47 · 3fbcbf3a`，升级摘要为 `profilePreserved=true`。随后固定在同一提交的 `v0.12.3` Release Gate `31878639876` 在 Windows `pnpm check` 中暴露测试生命周期竞态：测试收到 `run.succeeded` 后立即删除临时工作区，而 `runtime-lock` 仍在异步释放，触发 `EPERM`。流水线停止于打包前，没有创建 Release 或资产；Tag 不移动、不复用。`0.12.4` 将终态通知收紧为锁已释放且 Run 已注销，并让同类测试显式等待 manager idle。
 
 ## 已实现合同
 
@@ -31,12 +33,12 @@ PR #6 首轮 Windows 全量测试暴露一条只接受 LF 的源码合同；Wind
 
 | 层级 | 状态 | 证据边界 |
 |---|---|---|
-| TypeScript/静态合同 | 通过 | `pnpm check` 共 157 项：155 passed、2 项 Windows-only 跳过、0 failed；覆盖构建身份、Canary 高于最新稳定版、更新状态机、不安全 feed、忙碌重启阻断和 workflow/PowerShell 合同 |
+| TypeScript/静态合同 | 通过 | `pnpm check` 共 204 项：202 passed、2 项 Windows-only 跳过、0 failed；覆盖构建身份、Canary 高于最新稳定版、更新状态机、不安全 feed、忙碌重启阻断、终态后运行锁清理和 workflow/PowerShell 合同 |
 | macOS 本机开发构建 | 通过 | `pnpm build` 通过；`0.12.2` App/ZIP/DMG、ad-hoc 签名、DMG 完整性、Fuse、ASAR、内置浏览器和真实 Renderer 首启通过。首次回归还发现本地脏工作区只显示旧 HEAD 的歧义，现已改为显式 `+dirty`；不能运行 Windows Squirrel |
 | Windows Server 2025 原生 CI | 通过 | CI `31784118614`：macOS/Windows 157 项合同、`0.12.3-canary.39` Setup/ZIP、干净安装首启、`v0.12.2 -> 0.12.3-canary.39` 原地升级、profile 保留和两类 Canary artifact 全部通过 |
 | Windows Tag Release | 通过 | Gate `31781917106`：生产依赖审计、156 项合同、安装版合成灰度、`v0.12.1 -> v0.12.2` 原地升级/profile 保留、五项 Release 资产和发布作业全部通过 |
 | Windows 11 真机 | 未验收 | Canary 同步、稳定安装升级、Credential Manager、SmartScreen/UAC、真实 Provider |
-| 生产更新源 | 候选已接线、未上线 | 仓库已公开且 `0.12.3` 源码已生成公开 GitHub feed；尚无桥接 Release、线上读回或真机 OTA |
+| 生产更新源 | 候选已接线、未上线 | 仓库已公开且 `0.12.4` 源码已生成公开 GitHub feed；尚无桥接 Release、线上读回或真机 OTA |
 
 生产依赖审计未发现已知漏洞。完整开发依赖审计仍命中 Electron Forge 打包链中的 `extract-zip <= 2.0.1` symlink path traversal 公告；上游没有已修复版本。当前继续只在干净受控 Runner 打包，并保留该已知 Engineering Alpha 风险，不做静默 ignore。
 

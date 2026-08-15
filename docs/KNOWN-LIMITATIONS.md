@@ -1,6 +1,6 @@
 # LocalBuddy V2 Known Limitations
 
-> 分发基线是公开但未签名的 `v0.12.2 / Windows Canary + Safe Updates` Engineering Alpha Release；M12.1-M12.4 与公开 GitHub stable feed 属于未发布的 `0.12.3` 源码候选。当前灰度与发布优先 Windows，macOS 保留本机回归，Linux降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
+> 分发基线是公开但未签名的 `v0.12.2 / Windows Canary + Safe Updates` Engineering Alpha Release；M12.1-M12.4 与公开 GitHub stable feed 属于未发布的 `0.12.4` 源码候选。`v0.12.3` 只有失败 Tag，没有 Release 或资产。当前灰度与发布优先 Windows，macOS 保留本机回归，Linux降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
 
 ## Platform and distribution
 
@@ -14,7 +14,7 @@
 - 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。`0.12.2` Tag 前已复查并继续在干净 Runner 上隔离打包；公开 Engineering Alpha 跟踪稳定上游迁移；
 - 平台无关的 Ed25519 更新协议仍只下载、验签并 staging；Windows Squirrel updater 只有显式配置 feed 时才启用，当前没有生产 feed、静默安装或自动回滚；
 - `pnpm windows:canary` 只隔离 Electron user-data 和构建目录，不隔离系统 Credential Manager 或工作区 `.localbuddy/`；Canary 与稳定版不应同时写同一测试工作区；
-- `v0.12.2` 没有内置线上 feed，已有用户仍需手动原地安装一次 `v0.12.3` 桥接版；源码中的公开 feed 合同尚未经过 GitHub endpoint 和 Windows 11 OTA 验收；
+- `v0.12.2` 没有内置线上 feed，已有用户仍需手动原地安装一次 `v0.12.4` 桥接版；源码中的公开 feed 合同尚未经过 GitHub endpoint 和 Windows 11 OTA 验收；
 - Windows Release 仍未完成可信代码签名；公开下载和在线更新都可能触发 SmartScreen，不能称为面向普通用户的无摩擦安装；
 - CI 的上一稳定版原地升级使用 Windows Server 2025 一次性管理员 Runner，只能证明安装器与 profile 保留合同，不能代替 Windows 11 真人升级。
 

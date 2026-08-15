@@ -91,7 +91,7 @@ Linux 不再进入 Tag Release。`.github/workflows/linux-maintenance.yml` 只�
 
 ## 5. 回滚与修复
 
-- 平台无关的 Ed25519 更新协议仍只 staging；未发布 `0.12.3` stable Windows 候选已内置公共 GitHub feed，其余 channel 默认关闭，当前没有强制更新；
+- 平台无关的 Ed25519 更新协议仍只 staging；未发布 `0.12.4` stable Windows 候选已内置公共 GitHub feed，其余 channel 默认关闭，当前没有强制更新；
 - 发现错误资产时停止传播，保留证据并判断是否属于未交付的发布恢复；
 - 已交付版本使用新的 patch 版本修复，不重写 Git 历史；
 - 集成代码回滚使用普通 revert commit，不 amend 已推送提交；
