@@ -94,7 +94,7 @@ jobs:
         shell: pwsh
         run: pwsh -NoLogo -NoProfile -File scripts/verify-windows-installer-upgrade.ps1 -BaseSetup $env:LOCALBUDDY_UPGRADE_BASE_SETUP
       - name: Upload installed clean first-launch evidence
-        if: always()
+        if: always() && github.event_name == 'push'
         uses: actions/upload-artifact@v7
         with:
           name: localbuddy-installed-clean-first-launch-windows-2025

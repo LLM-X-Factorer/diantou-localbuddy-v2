@@ -11,6 +11,8 @@
 
 当前候选在 macOS 本机通过 `pnpm check`：203 项中 201 passed、2 项 Windows-only 跳过、0 failed；`pnpm build` 通过，Renderer 为 18 modules、44.90 kB CSS、255.93 kB JS；`pnpm audit --prod --audit-level high` 未发现已知漏洞，`git diff --check` 通过。`gitleaks 8.30.1` 对 42 个历史提交及当前 tracked/untracked 候选分别做全量脱敏扫描，均为 0 finding。以上只证明源码、合同、构建和公开前凭证审计，不证明 Release、线上 endpoint 或真机升级。
 
+PR #6 首轮 Windows 全量测试暴露一条只接受 LF 的源码合同；Windows checkout 的 CRLF 导致该断言失败，产品逻辑未失败。断言改为同时接受 LF/CRLF 后，本机 203 项复验通过。第二轮 Windows 构建和干净安装通过，但上传临时首启证据时命中 GitHub Actions artifact quota；44 个已结束作业中大于 10 MiB、可由固定提交重建的旧临时包已按明确 ID 删除，共 21,056,090,408 bytes，正式 GitHub Releases、Tag、小型验收证据和最新 Canary/Feed 保留。PR 不再重复上传安装证据，push/main 和 Tag Gate 仍保留对应证据上传。
+
 ## 已实现合同
 
 - `main` 成功构建上传按 Git SHA 可追踪的 Windows Canary Setup/ZIP 和独立 Squirrel feed artifact；
