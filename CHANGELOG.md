@@ -6,6 +6,7 @@
 
 ### Added
 
+- 项目采用 Apache License 2.0，仓库加入官方完整许可证文本、`NOTICE` 归属说明和 SPDX 包元数据；
 - Packaged stable Windows builds now derive a fixed `update.electronjs.org` feed from the public GitHub repository, while Canary/beta/dev and non-Windows builds remain disconnected from the stable channel by default.
 - Tag Releases on a public repository now wait for the Electron update service to resolve the new full Squirrel package from the previous stable version.
 

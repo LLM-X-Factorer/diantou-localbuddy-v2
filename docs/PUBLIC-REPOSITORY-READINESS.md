@@ -6,7 +6,7 @@ Date: 2026-08-15.
 
 Making the repository public is an external publication action. It exposes the complete reachable Git history, commit authors, branches that are pushed, Issues, Pull Requests, Actions metadata, Release notes, and Release assets. It does not merely make the latest source tree downloadable.
 
-The online updater implementation assumes the repository and its stable GitHub Releases are public. Changing visibility does not by itself make the project open source: a license must be selected and committed before the project is described or promoted as open source.
+The online updater implementation assumes the repository and its stable GitHub Releases are public. LocalBuddy is licensed under Apache License 2.0; changing visibility remains a separate publication action.
 
 ## Completed audit
 
@@ -29,9 +29,9 @@ The current candidate does not rewrite published Git history or move historical 
 
 ## Gates before changing visibility
 
-- [ ] Choose and commit a license, or explicitly decide to publish source as all-rights-reserved and not use the open-source-only Electron update service;
-- [ ] Accept the existing commit author identity and low-sensitivity historical paths as public metadata;
-- [ ] Confirm Issues, PR, Actions history and old Release notes/assets are suitable for public access;
+- [x] Choose and commit Apache License 2.0 in `LICENSE`, with project attribution in `NOTICE` and SPDX metadata in `package.json`;
+- [x] Accept the existing commit author identity and low-sensitivity historical paths as public metadata;
+- [x] Confirm Issues, PR, Actions history and old Release notes/assets are suitable for public access;
 - [ ] Merge the updater bridge on the intended immutable commit;
 - [ ] Change repository visibility only after the preceding gates are closed;
 - [ ] Publish the bridge Release and read back Tag, assets, checksums and the public update endpoint;

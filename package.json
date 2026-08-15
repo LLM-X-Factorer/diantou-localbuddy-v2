@@ -4,6 +4,7 @@
   "private": true,
   "description": "Local-first multi-agent desktop runtime with remote LLM providers",
   "author": "Diantou Education",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/LLM-X-Factorer/diantou-localbuddy-v2.git"

@@ -54,6 +54,10 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 - [`docs/PUBLIC-REPOSITORY-READINESS.md`](docs/PUBLIC-REPOSITORY-READINESS.md)：公开前凭证、历史元数据、许可证、Release 和在线更新门禁；
 - [`CHANGELOG.md`](CHANGELOG.md)：已发布版本的变更记录。
 
+## 许可证
+
+LocalBuddy V2 以 [Apache License 2.0](LICENSE) 开源；项目归属说明见 [NOTICE](NOTICE)。该许可证不授予对项目名称、商标或品牌标识的额外使用许可。
+
 ## 当前状态
 
 **M0 并发运行时内核**已经完成：
