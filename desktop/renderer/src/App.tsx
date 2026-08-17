@@ -40,6 +40,13 @@ const EMPTY_WORKSPACE_READINESS: DesktopWorkspaceReadiness = {
   selected: false,
   isGitRepository: false,
   isTutorialWorkspace: false,
+  storage: {
+    runStoreRoot: "",
+    artifactLocation: "",
+    credentialLocation: "system_vault",
+    risk: "local_workspace",
+    warnings: [],
+  },
 };
 const DEFAULT_ONBOARDING: DesktopOnboardingState = {
   version: 1,
@@ -76,6 +83,7 @@ export function App() {
   const [goalConstraints, setGoalConstraints] = useState("");
   const [verificationCriteria, setVerificationCriteria] = useState("");
   const [goalContractExpanded, setGoalContractExpanded] = useState(true);
+  const [storageDetailsExpanded, setStorageDetailsExpanded] = useState(false);
   const [sourcePaths, setSourcePaths] = useState<readonly string[]>([]);
   const [concurrency, setConcurrency] = useState(3);
   const [mode, setMode] = useState<DesktopRunMode>("research");
@@ -239,6 +247,7 @@ export function App() {
     setVerificationCriteria("");
     setSourcePaths([]);
     setArtifactContinuation(undefined);
+    setStorageDetailsExpanded(false);
     setGuideStatus(guideVisible ? "运行位置已更换。编辑器和本次资料已经清空；请选择合适的模板。" : undefined);
   }
 
@@ -284,6 +293,7 @@ export function App() {
       setSelectedRunId(result.runs[0]?.runId);
       setRecentWorkspaces(result.recentWorkspaces);
       setWorkspaceReadiness(result.readiness);
+      setStorageDetailsExpanded(false);
       setOnboarding(result.onboarding);
       setSourcePaths(result.files.map((fileName) => joinLocalPath(result.workspace, fileName)));
       applyGuideTemplate("tutorial-research");
@@ -1528,6 +1538,44 @@ export function App() {
               <small>点击展开并检查任务范围</small>
             </button>
           )}
+          <div className={`storage-disclosure ${workspaceReadiness.storage.risk}`}>
+            <button
+              type="button"
+              aria-expanded={storageDetailsExpanded}
+              aria-controls="storage-disclosure-details"
+              onClick={() => setStorageDetailsExpanded((current) => !current)}
+            >
+              <strong>存储与隐私</strong>
+              <span>
+                {workspace.length === 0
+                  ? "选择运行位置后显示过程文件和结果文件的确切位置"
+                  : workspaceReadiness.storage.risk === "review_required"
+                    ? "检测到同步或网络目录，请先了解私有过程数据边界"
+                    : "过程文件和内部结果保存在当前运行位置的 .localbuddy 目录"}
+              </span>
+              <small>{storageDetailsExpanded ? "收起 ⌃" : "查看 ⌄"}</small>
+            </button>
+            {storageDetailsExpanded && (
+              <div id="storage-disclosure-details" className="storage-disclosure-details">
+                {workspace.length === 0 ? (
+                  <p>LocalBuddy 不会在未选择运行位置时创建 Run 数据。</p>
+                ) : (
+                  <>
+                    <p><strong>过程记录</strong><code title={workspaceReadiness.storage.runStoreRoot}>{workspaceReadiness.storage.runStoreRoot}</code></p>
+                    <p><strong>内部结果</strong><code title={workspaceReadiness.storage.artifactLocation}>{workspaceReadiness.storage.artifactLocation}</code></p>
+                    <p><strong>API Key / OAuth</strong><span>保存在操作系统凭据库，不写入上面的目录。</span></p>
+                    <p><strong>本机权限</strong><span>macOS / Linux 新写目录限制为当前账号；Windows 继承所选位置的账号 ACL。</span></p>
+                    <p><strong>当前版本</strong><span>不会自动迁移或删除旧 Run；最终结果仍从 Run 的产物列表打开。</span></p>
+                    {workspaceReadiness.storage.warnings.map((warning) => (
+                      <p className="storage-warning" key={warning}>
+                        <strong>请确认</strong><span>{storageWarningLabel(warning)}</span>
+                      </p>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
           {!selectedProviderCredential.available && (
             <div className="provider-required-banner">
               <span><strong>{providerLabel(providerId)} 尚未配置</strong>真实任务需要可用的 API Key，Guide 和模板仍可离线使用。</span>
@@ -2455,6 +2503,12 @@ function failureStageLabel(stage?: string) {
     integration: "受控集成",
     runtime: "运行时",
   } as Record<string, string>)[stage ?? ""] ?? "待定位";
+}
+
+function storageWarningLabel(warning: "cloud_sync" | "network_workspace") {
+  return warning === "cloud_sync"
+    ? "这个运行位置看起来位于 OneDrive、iCloud、Dropbox 或其他同步目录中；.localbuddy 可能被同步到云端或团队空间。"
+    : "这个运行位置是 Windows 网络路径；文件权限由远端共享和当前账号 ACL 决定，LocalBuddy 不会把它误报为仅本机可见。";
 }
 
 function toMessage(value: unknown) {

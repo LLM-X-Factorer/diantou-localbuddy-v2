@@ -1,6 +1,5 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 
 import type {
   Browser,
@@ -9,6 +8,7 @@ import type {
 } from "playwright";
 
 import type { ToolDefinition } from "./tool-runtime.js";
+import { assertPrivateFileIfPresent, writePrivateJsonAtomic } from "./private-storage.js";
 
 const MAX_PAGE_TEXT = 30_000;
 const NAVIGATION_TIMEOUT = 30_000;
@@ -210,14 +210,12 @@ export class ControlledBrowserSession {
       currentUrl: this.#page.url(),
       storageState: await this.#context.storageState(),
     };
-    const temporaryPath = `${this.#statePath}.${process.pid}.${randomUUID()}.tmp`;
-    await mkdir(dirname(this.#statePath), { recursive: true });
-    await writeFile(temporaryPath, `${JSON.stringify(state, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
-    await rename(temporaryPath, this.#statePath);
+    await writePrivateJsonAtomic(this.#statePath, state);
   }
 
   async #loadState(): Promise<BrowserState | undefined> {
     try {
+      await assertPrivateFileIfPresent(this.#statePath);
       const raw = JSON.parse(await readFile(this.#statePath, "utf8")) as unknown;
       if (raw === null || typeof raw !== "object" || Array.isArray(raw)) throw new Error("browser state must be an object");
       const state = raw as Partial<BrowserState>;

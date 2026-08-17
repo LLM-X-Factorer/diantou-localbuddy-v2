@@ -1,8 +1,10 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { lstat, mkdir, realpath } from "node:fs/promises";
+import { lstat, realpath } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
 import { promisify } from "node:util";
+
+import { ensurePrivateDirectory } from "./private-storage.js";
 
 const execFileAsync = promisify(execFile);
 const MAX_GIT_OUTPUT = 10 * 1024 * 1024;
@@ -61,9 +63,12 @@ export class GitWorktreeManager {
     if (await pathExists(worktreePath)) {
       throw new Error(`coding worktree already exists: ${worktreePath}`);
     }
-    await mkdir(dirname(worktreePath), { recursive: true });
+    await ensurePrivateDirectory(resolve(canonicalRoot, ".localbuddy"));
+    await ensurePrivateDirectory(resolve(canonicalRoot, ".localbuddy", "worktrees"));
+    await ensurePrivateDirectory(dirname(worktreePath));
     await git(canonicalRoot, ["worktree", "add", "--detach", worktreePath, headSha]);
     const canonicalWorktree = await realpath(worktreePath);
+    await ensurePrivateDirectory(canonicalWorktree);
 
     return {
       repoRoot: canonicalRoot,

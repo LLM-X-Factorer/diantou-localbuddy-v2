@@ -12,6 +12,12 @@
 - 只修安全/数据完整性问题、真实任务阻塞、两个场景共同需要的 Core 合同，以及证据/grader 真源问题；
 - 验收合同与退出裁决见 [`M13-PRODUCT-TRUTH-SPRINT.md`](M13-PRODUCT-TRUTH-SPRINT.md)。
 
+### Storage privacy hardening — release candidate
+
+- [Issue #18](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/18) 修复真实用户进入灰度前的数据安全与可解释性阻塞：统一私有 Run 写入、旧状态有界权限修复、符号链接 fail closed，以及默认收起的存储披露；
+- 本增量不改变 Research 的显式资料合同，不恢复工作区扫描，也不自动迁移/删除旧数据；
+- [Issue #17](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/17) 保留为后续 Storage Contract V2：集中私有 Run store、用户可见结果边界、生命周期、导出和可逆迁移。它必须由真实用户/场景需求拉动，不能借安全补丁扩张成新文件管理产品。
+
 ### v0.12.5 · Public Bug Reporting + Product Truth — public unsigned Engineering Alpha
 
 - 失败 Run 可由用户主动生成公开安全预览；报告只包含允许字段、脱敏摘要和稳定签名，不上传原始诊断、Prompt、Artifact、绝对路径、凭据或完整本机标识；

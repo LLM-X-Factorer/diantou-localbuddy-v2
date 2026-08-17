@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -52,6 +52,10 @@ test("persists and validates a replayable Run Request", async (context) => {
   const persistedJson = await readFile(join(runRoot, "run-request.json"), "utf8");
   assert.match(persistedJson, /Verify persisted recovery input/);
   assert.doesNotMatch(persistedJson, /"goal":/);
+  if (process.platform !== "win32") {
+    assert.equal((await stat(runRoot)).mode & 0o777, 0o700);
+    assert.equal((await stat(join(runRoot, "run-request.json"))).mode & 0o777, 0o600);
+  }
 });
 
 test("migrates a v2 Run Request to balanced trust without rewriting history", async (context) => {

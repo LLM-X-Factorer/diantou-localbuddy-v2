@@ -23,7 +23,14 @@ const resources = join(appPath, "Contents", "Resources");
 const browserRoot = join(resources, "ms-playwright");
 const verificationRoot = resolve(".localbuddy", "package-verification");
 const screenshot = join(verificationRoot, "desktop.png");
-await mkdir(verificationRoot, { recursive: true });
+const isolatedRoot = await mkdtemp(join(tmpdir(), "localbuddy-mac-package-"));
+const userData = join(isolatedRoot, "user-data");
+const emptyPath = join(isolatedRoot, "empty-path");
+await Promise.all([
+  mkdir(verificationRoot, { recursive: true }),
+  mkdir(userData, { recursive: true }),
+  mkdir(emptyPath, { recursive: true }),
+]);
 
 const { stdout: bundleVersion } = await execFileAsync("/usr/libexec/PlistBuddy", [
   "-c", "Print :CFBundleShortVersionString", join(appPath, "Contents", "Info.plist"),
@@ -79,11 +86,15 @@ try {
   }));
 }
 
-await runApp(executable, {
-  ...process.env,
-  LOCALBUDDY_DEFAULT_WORKSPACE: process.cwd(),
-  LOCALBUDDY_SCREENSHOT_PATH: screenshot,
-});
+try {
+  await runApp(
+    executable,
+    [`--user-data-dir=${userData}`],
+    cleanEnvironment(emptyPath, screenshot),
+  );
+} finally {
+  await rm(isolatedRoot, { recursive: true, force: true });
+}
 const diagnostics = JSON.parse(await readFile(`${screenshot}.json`, "utf8"));
 assert.equal(diagnostics.url, "localbuddy://app/index.html");
 assert.equal(diagnostics.api, "object");
@@ -92,6 +103,8 @@ assert.ok(diagnostics.bodyCharacters > 100);
 assert.equal(diagnostics.goalContractVisible, true);
 assert.equal(diagnostics.goalFieldCount, 3);
 assert.equal(diagnostics.planReviewGuideVisible, true);
+assert.equal(diagnostics.storageDisclosureVisible, true);
+assert.equal(diagnostics.storageDetailsVisible, true);
 assert.match(diagnostics.startButtonText, /生成计划/);
 assert.ok((await stat(screenshot)).size > 10_000);
 
@@ -139,9 +152,26 @@ process.stdout.write(`${JSON.stringify({
   renderer: diagnostics,
 }, null, 2)}\n`);
 
-async function runApp(command, env) {
+function cleanEnvironment(emptyExecutablePath, screenshotPath) {
+  const environment = Object.fromEntries(Object.entries(process.env).filter(([name]) => {
+    const normalized = name.toUpperCase();
+    return normalized !== "PATH"
+      && normalized !== "DEEPSEEK_API_KEY"
+      && normalized !== "OPENAI_API_KEY"
+      && normalized !== "LOCALBUDDY_DEFAULT_WORKSPACE";
+  }));
+  return {
+    ...environment,
+    PATH: emptyExecutablePath,
+    LOCALBUDDY_DEFAULT_WORKSPACE: process.cwd(),
+    LOCALBUDDY_SCREENSHOT_PATH: screenshotPath,
+    LOCALBUDDY_SHARED_COORDINATION: "0",
+  };
+}
+
+async function runApp(command, args, env) {
   await new Promise((resolvePromise, reject) => {
-    const child = spawn(command, [], { env, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(command, args, { env, stdio: ["ignore", "pipe", "pipe"] });
     let stderr = "";
     const timeout = setTimeout(() => {
       child.kill("SIGKILL");

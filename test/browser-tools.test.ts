@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -35,6 +35,7 @@ test("uses an isolated allowlisted browser, performs explicit actions, and resto
     assert.equal(bundle.tools.find((tool) => tool.name === "browser_navigate")?.risk, "read");
     assert.equal(bundle.tools.find((tool) => tool.name === "browser_click")?.risk, "execute");
     assert.equal(JSON.parse(await readFile(statePath, "utf8")).currentUrl, `${origin}/`);
+    if (process.platform !== "win32") assert.equal((await stat(statePath)).mode & 0o777, 0o600);
   } finally {
     await bundle.close();
   }

@@ -139,7 +139,12 @@ test("Renderer composer is a compact input plus wrapping control toolbar", async
   assert.match(renderer, /aria-controls="goal-contract-fields"/);
   assert.match(renderer, /className="goal-contract-summary"/);
   assert.match(renderer, /结果已填写/);
+  assert.match(renderer, /aria-controls="storage-disclosure-details"/);
+  assert.match(renderer, /存储与隐私/);
+  assert.match(renderer, /不会自动迁移或删除旧 Run/);
+  assert.match(renderer, /Windows 继承所选位置的账号 ACL/);
   assert.match(styles, /\.goal-contract-summary \{ display: grid;/);
+  assert.match(styles, /\.storage-disclosure \{/);
 });
 
 test("Renderer separates explicit research sources from recovery and confirms paid replay", async () => {

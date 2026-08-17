@@ -349,6 +349,19 @@ button { cursor: pointer; }
 .research-source-list { display: flex; flex-wrap: wrap; gap: 5px; }
 .research-source-chip { display: inline-flex; align-items: center; max-width: 240px; padding: 4px 5px 4px 7px; color: #31546d; border: 1px solid #d4dee4; border-radius: 999px; background: #fff; font-size: 8px; }
 .research-source-chip > button { margin-left: 5px; padding: 0 3px; color: #8797a4; border: 0; background: transparent; font-size: 11px; line-height: 1; }
+.storage-disclosure { overflow: hidden; border: 1px solid #dde4e1; border-radius: 9px; background: #f8faf9; }
+.storage-disclosure.review_required { border-color: #e8cf83; background: #fff9e7; }
+.storage-disclosure > button { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 9px; width: 100%; padding: 8px 9px; color: #53677a; text-align: left; border: 0; background: transparent; cursor: pointer; }
+.storage-disclosure > button strong { color: #2e4c62; font-size: 8px; }
+.storage-disclosure > button span { overflow: hidden; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.storage-disclosure > button small { color: #8795a1; font-size: 7px; white-space: nowrap; }
+.storage-disclosure.review_required > button strong, .storage-disclosure.review_required > button span { color: #76580c; }
+.storage-disclosure-details { display: grid; gap: 5px; padding: 0 9px 9px; border-top: 1px solid rgba(114,132,143,.14); }
+.storage-disclosure-details p { display: grid; grid-template-columns: 76px minmax(0,1fr); gap: 8px; margin: 0; padding-top: 7px; color: #6c7e8d; font-size: 7px; line-height: 1.45; }
+.storage-disclosure-details p > strong { color: #405a6d; }
+.storage-disclosure-details code { overflow: hidden; padding: 2px 4px; color: #38556a; border-radius: 4px; background: #edf2f0; font: 7px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; text-overflow: ellipsis; white-space: nowrap; }
+.storage-disclosure-details .storage-warning { color: #775b12; }
+.storage-disclosure-details .storage-warning strong { color: #8b6500; }
 .extensions-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: 0 0 auto; min-height: 32px; padding: 6px 9px; color: #5b6d82; border: 1px solid #dfe3e4; border-radius: 8px; background: #f5f7f7; font-size: 8px; font-weight: 750; white-space: nowrap; }
 .extensions-toggle span { color: #8c99a7; font-size: 8px; }
 .extensions-config { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; padding: 9px; border: 1px solid #e2e3df; border-radius: 9px; background: #f8f8f5; }

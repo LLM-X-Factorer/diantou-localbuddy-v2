@@ -1,4 +1,4 @@
-import { mkdir, realpath } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 import { AgentLoopExecutor } from "./agent-loop.js";
@@ -29,6 +29,7 @@ import { AuditedModelClient } from "./model-runtime.js";
 import { createNumericTools } from "./numeric-tools.js";
 import type { ModelProvider } from "./provider.js";
 import type { ProcessSharedCapacity } from "./process-shared-provider.js";
+import { ensurePrivateDirectory } from "./private-storage.js";
 import type { OAuthRedirectHandler } from "./mcp-oauth.js";
 import { WorkflowPlanner, type PlannedWorkerTask } from "./planner.js";
 import {
@@ -132,7 +133,7 @@ export class HeadlessWorkflow {
       }
       const workspaceRoot = await realpath(this.#options.workspaceRoot);
       const artifactRootInput = resolve(this.#options.artifactRoot);
-      await mkdir(artifactRootInput, { recursive: true });
+      await ensurePrivateDirectory(artifactRootInput);
       const artifactRoot = await realpath(artifactRootInput);
       const checkpointRoot = resolve(
         this.#options.checkpointRoot ?? resolve(dirname(artifactRoot), "checkpoint"),

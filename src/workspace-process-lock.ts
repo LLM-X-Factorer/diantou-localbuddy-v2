@@ -10,6 +10,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { resolve } from "node:path";
+import { ensurePrivateDirectory, PRIVATE_DIRECTORY_MODE } from "./private-storage.js";
 
 const LOCK_VERSION = 1;
 const INCOMPLETE_LOCK_GRACE_MS = 10_000;
@@ -103,7 +104,7 @@ async function acquireNewWorkspaceLock(
 ): Promise<HeldWorkspaceLock> {
   const localBuddyRoot = resolve(workspace, ".localbuddy");
   const lockDirectory = resolve(localBuddyRoot, "runtime-lock");
-  await mkdir(localBuddyRoot, { recursive: true });
+  await ensurePrivateDirectory(localBuddyRoot);
   const owner: WorkspaceLockOwner = {
     version: LOCK_VERSION,
     ownerId: randomUUID(),
@@ -113,7 +114,7 @@ async function acquireNewWorkspaceLock(
     acquiredAt: new Date().toISOString(),
   };
   try {
-    await mkdir(lockDirectory);
+    await mkdir(lockDirectory, { mode: PRIVATE_DIRECTORY_MODE });
   } catch (error) {
     if (!(isNodeError(error) && error.code === "EEXIST")) throw error;
     const current = await inspectExistingLock(lockDirectory);
@@ -133,7 +134,7 @@ async function acquireNewWorkspaceLock(
       throw renameError;
     }
     try {
-      await mkdir(lockDirectory);
+      await mkdir(lockDirectory, { mode: PRIVATE_DIRECTORY_MODE });
     } finally {
       await rm(quarantine, { recursive: true, force: true });
     }

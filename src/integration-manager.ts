@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, realpath, rename, stat, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { readFile, realpath, stat } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 
@@ -14,6 +14,13 @@ import type { EventStore } from "./event-store.js";
 import { ExecutionCoordinator } from "./execution-coordinator.js";
 import { createPlatformExecutionHost, type ExecutionHost } from "./execution-host.js";
 import { GitWorktreeManager } from "./git-worktree-manager.js";
+import {
+  assertPrivateFileIfPresent,
+  ensurePrivateDirectory,
+  hardenPrivateFileIfPresent,
+  writePrivateFileAtomic,
+  writePrivateJsonAtomic,
+} from "./private-storage.js";
 
 const execFileAsync = promisify(execFile);
 const MAX_GIT_OUTPUT = 10 * 1024 * 1024;
@@ -853,6 +860,7 @@ export async function readVerifiedIntegrationPatch(input: {
     throw new Error("integration proposal Run identity does not match the requested Run");
   }
   const path = await validateCombinedPatch(proposal);
+  await assertPrivateFileIfPresent(path);
   const content = await readFile(path);
   const text = content.toString("utf8");
   return {
@@ -927,6 +935,7 @@ async function validatePatchArtifact(
   }
   const path = await realpath(patch.absolutePath);
   assertInside(artifactRoot, path);
+  await assertPrivateFileIfPresent(path);
   const content = await readFile(path);
   if (sha256(content) !== patch.sha256) {
     throw new Error(`patch hash mismatch for ${patch.taskId}`);
@@ -949,6 +958,7 @@ async function validateCombinedPatch(proposal: IntegrationProposal): Promise<str
   if (metadata.size > MAX_GIT_OUTPUT) {
     throw new Error(`combined patch exceeds ${MAX_GIT_OUTPUT} byte limit`);
   }
+  await assertPrivateFileIfPresent(path);
   const content = await readFile(path);
   if (sha256(content) !== proposal.combinedPatch.sha256) {
     throw new Error("combined patch hash mismatch");
@@ -965,9 +975,10 @@ async function writeCombinedPatch(input: {
 }): Promise<NonNullable<IntegrationProposal["combinedPatch"]>> {
   const relativePath = "integration/combined.patch";
   const absolutePath = resolve(input.artifactRoot, relativePath);
-  await mkdir(dirname(absolutePath), { recursive: true });
+  await ensurePrivateDirectory(dirname(absolutePath));
   const patchSha256 = sha256(input.patch);
   try {
+    await hardenPrivateFileIfPresent(absolutePath);
     if (sha256(await readFile(absolutePath)) !== patchSha256) {
       throw new Error("existing combined patch conflicts with recovered Integration preflight");
     }
@@ -975,9 +986,7 @@ async function writeCombinedPatch(input: {
     if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) {
       throw error;
     }
-    const temporaryPath = resolve(dirname(absolutePath), `.combined.${process.pid}.${randomUUID()}.tmp`);
-    await writeFile(temporaryPath, input.patch, { encoding: "utf8", flag: "wx" });
-    await rename(temporaryPath, absolutePath);
+    await writePrivateFileAtomic(absolutePath, input.patch);
   }
   const record: ArtifactRecord = {
     runId: input.runId,
@@ -1006,13 +1015,7 @@ async function writeCombinedPatch(input: {
 }
 
 async function saveProposal(proposal: IntegrationProposal): Promise<void> {
-  const temporaryPath = `${proposal.proposalPath}.${process.pid}.${randomUUID()}.tmp`;
-  await mkdir(dirname(proposal.proposalPath), { recursive: true });
-  await writeFile(temporaryPath, `${JSON.stringify(proposal, null, 2)}\n`, {
-    encoding: "utf8",
-    flag: "wx",
-  });
-  await rename(temporaryPath, proposal.proposalPath);
+  await writePrivateJsonAtomic(proposal.proposalPath, proposal);
 }
 
 async function loadProposal(
@@ -1022,6 +1025,7 @@ async function loadProposal(
   const canonicalProposalPath = await realpath(proposalPath);
   const runRoot = dirname(canonicalProposalPath);
   assertInside(resolve(expectedRepoRoot, ".localbuddy", "runs"), runRoot);
+  await assertPrivateFileIfPresent(canonicalProposalPath);
   const raw = JSON.parse(await readFile(canonicalProposalPath, "utf8")) as unknown;
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
     throw new Error("integration proposal must be an object");

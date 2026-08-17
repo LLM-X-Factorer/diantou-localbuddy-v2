@@ -1063,10 +1063,17 @@ async function captureSmokeScreenshotIfRequested(window: BrowserWindow): Promise
     const goalContract = await waitFor('.goal-contract-heading');
     const goalFields = [...document.querySelectorAll('.goal-outcome-field textarea, .goal-contract-grid textarea')];
     const planReviewGuideVisible = document.body?.innerText?.includes('批准前 Worker 不启动') ?? false;
+    const storageDisclosure = await waitFor('.storage-disclosure > button');
+    storageDisclosure.click();
+    const storageDetails = await waitFor('#storage-disclosure-details');
     providerEntry.click();
     const providerDialog = await waitFor('.provider-settings-dialog');
     const providerChoices = [...providerDialog.querySelectorAll('.provider-choice-grid button')]
       .map((element) => element.innerText.trim());
+    const providerSummary = providerDialog.querySelector('.provider-credential-summary')?.innerText.trim() ?? '';
+    const verifyDisabled = providerDialog.querySelector('.verify-provider-button')?.disabled ?? null;
+    providerDialog.querySelector('[aria-label="关闭 Provider 设置"]')?.click();
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 100));
     return {
       url: location.href,
       title: document.title,
@@ -1077,13 +1084,17 @@ async function captureSmokeScreenshotIfRequested(window: BrowserWindow): Promise
       goalContractVisible: goalContract.innerText.includes('GOAL CONTRACT'),
       goalFieldCount: goalFields.length,
       planReviewGuideVisible,
+      storageDisclosureVisible: storageDisclosure.innerText.includes('存储与隐私'),
+      storageDetailsVisible: (storageDetails.innerText.includes('.localbuddy')
+          && storageDetails.innerText.includes('操作系统凭据库'))
+        || storageDetails.innerText.includes('不会在未选择运行位置时创建 Run 数据'),
       startButtonText: startButton.innerText.trim(),
       buildIdentity: buildIdentity.innerText.trim(),
       providerEntry: providerEntry.innerText.trim(),
-      providerDialogVisible: providerDialog !== null,
+      providerDialogVisible: true,
       providerChoices,
-      providerSummary: providerDialog.querySelector('.provider-credential-summary')?.innerText.trim() ?? '',
-      verifyDisabled: providerDialog.querySelector('.verify-provider-button')?.disabled ?? null,
+      providerSummary,
+      verifyDisabled,
       startDisabled: startButton.disabled
     };
   })()`);

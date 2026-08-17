@@ -121,6 +121,8 @@ M3.3 提供 request replay：Desktop 启动或读取历史时，只对 `runtimeO
 
 M3.4 在 Research Run 上增加同一 Run ID 的 checkpoint resume；M10.4 把证据身份从整个工作区快照收敛为 Run 明确选择的 source paths。`checkpoint/manifest.json` 固定原始计划、目标哈希和资料身份；每个 Task 独立原子保存消息历史、Agent/工具契约哈希、turn、阶段和工具游标；成功 `read_file` 回执还保存逻辑路径、bytes 和 SHA-256。恢复只重哈希真正读取过的资料，不枚举运行目录。checkpoint 文件含 Prompt、模型消息和工具结果，是仅限本机的私有运行状态，与 API Key 一样不可提交或同步。
 
+存储加固候选把 Run Request、事件、checkpoint、Artifact、Browser state、Integration proposal 和 revision source 收口到统一私有文件层。macOS/Linux 新建目录/文件为 `0700`/`0600`；原子写和 append 拒绝托管文件符号链接。旧 Run 的权限修复只能在持有工作区进程锁时发生，且只遍历 `.localbuddy/runs/<run-id>` 内已知状态子树，不读取用户源文件。Windows 明确继承父目录 ACL；Renderer 对已知云同步与网络路径给出风险说明。完整数据分类、平台路径和明文边界见 [`STORAGE-AND-PRIVACY.md`](STORAGE-AND-PRIVACY.md)。
+
 恢复遵守以下边界：
 
 1. `succeeded` Task 由 Scheduler 直接恢复输出，不再次占用 Agent 或调用模型；

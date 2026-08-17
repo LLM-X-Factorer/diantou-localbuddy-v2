@@ -1,6 +1,5 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, readFile, realpath, rename, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { readFile, realpath } from "node:fs/promises";
+import { resolve } from "node:path";
 
 import type { DesktopRunMode, StartDesktopRunRequest } from "./desktop-contract.js";
 import {
@@ -16,6 +15,7 @@ import {
 import { normalizeProviderSelection, type ProviderSelection } from "./provider-config.js";
 import { canonicalResearchSourcePaths } from "./research-sources.js";
 import { normalizeTrustProfile, type TrustProfile } from "./tool-runtime.js";
+import { assertPrivateFileIfPresent, writePrivateJsonAtomic } from "./private-storage.js";
 
 export interface PersistedRunRequest {
   version: 6;
@@ -92,13 +92,7 @@ export class RunRequestStore {
       artifactRevision,
     };
     const requestPath = resolve(runRoot, "run-request.json");
-    const temporaryPath = `${requestPath}.${process.pid}.${randomUUID()}.tmp`;
-    await mkdir(dirname(requestPath), { recursive: true });
-    await writeFile(temporaryPath, `${JSON.stringify(stored, null, 2)}\n`, {
-      encoding: "utf8",
-      flag: "wx",
-    });
-    await rename(temporaryPath, requestPath);
+    await writePrivateJsonAtomic(requestPath, stored);
     return { ...stored, executionGoal: compileGoalContract(goalContract) };
   }
 
@@ -109,6 +103,7 @@ export class RunRequestStore {
   ): Promise<PersistedRunRequest> {
     validateRunId(expectedRunId);
     const requestPath = resolve(runRoot, "run-request.json");
+    await assertPrivateFileIfPresent(requestPath);
     const raw = JSON.parse(await readFile(requestPath, "utf8")) as unknown;
     if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
       throw new Error("persisted Run Request must be an object");
@@ -225,7 +220,9 @@ export class RunRequestStore {
     expectedRunId: string,
   ): Promise<ArtifactRevisionContract | undefined> {
     validateRunId(expectedRunId);
-    const raw = JSON.parse(await readFile(resolve(runRoot, "run-request.json"), "utf8")) as unknown;
+    const requestPath = resolve(runRoot, "run-request.json");
+    await assertPrivateFileIfPresent(requestPath);
+    const raw = JSON.parse(await readFile(requestPath, "utf8")) as unknown;
     if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
       throw new Error("persisted Run Request must be an object");
     }

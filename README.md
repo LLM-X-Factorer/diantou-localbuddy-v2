@@ -43,6 +43,7 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 - [`docs/M12.4-VALIDATION.md`](docs/M12.4-VALIDATION.md)：Reviewer 接受/退回/上限/恢复与 trace 专项证据；
 - [`docs/M13-PRODUCT-TRUTH-SPRINT.md`](docs/M13-PRODUCT-TRUTH-SPRINT.md)：固定 `v0.12.5`、Research Desk 真实运行矩阵、非作者用户门和 `advance/pause/stop` 裁决；
 - [`docs/M13-PUBLIC-BUG-REPORTING.md`](docs/M13-PUBLIC-BUG-REPORTING.md)：用户主动公开报告、隐私裁剪、预览确认、去重和本地回退合同；
+- [`docs/STORAGE-AND-PRIVACY.md`](docs/STORAGE-AND-PRIVACY.md)：macOS/Windows/Linux 的 Run、Artifact、偏好和系统凭据位置，权限边界与同步风险；
 - [`docs/CODEX-BENCHMARK-2026-08-14.md`](docs/CODEX-BENCHMARK-2026-08-14.md)：基于 OpenAI 官方文档的 Codex 产品/Agent 基准、LocalBuddy 差距和优先级；
 - [`docs/WORKBUDDY-PRODUCT-BENCHMARK-2026-08-15.md`](docs/WORKBUDDY-PRODUCT-BENCHMARK-2026-08-15.md)：WorkBuddy 公开承诺、LocalBuddy 产品差距、六个黄金任务和统一评分合同；
 - [`benchmarks/workbuddy-core/README.md`](benchmarks/workbuddy-core/README.md)：可物化的产品对标夹具、运行规则和证据要求；
@@ -356,7 +357,7 @@ pnpm cli -- \
 
 `--trust-profile` 可选 `strict`、`balanced`、`automation`。`strict` 会要求更多逐调用人工审批；无交互审批处理器的 CLI 会 fail closed。`automation` 允许本地受限操作自动执行，但始终拒绝外部副作用。
 
-运行请求、事件和产物保存在工作区 `.localbuddy/runs/<run-id>/`，该目录默认不进入 Git。`run-request.json` 包含用户目标，属于本地私有运行状态，不应提交或同步到公开仓库。
+运行请求、事件和产物保存在工作区 `.localbuddy/runs/<run-id>/`，该目录必须被 Git 忽略。`run-request.json` 包含用户目标，checkpoint 还可能包含模型消息、工具结果和 Browser cookie，属于本地私有运行状态，不应提交或无意同步；平台路径、权限与当前不自动迁移/删除的边界见 [`docs/STORAGE-AND-PRIVACY.md`](docs/STORAGE-AND-PRIVACY.md)。
 
 启动桌面工作台：
 

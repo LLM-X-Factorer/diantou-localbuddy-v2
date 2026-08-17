@@ -15,6 +15,14 @@
 - 平台无关的 Ed25519 更新协议仍只下载、验签并 staging；`v0.12.4` stable Windows Squirrel updater 已内置公开 feed，但仍没有静默安装、强制更新或自动回滚；
 - `pnpm windows:canary` 只隔离 Electron user-data 和构建目录，不隔离系统 Credential Manager 或工作区 `.localbuddy/`；Canary 与稳定版不应同时写同一测试工作区；
 - `v0.12.2` 没有内置线上 feed，已有用户仍需手动原地安装一次 `v0.12.4` 桥接版；托管发布门禁覆盖 `v0.12.4 -> v0.12.5`，但 Windows 11 上同一路径的真实 OTA 尚未验收；
+
+## Storage and privacy
+
+- Run Request、事件、checkpoint、Browser state 和 Artifact 保存在用户所选工作区的 `.localbuddy/runs/<run-id>/`，不是集中式加密数据库；Browser state 可包含 cookie/origin storage，Run checkpoint 可包含 Prompt、模型消息和工具结果；
+- macOS/Linux 新写 Run 使用 `0700` 目录和 `0600` 文件；旧 Run 仅在获得工作区锁时修复已知状态树。Windows 继承父目录 ACL，当前不会替用户重写 ACL；
+- 云同步/网络目录警告是已知路径启发式，不能识别所有同步、备份或企业策略。把 Run 放入 OneDrive/iCloud/Dropbox/共享盘可能使私有过程数据离开本机；
+- 当前没有 Run 自动过期、自动删除、集中迁移或端到端加密。LocalBuddy 不会在升级时擅自移动或删除旧 Run；Storage Contract V2 由 [Issue #17](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/17) 跟踪；
+- 路径、权限、敏感字段和操作建议的完整真源见 [`STORAGE-AND-PRIVACY.md`](STORAGE-AND-PRIVACY.md)。
 - Windows Release 仍未完成可信代码签名；公开下载和在线更新都可能触发 SmartScreen，不能称为面向普通用户的无摩擦安装；
 - CI 的上一稳定版原地升级使用 Windows Server 2025 一次性管理员 Runner，只能证明安装器与 profile 保留合同，不能代替 Windows 11 真人升级。
 

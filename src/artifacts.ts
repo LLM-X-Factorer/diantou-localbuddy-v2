@@ -1,8 +1,7 @@
-import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { readFile } from "node:fs/promises";
 
 import type { AgentId, RunId, TaskId } from "./domain.js";
+import { assertPrivateFileIfPresent, writePrivateJsonAtomic } from "./private-storage.js";
 
 export interface ArtifactRecord {
   runId: RunId;
@@ -73,6 +72,7 @@ export class JsonArtifactRegistry implements ArtifactRegistry {
   async #read(): Promise<ArtifactRecord[]> {
     let raw: unknown;
     try {
+      await assertPrivateFileIfPresent(this.#filePath);
       raw = JSON.parse(await readFile(this.#filePath, "utf8")) as unknown;
     } catch (error) {
       if (isNodeError(error) && error.code === "ENOENT") {
@@ -109,13 +109,7 @@ function parseArtifactRecord(value: unknown): ArtifactRecord {
 }
 
 async function writeJsonAtomic(filePath: string, value: unknown): Promise<void> {
-  const temporaryPath = `${filePath}.${process.pid}.${randomUUID()}.tmp`;
-  await mkdir(dirname(filePath), { recursive: true });
-  await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, {
-    encoding: "utf8",
-    flag: "wx",
-  });
-  await rename(temporaryPath, filePath);
+  await writePrivateJsonAtomic(filePath, value);
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

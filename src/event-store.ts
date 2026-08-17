@@ -1,7 +1,7 @@
-import { appendFile, mkdir, readFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { readFile } from "node:fs/promises";
 
 import type { AgentId, RunId, TaskId } from "./domain.js";
+import { appendPrivateUtf8, assertPrivateFileIfPresent } from "./private-storage.js";
 
 export type RuntimeEventType =
   | "run.started"
@@ -125,7 +125,7 @@ export class JsonlEventStore implements EventStore {
         sequence: this.#sequence + 1,
         timestamp: this.#clock().toISOString(),
       };
-      await appendFile(this.#filePath, `${JSON.stringify(stored)}\n`, "utf8");
+      await appendPrivateUtf8(this.#filePath, `${JSON.stringify(stored)}\n`);
       this.#sequence = stored.sequence;
       return stored;
     });
@@ -137,6 +137,7 @@ export class JsonlEventStore implements EventStore {
 
     let content: string;
     try {
+      await assertPrivateFileIfPresent(this.#filePath);
       content = await readFile(this.#filePath, "utf8");
     } catch (error) {
       if (isNodeError(error) && error.code === "ENOENT") {
@@ -166,8 +167,8 @@ export class JsonlEventStore implements EventStore {
       return;
     }
 
-    await mkdir(dirname(this.#filePath), { recursive: true });
     try {
+      await assertPrivateFileIfPresent(this.#filePath);
       const content = await readFile(this.#filePath, "utf8");
       const lines = content.split("\n").filter((line) => line.length > 0);
       const lastLine = lines.at(-1);

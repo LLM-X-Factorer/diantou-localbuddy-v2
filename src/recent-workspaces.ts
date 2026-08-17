@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { chmod, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+
+import { ensurePrivateDirectory } from "./private-storage.js";
 
 const DEFAULT_LIMIT = 5;
 
@@ -56,7 +58,7 @@ export class RecentWorkspaceStore {
 
   async #write(value: readonly string[]): Promise<void> {
     const temporaryPath = `${this.#filePath}.${process.pid}.${randomUUID()}.tmp`;
-    await mkdir(dirname(this.#filePath), { recursive: true });
+    await ensurePrivateDirectory(dirname(this.#filePath));
     await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, {
       encoding: "utf8",
       flag: "wx",

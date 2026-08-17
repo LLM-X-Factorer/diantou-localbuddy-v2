@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, stat, truncate, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm, stat, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -52,6 +52,13 @@ test("creates an explicit isolated tutorial workspace and never overwrites reuse
     selected: true,
     isGitRepository: false,
     isTutorialWorkspace: true,
+    storage: {
+      runStoreRoot: join(first.workspace, ".localbuddy", "runs"),
+      artifactLocation: join(first.workspace, ".localbuddy", "runs", "<run-id>", "artifacts"),
+      credentialLocation: "system_vault",
+      risk: "local_workspace",
+      warnings: [],
+    },
   });
   if (process.platform !== "win32") {
     assert.equal((await stat(first.workspace)).mode & 0o777, 0o700);
@@ -76,22 +83,38 @@ test("detects Git readiness without reading repository contents", async (context
   const workspace = await mkdtemp(join(tmpdir(), "localbuddy-guide-git-"));
   context.after(async () => rm(workspace, { recursive: true, force: true }));
   await mkdir(join(workspace, ".git"));
+  const canonicalWorkspace = await realpath(workspace);
 
   assert.deepEqual(await inspectWorkspaceReadiness(workspace), {
     selected: true,
     isGitRepository: true,
     isTutorialWorkspace: false,
+    storage: {
+      runStoreRoot: join(canonicalWorkspace, ".localbuddy", "runs"),
+      artifactLocation: join(canonicalWorkspace, ".localbuddy", "runs", "<run-id>", "artifacts"),
+      credentialLocation: "system_vault",
+      risk: "local_workspace",
+      warnings: [],
+    },
   });
   assert.deepEqual(await inspectWorkspaceReadiness(""), {
     selected: false,
     isGitRepository: false,
     isTutorialWorkspace: false,
+    storage: {
+      runStoreRoot: "",
+      artifactLocation: "",
+      credentialLocation: "system_vault",
+      risk: "local_workspace",
+      warnings: [],
+    },
   });
 });
 
 test("does not enumerate a large workspace during readiness inspection", async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "localbuddy-guide-oversized-"));
   context.after(async () => rm(workspace, { recursive: true, force: true }));
+  const canonicalWorkspace = await realpath(workspace);
   const paths = Array.from(
     { length: LARGE_DIRECTORY_ENTRY_COUNT },
     (_, index) => join(workspace, `entry-${String(index).padStart(4, "0")}`),
@@ -104,12 +127,20 @@ test("does not enumerate a large workspace during readiness inspection", async (
     selected: true,
     isGitRepository: false,
     isTutorialWorkspace: false,
+    storage: {
+      runStoreRoot: join(canonicalWorkspace, ".localbuddy", "runs"),
+      artifactLocation: join(canonicalWorkspace, ".localbuddy", "runs", "<run-id>", "artifacts"),
+      credentialLocation: "system_vault",
+      risk: "local_workspace",
+      warnings: [],
+    },
   });
 });
 
 test("does not measure file bytes during readiness inspection", async (context) => {
   const workspace = await mkdtemp(join(tmpdir(), "localbuddy-guide-large-workspace-"));
   context.after(async () => rm(workspace, { recursive: true, force: true }));
+  const canonicalWorkspace = await realpath(workspace);
   const largeFile = join(workspace, "large-sparse.bin");
   await writeFile(largeFile, "", "utf8");
   await truncate(largeFile, LARGE_SPARSE_FILE_BYTES);
@@ -118,6 +149,13 @@ test("does not measure file bytes during readiness inspection", async (context) 
     selected: true,
     isGitRepository: false,
     isTutorialWorkspace: false,
+    storage: {
+      runStoreRoot: join(canonicalWorkspace, ".localbuddy", "runs"),
+      artifactLocation: join(canonicalWorkspace, ".localbuddy", "runs", "<run-id>", "artifacts"),
+      credentialLocation: "system_vault",
+      risk: "local_workspace",
+      warnings: [],
+    },
   });
 });
 
