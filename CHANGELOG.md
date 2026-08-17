@@ -4,6 +4,23 @@
 
 ## Unreleased
 
+### Added
+
+- Desktop 在 Goal Contract 下方新增默认收起的“存储与隐私”说明，显示当前 Run 记录、Artifact 和系统凭据的真实边界；识别常见云同步目录与 Windows UNC 路径时明确警告，不把“本地路径”误报成“仅本机可见”。
+
+### Security
+
+- macOS/Linux 新建 Run 目录和文件分别限制为 `0700`/`0600`；Run Request、事件、checkpoint、Artifact、Browser state、Coding worktree 和 Integration 状态统一走私有写入层，并拒绝托管树中的符号链接；
+- 旧 Run 只在持有工作区进程锁时对已知 LocalBuddy 状态做有界权限修复，不扫描、移动、修改或删除工作区源文件。Windows 保持继承所选目录 ACL 的事实口径，不伪造 POSIX 权限保证。
+
+### Fixed
+
+- macOS 包验证改用独立临时 user-data 和空凭据命令路径，不再读取开发者日常 profile/系统凭据，也不再因本机已经看过 Guide 而误报安装包失败；包级烟测同时展开并回读新的存储说明。
+
+### Documentation
+
+- 新增 [`docs/STORAGE-AND-PRIVACY.md`](docs/STORAGE-AND-PRIVACY.md)，记录三个操作系统上的 Run、Artifact、偏好、协调状态与系统凭据位置，以及明文 checkpoint/browser cookie、同步目录和当前无自动迁移/删除的限制。
+
 ## 0.12.5 — 2026-08-17
 
 公开但未签名的 Public Bug Reporting + Product Truth Engineering Alpha。本版本把真实用户失败进入公开 Issue 的路径缩短为“本机生成公开安全预览 → 用户明确确认 → 浏览器最终提交”，同时保持 M13 默认冻结通用功能扩张。

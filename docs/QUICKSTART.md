@@ -36,6 +36,8 @@ pnpm desktop
 
 不要把 API Key 写入 `.env` 后提交。`.localbuddy/` 包含目标、checkpoint、事件和产物，也不得进入版本库。
 
+选择运行位置后，先展开 Goal Contract 下方的“存储与隐私”：它会显示本次 Run 和 Artifact 的确切目录。macOS/Linux 新写 Run 使用当前账号私有权限；Windows 文件继承所选目录 ACL。云同步或网络目录会显示警告，但检测只是尽力识别。完整合同见 [`STORAGE-AND-PRIVACY.md`](STORAGE-AND-PRIVACY.md)。
+
 ## 2.1 第一次可信运行
 
 首次打开时使用侧边栏“指引与示例”：
@@ -66,7 +68,7 @@ Linux DEB 声明 `libsecret-tools` 依赖以提供 `secret-tool`；系统仍必�
 
 ## 4. 完成第一个 Research Run
 
-1. 选择“运行位置”，它只用于保存本次 Run 的本地事件、checkpoint 和 Artifact；
+1. 选择“运行位置”，它只用于保存本次 Run 的本地事件、checkpoint 和 Artifact；展开“存储与隐私”确认实际路径和同步/网络风险；
 2. 模式选择“研究”；
 3. 信任档先使用“平衡（推荐）”；
 4. 并发选择 2 或 3；

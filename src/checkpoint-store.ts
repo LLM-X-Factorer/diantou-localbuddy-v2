@@ -1,6 +1,6 @@
-import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, realpath, rename, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { readFile, readdir, realpath } from "node:fs/promises";
+import { resolve } from "node:path";
 
 import type { ChatMessage, ProviderToolCall } from "./provider.js";
 import { parsePlan, type HeadlessPlan } from "./planner.js";
@@ -8,6 +8,7 @@ import {
   hashResearchSourceReference,
   resolveResearchSources,
 } from "./research-sources.js";
+import { assertPrivateFileIfPresent, writePrivateJsonAtomic } from "./private-storage.js";
 import type {
   ToolContext,
   ToolExecutionJournal,
@@ -739,6 +740,7 @@ function assertSafeId(value: string, name: string): void {
 }
 
 async function readJson(filePath: string): Promise<unknown> {
+  await assertPrivateFileIfPresent(filePath);
   const content = await readFile(filePath, "utf8");
   if (Buffer.byteLength(content) > MAX_CHECKPOINT_BYTES) {
     throw new Error(`checkpoint file exceeds ${MAX_CHECKPOINT_BYTES} bytes`);
@@ -747,13 +749,7 @@ async function readJson(filePath: string): Promise<unknown> {
 }
 
 async function writeJsonAtomic(filePath: string, value: unknown): Promise<void> {
-  const temporaryPath = `${filePath}.${process.pid}.${randomUUID()}.tmp`;
-  await mkdir(dirname(filePath), { recursive: true });
-  await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, {
-    encoding: "utf8",
-    flag: "wx",
-  });
-  await rename(temporaryPath, filePath);
+  await writePrivateJsonAtomic(filePath, value);
 }
 
 function sha256(value: string): string {

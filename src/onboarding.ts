@@ -11,6 +11,7 @@ import {
 } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 
+import { assessWorkspaceStorage, type WorkspaceStorageAssessment } from "./workspace-storage.js";
 
 export const ONBOARDING_VERSION = 1 as const;
 
@@ -36,6 +37,7 @@ export interface WorkspaceReadiness {
   selected: boolean;
   isGitRepository: boolean;
   isTutorialWorkspace: boolean;
+  storage: WorkspaceStorageAssessment;
 }
 
 const DEFAULT_STATE: OnboardingState = {
@@ -171,6 +173,7 @@ export async function inspectWorkspaceReadiness(workspace: string): Promise<Work
       selected: false,
       isGitRepository: false,
       isTutorialWorkspace: false,
+      storage: assessWorkspaceStorage(""),
     };
   }
   const canonical = await realpath(resolve(workspace));
@@ -183,6 +186,7 @@ export async function inspectWorkspaceReadiness(workspace: string): Promise<Work
     selected: true,
     isGitRepository,
     isTutorialWorkspace,
+    storage: assessWorkspaceStorage(canonical),
   };
 }
 

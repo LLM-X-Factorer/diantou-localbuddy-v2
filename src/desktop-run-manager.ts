@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
+import { readFile, readdir, realpath, stat } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, resolve, sep } from "node:path";
 
 import type {
@@ -46,6 +46,13 @@ import {
 import { IntegrationManager, readVerifiedIntegrationPatch } from "./integration-manager.js";
 import type { ModelProvider } from "./provider.js";
 import type { ProcessSharedCapacity } from "./process-shared-provider.js";
+import {
+  ensurePrivateDirectory,
+  ensurePrivateRunRoot,
+  assertPrivateFileIfPresent,
+  hardenPrivateRunStorage,
+  writePrivateFileAtomic,
+} from "./private-storage.js";
 import type { OAuthRedirectHandler } from "./mcp-oauth.js";
 import { normalizeRunExtensions } from "./extension-config.js";
 import { normalizeProviderSelection, type ProviderSelection } from "./provider-config.js";
@@ -153,7 +160,8 @@ export class DesktopRunManager {
     const lease = await this.#workspaceLocks.acquire(workspace, "desktop-restart");
     try {
       await this.#reconcileInterrupted(workspace);
-      const runRoot = resolve(workspace, ".localbuddy", "runs", request.runId);
+      const runRoot = await ensurePrivateRunRoot(workspace, request.runId);
+      await hardenPrivateRunStorage(runRoot);
       const eventStore = new JsonlEventStore(resolve(runRoot, "events.jsonl"));
       const events = await eventStore.list(request.runId);
       const source = projectRun(request.runId, workspace, events);
@@ -216,7 +224,8 @@ export class DesktopRunManager {
         throw new Error(`At most ${this.#maxActiveRuns} runs can be active at once.`);
       }
       this.#launching.add(request.runId);
-      const runRoot = resolve(workspace, ".localbuddy", "runs", request.runId);
+      const runRoot = await ensurePrivateRunRoot(workspace, request.runId);
+      await hardenPrivateRunStorage(runRoot);
       const persistentStore = new JsonlEventStore(resolve(runRoot, "events.jsonl"));
       const events = [...await persistentStore.list(request.runId)];
       const source = projectRun(request.runId, workspace, events);
@@ -384,7 +393,8 @@ export class DesktopRunManager {
     const workspace = await realpath(request.workspace);
     const lease = await this.#workspaceLocks.acquire(workspace, "desktop-cleanup");
     try {
-      const runRoot = resolve(workspace, ".localbuddy", "runs", request.runId);
+      const runRoot = await ensurePrivateRunRoot(workspace, request.runId);
+      await hardenPrivateRunStorage(runRoot);
       const persistentStore = new JsonlEventStore(resolve(runRoot, "events.jsonl"));
       const events = [...await persistentStore.list(request.runId)];
       const eventStore = new NotifyingEventStore(persistentStore, (event) => {
@@ -446,12 +456,13 @@ export class DesktopRunManager {
       await lease.release();
       throw error;
     }
-    const runRoot = resolve(workspace, ".localbuddy", "runs", runId);
+    const runRoot = await ensurePrivateRunRoot(workspace, runId);
+    await hardenPrivateRunStorage(runRoot);
     const artifactRoot = resolve(runRoot, "artifacts");
     let persisted: PersistedRunRequest;
     let revisionEvent: RuntimeEvent | undefined;
     try {
-      await mkdir(artifactRoot, { recursive: true });
+      await ensurePrivateDirectory(artifactRoot);
       let revisionSourcePath: string | undefined;
       let requestedSourcePaths = request.sourcePaths ?? [];
       if (preparedArtifactRevision !== undefined) {
@@ -461,11 +472,8 @@ export class DesktopRunManager {
           runRoot,
           preparedArtifactRevision.contract.sourceRelativePath,
         );
-        await mkdir(dirname(revisionSourcePath), { recursive: true });
-        await writeFile(revisionSourcePath, preparedArtifactRevision.content, {
-          flag: "wx",
-          mode: 0o600,
-        });
+        await ensurePrivateDirectory(dirname(revisionSourcePath));
+        await writePrivateFileAtomic(revisionSourcePath, preparedArtifactRevision.content);
       }
       persisted = await this.#requestStore.save(runRoot, {
         ...request,
@@ -1095,6 +1103,7 @@ export class DesktopRunManager {
     }
     const metadata = await stat(actualPath);
     if (!metadata.isFile()) throw new Error("registered artifact is not a regular file");
+    await assertPrivateFileIfPresent(actualPath);
     const content = await readFile(actualPath);
     const sha256 = createHash("sha256").update(content).digest("hex");
     if (content.length !== record.bytes || sha256 !== record.sha256) {
@@ -1151,6 +1160,7 @@ export class DesktopRunManager {
       return undefined;
     }
     const sourcePath = resolve(runRoot, revision.sourceRelativePath);
+    await assertPrivateFileIfPresent(sourcePath);
     const content = await readFile(sourcePath);
     const sha256 = createHash("sha256").update(content).digest("hex");
     if (sha256 !== revision.parentSha256) {
@@ -1211,7 +1221,8 @@ export class DesktopRunManager {
       const workspace = await realpath(workspaceInput);
       const lease = await this.#workspaceLocks.acquire(workspace, "desktop-integration");
       try {
-        const runRoot = resolve(workspace, ".localbuddy", "runs", runId);
+        const runRoot = await ensurePrivateRunRoot(workspace, runId);
+        await hardenPrivateRunStorage(runRoot);
         const persistentStore = new JsonlEventStore(resolve(runRoot, "events.jsonl"));
         const events = [...await persistentStore.list(runId)];
         if (events.length === 0) {
@@ -1269,7 +1280,8 @@ export class DesktopRunManager {
       } catch {
         continue;
       }
-      const runRoot = resolve(runsRoot, entry.name);
+      const runRoot = await ensurePrivateDirectory(resolve(runsRoot, entry.name));
+      await hardenPrivateRunStorage(runRoot);
       const eventStore = new JsonlEventStore(resolve(runRoot, "events.jsonl"));
       const events = await eventStore.list(entry.name);
       if (hasTerminalRunState(events)) {
@@ -1421,7 +1433,8 @@ export class DesktopRunManager {
       } catch {
         continue;
       }
-      const runRoot = resolve(runsRoot, entry.name);
+      const runRoot = await ensurePrivateDirectory(resolve(runsRoot, entry.name));
+      await hardenPrivateRunStorage(runRoot);
       const eventStore = new JsonlEventStore(resolve(runRoot, "events.jsonl"));
       try {
         await new IntegrationManager({

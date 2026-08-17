@@ -1,11 +1,12 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { access, mkdir, realpath } from "node:fs/promises";
+import { access, realpath } from "node:fs/promises";
 import { constants } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, dirname, isAbsolute, parse as parsePath, resolve } from "node:path";
 
 import type { EventStore } from "./event-store.js";
+import { ensurePrivateDirectory } from "./private-storage.js";
 import type { ToolContext } from "./tool-runtime.js";
 
 const DEFAULT_TIMEOUT_MS = 120_000;
@@ -280,7 +281,7 @@ export async function prepareSeatbeltLaunch(
   const args = normalizeArguments(request.args ?? []);
   const command = await resolveExecutable(request.command, request.environment?.PATH);
   const cwd = await realpath(request.cwd);
-  await mkdir(request.temporaryRoot, { recursive: true, mode: 0o700 });
+  await ensurePrivateDirectory(request.temporaryRoot);
   const canonicalTemporaryRoot = await realpath(request.temporaryRoot);
   const readRoots = await canonicalRoots([
     cwd,
@@ -311,7 +312,7 @@ export async function prepareContainerLaunch(request: ContainerLaunchRequest): P
   validateContainerImage(request.image);
   const executable = request.containerExecutable ?? "docker";
   const cwd = await realpath(request.cwd);
-  await mkdir(request.temporaryRoot, { recursive: true, mode: 0o700 });
+  await ensurePrivateDirectory(request.temporaryRoot);
   const temporaryRoot = await realpath(request.temporaryRoot);
   const readRoots = await canonicalRoots([cwd, ...request.readRoots]);
   const writableRoots = await canonicalRoots([temporaryRoot, ...request.writableRoots]);

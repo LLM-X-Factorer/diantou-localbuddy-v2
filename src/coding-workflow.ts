@@ -1,5 +1,5 @@
-import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, realpath, rename, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { readFile, realpath } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 import { AgentLoopExecutor } from "./agent-loop.js";
@@ -45,6 +45,11 @@ import {
 import { AuditedModelClient } from "./model-runtime.js";
 import type { ModelProvider } from "./provider.js";
 import type { ProcessSharedCapacity } from "./process-shared-provider.js";
+import {
+  ensurePrivateDirectory,
+  hardenPrivateFileIfPresent,
+  writePrivateFileAtomic,
+} from "./private-storage.js";
 import type { OAuthRedirectHandler } from "./mcp-oauth.js";
 import {
   PlanReviewEndedError,
@@ -134,7 +139,7 @@ export class CodingWorkflow {
       }
       const repoRoot = await realpath(this.#options.repoRoot);
       const artifactRootInput = resolve(this.#options.artifactRoot);
-      await mkdir(artifactRootInput, { recursive: true });
+      await ensurePrivateDirectory(artifactRootInput);
       const artifactRoot = await realpath(artifactRootInput);
       const checkpointRoot = resolve(
         this.#options.checkpointRoot ?? resolve(dirname(artifactRoot), "checkpoint"),
@@ -826,9 +831,10 @@ async function writePatchArtifact(input: {
 }): Promise<ArtifactRecord> {
   const relativePath = `patches/${input.taskId}.patch`;
   const outputPath = resolve(input.artifactRoot, relativePath);
-  await mkdir(dirname(outputPath), { recursive: true });
+  await ensurePrivateDirectory(dirname(outputPath));
   const patchSha256 = createHash("sha256").update(input.patch).digest("hex");
   try {
+    await hardenPrivateFileIfPresent(outputPath);
     const existing = await readFile(outputPath, "utf8");
     if (createHash("sha256").update(existing).digest("hex") !== patchSha256) {
       throw new Error(`existing patch Artifact conflicts with recovered Task ${input.taskId}`);
@@ -837,12 +843,7 @@ async function writePatchArtifact(input: {
     if (!(isNodeError(error) && error.code === "ENOENT")) {
       throw error;
     }
-    const temporaryPath = resolve(
-      dirname(outputPath),
-      `.${input.taskId}.${process.pid}.${randomUUID()}.tmp`,
-    );
-    await writeFile(temporaryPath, input.patch, { encoding: "utf8", flag: "wx" });
-    await rename(temporaryPath, outputPath);
+    await writePrivateFileAtomic(outputPath, input.patch);
   }
   const record: ArtifactRecord = {
     runId: input.runId,

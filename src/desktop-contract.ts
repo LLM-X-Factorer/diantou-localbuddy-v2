@@ -250,6 +250,7 @@ export interface DesktopWorkspaceReadiness {
   selected: boolean;
   isGitRepository: boolean;
   isTutorialWorkspace: boolean;
+  storage: WorkspaceStorageAssessment;
 }
 
 export interface DesktopOnboardingState {
@@ -528,5 +529,6 @@ export interface DesktopApi {
 import type { RunExtensionSelection } from "./extension-contract.js";
 import type { ProviderSelection } from "./provider-config.js";
 import type { DesktopUpdateView } from "./desktop-update.js";
+import type { WorkspaceStorageAssessment } from "./workspace-storage-contract.js";
 
 export type { DesktopUpdateView } from "./desktop-update.js";

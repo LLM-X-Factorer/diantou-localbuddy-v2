@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { randomUUID } from "node:crypto";
-import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { CodingWorkflow } from "./coding-workflow.js";
@@ -12,6 +11,11 @@ import { IntegrationManager, type IntegrationProposal } from "./integration-mana
 import type { ProviderSelection } from "./provider-config.js";
 import { createConfiguredProvider } from "./provider-factory.js";
 import { ProcessSharedCapacity } from "./process-shared-provider.js";
+import {
+  ensurePrivateDirectory,
+  ensurePrivateRunRoot,
+  hardenPrivateRunStorage,
+} from "./private-storage.js";
 import { RunRequestStore } from "./run-request-store.js";
 import { WorkspaceProcessLockManager } from "./workspace-process-lock.js";
 import { normalizeTrustProfile, type TrustProfile } from "./tool-runtime.js";
@@ -42,9 +46,10 @@ async function main(): Promise<void> {
 }
 
 async function execute(options: CliOptions): Promise<void> {
-  const runRoot = resolve(options.workspace, ".localbuddy", "runs", options.runId);
+  const runRoot = await ensurePrivateRunRoot(options.workspace, options.runId);
+  await hardenPrivateRunStorage(runRoot);
   const artifactRoot = resolve(runRoot, "artifacts");
-  await mkdir(artifactRoot, { recursive: true });
+  await ensurePrivateDirectory(artifactRoot);
   const eventStore = new JsonlEventStore(resolve(runRoot, "events.jsonl"));
   const requestStore = new RunRequestStore();
   const persisted = options.resume

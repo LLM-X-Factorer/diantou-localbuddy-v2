@@ -16,6 +16,7 @@ import type {
   ModelResponse,
   ModelStreamOptions,
 } from "./provider.js";
+import { ensurePrivateDirectory, PRIVATE_DIRECTORY_MODE } from "./private-storage.js";
 
 const STATE_VERSION = 1;
 const POLL_INTERVAL_MS = 50;
@@ -204,7 +205,7 @@ async function acquireSlot(
   count: number,
   signal?: AbortSignal,
 ): Promise<FileLease> {
-  await mkdir(slotsRoot, { recursive: true });
+  await ensurePrivateDirectory(slotsRoot);
   while (true) {
     if (signal?.aborted === true) throw new Error("Provider capacity wait was cancelled");
     for (let index = 0; index < count; index += 1) {
@@ -225,7 +226,7 @@ async function acquireNamedLease(directory: string, signal?: AbortSignal): Promi
 }
 
 async function tryAcquireNamedLease(directory: string): Promise<FileLease | undefined> {
-  await mkdir(dirname(directory), { recursive: true });
+  await ensurePrivateDirectory(dirname(directory));
   const owner: LeaseOwner = {
     version: STATE_VERSION,
     ownerId: randomUUID(),
@@ -234,7 +235,7 @@ async function tryAcquireNamedLease(directory: string): Promise<FileLease | unde
     acquiredAt: new Date().toISOString(),
   };
   try {
-    await mkdir(directory);
+    await mkdir(directory, { mode: PRIVATE_DIRECTORY_MODE });
   } catch (error) {
     if (!(isNodeError(error) && error.code === "EEXIST")) throw error;
     const existing = await inspectLease(directory);
@@ -251,7 +252,7 @@ async function tryAcquireNamedLease(directory: string): Promise<FileLease | unde
       throw renameError;
     }
     try {
-      await mkdir(directory);
+      await mkdir(directory, { mode: PRIVATE_DIRECTORY_MODE });
     } finally {
       await rm(quarantine, { recursive: true, force: true });
     }
@@ -357,7 +358,7 @@ async function readLedger(path: string): Promise<UsageLedger> {
 }
 
 async function saveLedger(path: string, ledger: UsageLedger): Promise<void> {
-  await mkdir(dirname(path), { recursive: true });
+  await ensurePrivateDirectory(dirname(path));
   const temporaryPath = `${path}.${process.pid}.${randomUUID()}.tmp`;
   await writeFile(temporaryPath, `${JSON.stringify(ledger, null, 2)}\n`, {
     encoding: "utf8",

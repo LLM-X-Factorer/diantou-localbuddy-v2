@@ -1,9 +1,10 @@
-import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 
 import type { EventStore } from "./event-store.js";
 import { normalizeGoalContract, type GoalContract } from "./goal-contract.js";
+import { assertPrivateFileIfPresent, writePrivateJsonAtomic } from "./private-storage.js";
 
 const MAX_PLAN_REVIEW_BYTES = 1024 * 1024;
 
@@ -106,6 +107,7 @@ export class PlanReviewStore {
   }
 
   async load(): Promise<PlanReviewRecord> {
+    await assertPrivateFileIfPresent(this.#filePath);
     const bytes = await readFile(this.#filePath);
     if (bytes.length > MAX_PLAN_REVIEW_BYTES) {
       throw new Error("Plan Review record exceeds the safe size limit");
@@ -426,10 +428,7 @@ function sha256(value: string): string {
 }
 
 async function writeJsonAtomic(path: string, value: unknown): Promise<void> {
-  const temporaryPath = `${path}.${process.pid}.${randomUUID()}.tmp`;
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, { encoding: "utf8", flag: "wx" });
-  await rename(temporaryPath, path);
+  await writePrivateJsonAtomic(path, value);
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

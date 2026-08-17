@@ -1,5 +1,5 @@
-import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, realpath, rename, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { readFile, readdir, realpath } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 
 import { JsonArtifactRegistry, type ArtifactRecord } from "./artifacts.js";
@@ -12,6 +12,7 @@ import type {
 import { ResearchCheckpointStore } from "./checkpoint-store.js";
 import { parseCodingPlan, type CodingPlan } from "./coding-planner.js";
 import { GitWorktreeManager, type GitWorktreeHandle } from "./git-worktree-manager.js";
+import { assertPrivateFileIfPresent, writePrivateJsonAtomic } from "./private-storage.js";
 import type { ToolExecutionJournal } from "./tool-runtime.js";
 
 const MAX_CHECKPOINT_BYTES = 10 * 1024 * 1024;
@@ -343,6 +344,7 @@ export class CodingCheckpointStore implements AgentCheckpointStore {
     const patchPath = await realpath(result.patch.absolutePath);
     const artifactRoot = await realpath(resolve(dirname(this.#checkpointRoot), "artifacts"));
     assertInside(artifactRoot, patchPath);
+    await assertPrivateFileIfPresent(patchPath);
     if (sha256(await readFile(patchPath)) !== result.patch.sha256) {
       throw new Error(`Coding patch Artifact changed for ${result.taskId}`);
     }
@@ -513,6 +515,7 @@ async function validateIntegratorResult(
   }
   const artifactPath = await realpath(artifact.absolutePath);
   assertInside(artifactRoot, artifactPath);
+  await assertPrivateFileIfPresent(artifactPath);
   const content = await readFile(artifactPath);
   if (content.byteLength !== artifact.bytes || sha256(content) !== artifact.sha256) {
     throw new Error("Coding Integrator Artifact changed after checkpoint");
@@ -574,6 +577,7 @@ function assertInside(root: string, target: string): void {
 }
 
 async function readJson(filePath: string): Promise<unknown> {
+  await assertPrivateFileIfPresent(filePath);
   const content = await readFile(filePath, "utf8");
   if (Buffer.byteLength(content) > MAX_CHECKPOINT_BYTES) {
     throw new Error(`checkpoint file exceeds ${MAX_CHECKPOINT_BYTES} bytes`);
@@ -582,13 +586,7 @@ async function readJson(filePath: string): Promise<unknown> {
 }
 
 async function writeJsonAtomic(filePath: string, value: unknown): Promise<void> {
-  const temporaryPath = `${filePath}.${process.pid}.${randomUUID()}.tmp`;
-  await mkdir(dirname(filePath), { recursive: true });
-  await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, {
-    encoding: "utf8",
-    flag: "wx",
-  });
-  await rename(temporaryPath, filePath);
+  await writePrivateJsonAtomic(filePath, value);
 }
 
 function sha256(value: string | Buffer): string {

@@ -1,15 +1,12 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import {
   lstat,
-  mkdir,
   readFile,
   readdir,
   realpath,
-  rename,
   stat,
-  writeFile,
 } from "node:fs/promises";
-import { basename, dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
+import { basename, extname, isAbsolute, relative, resolve, sep } from "node:path";
 
 import type { ArtifactRegistry } from "./artifacts.js";
 import {
@@ -28,6 +25,7 @@ import {
   type DocxArtifactSpec,
 } from "./docx-artifact.js";
 import type { EventStore } from "./event-store.js";
+import { ensurePrivateDirectory, writePrivateFileAtomic } from "./private-storage.js";
 import {
   researchSourceCatalog,
   resolveResearchSourceReference,
@@ -68,7 +66,7 @@ export async function createWorkspaceTools(
   const workspaceRoot = options.sourcePaths === undefined
     ? await realpath(requiredWorkspaceRoot(options.workspaceRoot))
     : undefined;
-  await mkdir(options.artifactRoot, { recursive: true });
+  await ensurePrivateDirectory(options.artifactRoot);
   const artifactRoot = await realpath(options.artifactRoot);
 
   return [
@@ -479,12 +477,7 @@ function createWriteDocxArtifactTool(
       } catch (error) {
         if (!(isNodeError(error) && error.code === "ENOENT")) throw error;
       }
-      const temporaryPath = resolve(
-        dirname(outputPath),
-        `.${input.fileName}.${process.pid}.${randomUUID()}.tmp`,
-      );
-      await writeFile(temporaryPath, content, { flag: "wx" });
-      await rename(temporaryPath, outputPath);
+      await writePrivateFileAtomic(outputPath, content);
       await registry.add({
         runId: context.runId,
         taskId: context.taskId,
@@ -588,12 +581,7 @@ function createWriteArtifactTool(
         }
       }
 
-      const temporaryPath = resolve(
-        dirname(outputPath),
-        `.${input.fileName}.${process.pid}.${randomUUID()}.tmp`,
-      );
-      await writeFile(temporaryPath, input.content, { encoding: "utf8", flag: "wx" });
-      await rename(temporaryPath, outputPath);
+      await writePrivateFileAtomic(outputPath, input.content);
 
       await registry.add({
         runId: context.runId,

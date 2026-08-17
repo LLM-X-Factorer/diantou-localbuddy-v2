@@ -23,6 +23,8 @@ M13 期间默认冻结通用功能面。只有以下改动可以进入实现：
 
 用户主动、公开安全、可预览的问题报告属于最后一类：它缩短真实失败进入可归因 Issue 的路径，不增加任务能力。合同与隐私边界见 [`M13-PUBLIC-BUG-REPORTING.md`](M13-PUBLIC-BUG-REPORTING.md)。
 
+Run 私有权限与真实存储位置披露同样属于安全/数据完整性修复：它不增加任务能力，不扫描资料，不迁移或删除旧 Run。当前合同见 [`STORAGE-AND-PRIVACY.md`](STORAGE-AND-PRIVACY.md)，更大的 Storage Contract V2 继续受真实场景门约束。
+
 PPTX、XLSX、RAG、Memory、自动化、远程助理、Marketplace、Hosted Credits 和团队协作不因“产品看起来应该有”而进入 M13。
 
 ## 3. Research Desk 主验证轨
