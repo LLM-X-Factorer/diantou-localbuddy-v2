@@ -2,13 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { DesktopBuildIdentity } from "../src/build-identity.js";
-import type { DesktopBugReportRequest, DesktopRunView } from "../src/desktop-contract.js";
+import type { DesktopRunView } from "../src/desktop-contract.js";
 import {
   buildPublicBugReport,
   findDuplicatePublicBugReport,
   isAllowedPublicBugReportUrl,
   PUBLIC_BUG_REPORT_URL_LIMIT,
-  sanitizePublicBugReportText,
 } from "../src/public-bug-report.js";
 
 const build: DesktopBuildIdentity = {
@@ -102,21 +101,9 @@ function sensitiveRun(): DesktopRunView {
   };
 }
 
-function request(overrides: Partial<DesktopBugReportRequest> = {}): DesktopBugReportRequest {
-  return {
-    workspace: "/Users/alice/Clients/semiconductor-secret",
-    runId: "run-private-123",
-    actual: "The run failed near /Users/alice/Clients/semiconductor-secret with sk-private123456.",
-    expected: "It should finish without contacting @private-team.",
-    reproduction: "Use api_key=private-token and retry as alice@example.com.",
-    ...overrides,
-  };
-}
-
 test("builds a controlled public report without local run, task, artifact, or credential data", () => {
   const report = buildPublicBugReport({
     run: sensitiveRun(),
-    request: request(),
     build,
     platform: "darwin",
     arch: "arm64",
@@ -127,8 +114,9 @@ test("builds a controlled public report without local run, task, artifact, or cr
   assert.match(serialized, /task\.failed.*runtime\.failed/);
   assert.match(serialized, /v0\.12\.4/);
   assert.match(serialized, /darwin.*arm64/);
-  assert.match(serialized, /\[redacted secret\]/);
-  assert.match(serialized, /\[redacted local path\]/);
+  assert.equal(report.version, 2);
+  assert.match(report.fields.problem, /research Run with status failed/);
+  assert.deepEqual(report.redactions, []);
   assert.doesNotMatch(serialized, /run-private-123|private-task-id|private-agent-id/);
   assert.doesNotMatch(serialized, /semiconductor-secret|strategy\.docx|artifact-private-sha|candidate-private-sha/);
   assert.doesNotMatch(serialized, /upload-private-data|commit-private-sha|patch-private-sha/);
@@ -139,12 +127,11 @@ test("builds a controlled public report without local run, task, artifact, or cr
   assert.ok(isAllowedPublicBugReportUrl(report.issueUrl, "new"));
 });
 
-test("keeps the duplicate signature stable across versions and user wording", () => {
+test("keeps the duplicate signature stable across versions and runtime timestamps", () => {
   const run = sensitiveRun();
-  const first = buildPublicBugReport({ run, request: request(), build, platform: "darwin", arch: "arm64" });
+  const first = buildPublicBugReport({ run, build, platform: "darwin", arch: "arm64" });
   const second = buildPublicBugReport({
     run: { ...run, startedAt: "2027-01-01T00:00:00.000Z" },
-    request: request({ actual: "Different public wording", expected: "Different", reproduction: "Different steps" }),
     build: { ...build, version: "0.13.0", sha: "abcdef1" },
     platform: "darwin",
     arch: "arm64",
@@ -154,23 +141,9 @@ test("keeps the duplicate signature stable across versions and user wording", ()
   assert.notEqual(first.title, second.title);
 });
 
-test("sanitizes credential URLs, tokens, user paths, email, mentions, and HTML", () => {
-  const result = sanitizePublicBugReportText(
-    "https://alice:password@example.com x=1 Bearer abcdefghijk token=very-private /home/alice/a C:\\Users\\alice\\private <b>@ops</b> a@b.example",
-  );
-  assert.doesNotMatch(result.value, /alice:password|abcdefghijk|very-private|\/home\/alice|C:\\Users\\alice|@ops|<b>|a@b\.example/);
-  assert.match(result.value, /redacted credential URL|redacted/);
-  assert.ok(result.redactions.length >= 5);
-});
-
-test("keeps maximum UI field sizes below the conservative GitHub URL cap", () => {
+test("keeps the generated public-safe trace below the conservative GitHub URL cap", () => {
   const report = buildPublicBugReport({
     run: sensitiveRun(),
-    request: request({
-      actual: "现".repeat(180),
-      expected: "预".repeat(160),
-      reproduction: "步".repeat(280),
-    }),
     build,
     platform: "win32",
     arch: "x64",
@@ -179,7 +152,7 @@ test("keeps maximum UI field sizes below the conservative GitHub URL cap", () =>
 });
 
 test("only accepts exact HTTPS issue targets in the public LocalBuddy repository", () => {
-  const report = buildPublicBugReport({ run: sensitiveRun(), request: request(), build, platform: "darwin", arch: "arm64" });
+  const report = buildPublicBugReport({ run: sensitiveRun(), build, platform: "darwin", arch: "arm64" });
   assert.ok(isAllowedPublicBugReportUrl(report.issueUrl, "new"));
   assert.ok(isAllowedPublicBugReportUrl("https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/42", "existing"));
   for (const value of [

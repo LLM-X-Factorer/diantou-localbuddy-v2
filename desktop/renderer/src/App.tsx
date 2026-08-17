@@ -18,7 +18,6 @@ import type {
   DesktopUpdateView,
   DesktopPublicBugReportPreview,
 } from "../../../src/desktop-contract";
-import { DESKTOP_BUG_REPORT_TEXT_LIMITS } from "../../../src/desktop-contract";
 import {
   GUIDE_TEMPLATES,
   type GuideTemplateId,
@@ -68,12 +67,6 @@ interface ArtifactContinuationDraft {
   threadId?: string;
 }
 
-interface BugReportDraft {
-  actual: string;
-  expected: string;
-  reproduction: string;
-}
-
 export function App() {
   const [workspace, setWorkspace] = useState("");
   const [recentWorkspaces, setRecentWorkspaces] = useState<readonly string[]>([]);
@@ -114,9 +107,7 @@ export function App() {
   const [exportingDiagnostics, setExportingDiagnostics] = useState(false);
   const [diagnosticsStatus, setDiagnosticsStatus] = useState<string>();
   const [bugReportOpen, setBugReportOpen] = useState(false);
-  const [bugReportDraft, setBugReportDraft] = useState<BugReportDraft>({ actual: "", expected: "", reproduction: "" });
   const [bugReportPreview, setBugReportPreview] = useState<DesktopPublicBugReportPreview>();
-  const [bugReportConsent, setBugReportConsent] = useState(false);
   const [bugReportError, setBugReportError] = useState<string>();
   const [bugReportStatus, setBugReportStatus] = useState<string>();
   const [preparingBugReport, setPreparingBugReport] = useState(false);
@@ -136,6 +127,7 @@ export function App() {
   const [guideStatus, setGuideStatus] = useState<string>();
   const [update, setUpdate] = useState<DesktopUpdateView>(DEFAULT_UPDATE);
   const [updating, setUpdating] = useState(false);
+  const [updateNow, setUpdateNow] = useState(() => Date.now());
 
   useEffect(() => {
     const unsubscribeRun = window.localbuddy.onRunUpdate((updated) => {
@@ -164,11 +156,17 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (update.status !== "available") return;
+    setUpdateNow(Date.now());
+    const timer = window.setInterval(() => setUpdateNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, [update.status, update.downloadStartedAt]);
+
+  useEffect(() => {
     setIntegrationDiff(undefined);
     setDiagnosticsStatus(undefined);
     setBugReportOpen(false);
     setBugReportPreview(undefined);
-    setBugReportConsent(false);
     setBugReportError(undefined);
     setArtifactPreview(undefined);
     setArtifactThread(undefined);
@@ -219,6 +217,15 @@ export function App() {
       setError(toMessage(cause));
     } finally {
       setUpdating(false);
+    }
+  }
+
+  async function openLatestRelease() {
+    setError(undefined);
+    try {
+      await window.localbuddy.openLatestRelease();
+    } catch (cause) {
+      setError(toMessage(cause));
     }
   }
 
@@ -711,35 +718,26 @@ export function App() {
 
   function beginBugReport() {
     if (selectedRun === undefined) return;
-    setBugReportDraft({
-      actual: `这次运行出现了需要反馈的问题；当前状态为${statusLabel(selectedRun.status)}${selectedRun.metrics.failureStage === undefined ? "" : `，记录阶段为${failureStageLabel(selectedRun.metrics.failureStage)}`}。`,
-      expected: "LocalBuddy 应说明可恢复的下一步，或安全地完成本次运行。",
-      reproduction: "",
-    });
     setBugReportPreview(undefined);
-    setBugReportConsent(false);
     setBugReportError(undefined);
     setBugReportOpen(true);
-  }
-
-  function updateBugReportDraft(field: keyof BugReportDraft, value: string) {
-    setBugReportDraft((current) => ({ ...current, [field]: value }));
-    setBugReportPreview(undefined);
-    setBugReportConsent(false);
-    setBugReportError(undefined);
+    void prepareBugReportRequest({ workspace, runId: selectedRun.runId });
   }
 
   function currentBugReportRequest() {
     if (selectedRun === undefined) throw new Error("没有可报告的 Run");
-    return { workspace, runId: selectedRun.runId, ...bugReportDraft };
+    return { workspace, runId: selectedRun.runId };
   }
 
   async function prepareBugReport() {
+    await prepareBugReportRequest(currentBugReportRequest());
+  }
+
+  async function prepareBugReportRequest(request: { workspace: string; runId: string }) {
     setBugReportError(undefined);
-    setBugReportConsent(false);
     setPreparingBugReport(true);
     try {
-      setBugReportPreview(await window.localbuddy.prepareBugReport(currentBugReportRequest()));
+      setBugReportPreview(await window.localbuddy.prepareBugReport(request));
     } catch (cause) {
       setBugReportError(toMessage(cause));
     } finally {
@@ -761,7 +759,7 @@ export function App() {
   }
 
   async function openBugReportOnGitHub() {
-    if (!bugReportConsent || bugReportPreview === undefined) return;
+    if (bugReportPreview === undefined) return;
     setBugReportError(undefined);
     setOpeningBugReport(true);
     try {
@@ -912,18 +910,14 @@ export function App() {
 
       {bugReportOpen && selectedRun && (
         <BugReportDialog
-          draft={bugReportDraft}
           preview={bugReportPreview}
-          consent={bugReportConsent}
           error={bugReportError}
           preparing={preparingBugReport}
           saving={savingBugReport}
           opening={openingBugReport}
-          onChange={updateBugReportDraft}
           onPrepare={prepareBugReport}
           onSave={saveBugReport}
           onOpen={openBugReportOnGitHub}
-          onConsent={setBugReportConsent}
           onClose={() => setBugReportOpen(false)}
         />
       )}
@@ -1734,20 +1728,31 @@ export function App() {
             <strong>v{update.build.version} · {shortBuildSha(update.build.sha)}{update.build.dirty ? "+dirty" : ""}</strong>
           </div>
           {update.configured && (
-            <div className="update-actions">
-              <small>{updateStatusLabel(update)}</small>
-              {update.status === "downloaded" ? (
-                <button
-                  onClick={quitAndInstallUpdate}
-                  disabled={updating}
-                >重启更新</button>
-              ) : (
-                <button
-                  onClick={checkForUpdates}
-                  disabled={updating || update.status === "checking" || update.status === "available"}
-                >{update.status === "checking" || update.status === "available" ? "正在获取…" : "检查更新"}</button>
+            <>
+              <div className="update-actions">
+                <small>{updateStatusLabel(update, updateNow)}</small>
+                {update.status === "downloaded" ? (
+                  <button
+                    onClick={quitAndInstallUpdate}
+                    disabled={updating}
+                  >重启更新</button>
+                ) : (
+                  <button
+                    onClick={checkForUpdates}
+                    disabled={updating || update.status === "checking" || update.status === "available"}
+                  >{update.status === "checking" ? "正在检查…" : update.status === "available" ? "后台下载中" : "检查更新"}</button>
+                )}
+              </div>
+              {update.status === "available" && (
+                <div className="update-download-progress" role="status" aria-live="polite">
+                  <div className="update-progress-track" aria-label="更新正在后台下载">
+                    <span />
+                  </div>
+                  <small>安装包较大，下载完成后这里会出现“重启更新”。</small>
+                  <button type="button" onClick={openLatestRelease}>打开官方下载页</button>
+                </div>
               )}
-            </div>
+            </>
           )}
           {update.blockedReason && <small className="update-warning">{update.blockedReason}</small>}
           {update.error && <small className="update-warning">{update.error}</small>}
@@ -1758,36 +1763,27 @@ export function App() {
 }
 
 function BugReportDialog({
-  draft,
   preview,
-  consent,
   error,
   preparing,
   saving,
   opening,
-  onChange,
   onPrepare,
   onSave,
   onOpen,
-  onConsent,
   onClose,
 }: {
-  draft: BugReportDraft;
   preview?: DesktopPublicBugReportPreview;
-  consent: boolean;
   error?: string;
   preparing: boolean;
   saving: boolean;
   opening: boolean;
-  onChange(field: keyof BugReportDraft, value: string): void;
   onPrepare(): void;
   onSave(): void;
   onOpen(): void;
-  onConsent(value: boolean): void;
   onClose(): void;
 }) {
   const duplicate = preview?.duplicateCheck;
-  const ready = draft.actual.trim().length > 0 && draft.reproduction.trim().length > 0;
   return (
     <div className="provider-settings-overlay bug-report-overlay">
       <section className="bug-report-dialog" role="dialog" aria-modal="true" aria-labelledby="bug-report-title">
@@ -1795,52 +1791,26 @@ function BugReportDialog({
           <div>
             <span>PUBLIC BUG REPORT</span>
             <h2 id="bug-report-title">报告 LocalBuddy 问题</h2>
-            <p>先生成一份公开安全预览；应用不会静默上传，也不会替你点击 GitHub 的发布按钮。</p>
+            <p>LocalBuddy 已根据当前 Run 自动生成公开安全 Trace；检查后只需同意一次。</p>
           </div>
           <button className="provider-dialog-close" type="button" onClick={onClose} aria-label="关闭问题报告">×</button>
         </header>
 
         <div className="bug-report-warning" role="note">
           <strong>GitHub Issue 是公开内容</strong>
-          <p>不要填写提示词、业务正文、资料或工件内容、本地路径、凭据和原始事件日志。即使应用会自动遮盖常见敏感信息，也请以预览为准逐项检查。</p>
+          <p>预览不读取提示词、业务正文、资料或工件内容、本地路径、凭据、原始错误和事件详情。请确认下面的公开摘要符合你的预期。</p>
         </div>
 
-        <div className="bug-report-fields">
-          <label>
-            <span>实际发生了什么 <small>{Array.from(draft.actual).length}/{DESKTOP_BUG_REPORT_TEXT_LIMITS.actual}</small></span>
-            <textarea
-              value={draft.actual}
-              maxLength={DESKTOP_BUG_REPORT_TEXT_LIMITS.actual}
-              onChange={(event) => onChange("actual", event.target.value)}
-              placeholder="只描述可见现象，不粘贴任务正文或原始错误"
-            />
-          </label>
-          <label>
-            <span>你原本期待什么 <small>{Array.from(draft.expected).length}/{DESKTOP_BUG_REPORT_TEXT_LIMITS.expected}</small></span>
-            <textarea
-              value={draft.expected}
-              maxLength={DESKTOP_BUG_REPORT_TEXT_LIMITS.expected}
-              onChange={(event) => onChange("expected", event.target.value)}
-              placeholder="可选"
-            />
-          </label>
-          <label className="bug-report-reproduction">
-            <span>怎样复现 <small>{Array.from(draft.reproduction).length}/{DESKTOP_BUG_REPORT_TEXT_LIMITS.reproduction}</small></span>
-            <textarea
-              value={draft.reproduction}
-              maxLength={DESKTOP_BUG_REPORT_TEXT_LIMITS.reproduction}
-              onChange={(event) => onChange("reproduction", event.target.value)}
-              placeholder="请写最小步骤，并去掉项目名、路径和私人资料"
-            />
-          </label>
-        </div>
-
-        <div className="bug-report-prepare-row">
-          <p>生成预览会读取 GitHub 的公开 Issue 列表检查重复；不会把这份报告发送给 GitHub。</p>
-          <button type="button" onClick={onPrepare} disabled={!ready || preparing || saving || opening}>
-            {preparing ? "生成并检查中…" : preview ? "重新生成公开预览" : "生成公开预览"}
-          </button>
-        </div>
+        {!preview && (
+          <div className="bug-report-prepare-row" role={error ? "alert" : "status"}>
+            <p>{preparing
+              ? "正在生成脱敏摘要，并用匿名签名检查公开 Issue 是否已有同类问题…"
+              : "暂时无法生成公开预览；没有任何 Run 内容被发送。"}</p>
+            {!preparing && (
+              <button type="button" onClick={onPrepare} disabled={saving || opening}>重试生成</button>
+            )}
+          </div>
+        )}
 
         {preview && (
           <div className="bug-report-preview">
@@ -1859,17 +1829,9 @@ function BugReportDialog({
             </div>
             <pre>{preview.previewMarkdown}</pre>
             <div className="bug-report-redactions">
-              <strong>自动遮盖</strong>
-              <span>{preview.redactions.length === 0 ? "未触发；仍需人工检查" : preview.redactions.join("、")}</span>
+              <strong>隐私边界</strong>
+              <span>{preview.redactions.length === 0 ? "未读取自由文本，因此无需逐字遮盖；仍请核对自动摘要" : preview.redactions.join("、")}</span>
             </div>
-            <label className="bug-report-consent">
-              <input
-                type="checkbox"
-                checked={consent}
-                onChange={(event) => onConsent(event.target.checked)}
-              />
-              <span>我已检查上面所有将被预填的公开字段；其中不含私人资料、凭据、提示词、路径或业务正文。</span>
-            </label>
           </div>
         )}
 
@@ -1878,13 +1840,13 @@ function BugReportDialog({
         <footer>
           <p>{duplicate?.status === "found"
             ? "继续后只会打开已有 Issue，方便你核对和补充；LocalBuddy 不会自动留言。"
-            : "继续后会在系统浏览器打开预填表单；你还需要登录 GitHub、再次检查并亲自点击 Submit new issue。"}</p>
+            : "同意后会打开预填的公开表单；LocalBuddy 不保存 GitHub Token，也不会替你点击最终提交。"}</p>
           <div>
             <button type="button" className="bug-report-save" onClick={onSave} disabled={!preview || preparing || saving || opening}>
               {saving ? "保存中…" : "保存本地报告"}
             </button>
-            <button type="button" className="bug-report-open" onClick={onOpen} disabled={!preview || !consent || preparing || saving || opening}>
-              {opening ? "正在打开…" : duplicate?.status === "found" ? "查看已有 Issue" : "在 GitHub 中继续提交"}
+            <button type="button" className="bug-report-open" onClick={onOpen} disabled={!preview || preparing || saving || opening}>
+              {opening ? "正在打开…" : duplicate?.status === "found" ? "同意并查看已有 Issue" : "同意并在 GitHub 继续提交"}
             </button>
           </div>
         </footer>
@@ -2325,11 +2287,11 @@ function shortBuildSha(sha: string): string {
   return sha === "unknown" ? sha : sha.slice(0, 8);
 }
 
-function updateStatusLabel(update: DesktopUpdateView): string {
+function updateStatusLabel(update: DesktopUpdateView, now = Date.now()): string {
   switch (update.status) {
     case "ready": return "可手动检查当前频道";
     case "checking": return "正在检查更新";
-    case "available": return "发现更新，正在下载";
+    case "available": return `正在后台下载 · 已等待 ${formatUpdateElapsed(update.downloadStartedAt, now)}`;
     case "not_available": return "当前已经是最新版本";
     case "downloaded": return update.releaseName === undefined
       ? "新版本已验证并下载"
@@ -2338,6 +2300,16 @@ function updateStatusLabel(update: DesktopUpdateView): string {
     case "error": return "更新检查失败";
     default: return "此构建未配置自动更新";
   }
+}
+
+function formatUpdateElapsed(startedAt: string | undefined, now: number): string {
+  if (startedAt === undefined) return "片刻";
+  const started = Date.parse(startedAt);
+  if (!Number.isFinite(started) || now <= started) return "片刻";
+  const totalSeconds = Math.floor((now - started) / 1_000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return minutes === 0 ? `${seconds} 秒` : `${minutes} 分 ${seconds} 秒`;
 }
 
 function providerCredentialShortLabel(status: DesktopProviderCredentialStatus): string {

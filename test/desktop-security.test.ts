@@ -52,8 +52,12 @@ test("desktop runtime uses the privileged local protocol and Electron isolation 
   assert.match(main, /runManager\.isIdle\(\)/);
   assert.match(await readFile("src/desktop-run-manager.ts", "utf8"), /#mutatingIntegrations === 0/);
   assert.match(main, /重启并更新 LocalBuddy/);
+  assert.match(main, /https:\/\/github\.com\/LLM-X-Factorer\/diantou-localbuddy-v2\/releases\/latest/);
   assert.match(renderer, /build-identity/);
   assert.match(renderer, /检查更新/);
+  assert.match(renderer, /update-download-progress/);
+  assert.match(renderer, /已等待/);
+  assert.match(renderer, /打开官方下载页/);
   assert.doesNotMatch(main, /recentWorkspaces\[0\]\s*\?\? app\.getPath\("documents"\)/);
   assert.match(renderer, /我不会在这里调用模型、读取文件或启动任务/);
   assert.match(renderer, /点击“生成计划”才会调用 Provider，Worker 仍需你批准计划后才开始/);

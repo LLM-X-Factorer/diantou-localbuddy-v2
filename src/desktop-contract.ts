@@ -10,6 +10,7 @@ export const DESKTOP_CHANNELS = {
   verifyProviderConnection: "localbuddy:verify-provider-connection",
   checkForUpdates: "localbuddy:check-for-updates",
   quitAndInstallUpdate: "localbuddy:quit-and-install-update",
+  openLatestRelease: "localbuddy:open-latest-release",
   listRuns: "localbuddy:list-runs",
   startRun: "localbuddy:start-run",
   cancelRun: "localbuddy:cancel-run",
@@ -433,17 +434,7 @@ export interface ResolveDesktopPlanReviewRequest extends DesktopRunActionRequest
   decision: "approve" | "reject";
 }
 
-export const DESKTOP_BUG_REPORT_TEXT_LIMITS = {
-  actual: 180,
-  expected: 160,
-  reproduction: 280,
-} as const;
-
-export interface DesktopBugReportRequest extends DesktopRunActionRequest {
-  actual: string;
-  expected: string;
-  reproduction: string;
-}
+export type DesktopBugReportRequest = DesktopRunActionRequest;
 
 export interface OpenDesktopBugReportRequest extends DesktopBugReportRequest {
   confirmedPublicSubmission: true;
@@ -458,16 +449,14 @@ export interface DesktopBugReportDuplicateCheck {
 }
 
 export interface DesktopPublicBugReportPreview {
-  version: 1;
+  version: 2;
   destination: string;
   title: string;
   issueUrl: string;
   signature: string;
   previewSha256: string;
   fields: {
-    actual: string;
-    expected: string;
-    reproduction: string;
+    problem: string;
     environment: string;
     trace: string;
   };
@@ -502,6 +491,7 @@ export interface DesktopApi {
   ): Promise<VerifyDesktopProviderConnectionResult>;
   checkForUpdates(): Promise<DesktopUpdateView>;
   quitAndInstallUpdate(): Promise<DesktopUpdateView>;
+  openLatestRelease(): Promise<void>;
   listRuns(workspace: string): Promise<readonly DesktopRunView[]>;
   startRun(request: StartDesktopRunRequest): Promise<DesktopRunView>;
   cancelRun(runId: string): Promise<void>;

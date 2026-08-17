@@ -1,5 +1,5 @@
 name: LocalBuddy Bug Report
-description: Report a reproducible LocalBuddy desktop or runtime problem
+description: Report a LocalBuddy desktop or runtime problem with a public-safe trace
 title: "[Bug] "
 labels:
   - bug
@@ -9,34 +9,17 @@ body:
       value: |
         ## This report is public
 
-        Review every field before submitting. Do not paste prompts, source documents,
+        Review the prefilled summary before submitting. Do not paste prompts, source documents,
         artifact contents, local paths, credentials, API keys, raw event logs, or other
-        private material. LocalBuddy's in-app report flow only prefills a public-safe summary.
+        private material. LocalBuddy's in-app flow generates the public-safe summary and trace;
+        it never uploads the raw Run trace or submits the Issue for you.
 
   - type: textarea
-    id: actual
+    id: problem
     attributes:
-      label: What happened?
-      description: Describe the visible behavior without private task content.
-      placeholder: The run stopped while preparing a safe checkpoint.
-    validations:
-      required: true
-
-  - type: textarea
-    id: expected
-    attributes:
-      label: What did you expect?
-      placeholder: The run should have recovered or explained the next safe action.
-
-  - type: textarea
-    id: reproduction
-    attributes:
-      label: How can we reproduce it?
-      description: Use a minimal example and remove private names, paths, and content.
-      placeholder: |
-        1. Start a local research run.
-        2. Wait for the checkpoint step.
-        3. Observe the failure state.
+      label: Public-safe problem summary
+      description: Automatically generated from the selected Run when you report from LocalBuddy.
+      placeholder: LocalBuddy recorded a failed Run with a controlled failure classification.
     validations:
       required: true
 
@@ -63,11 +46,3 @@ body:
     attributes:
       label: Additional context
       description: Screenshots are public too. Inspect and crop them before uploading.
-
-  - type: checkboxes
-    id: privacy
-    attributes:
-      label: Public data review
-      options:
-        - label: I reviewed this public report and removed private data, credentials, prompts, paths, and task artifacts.
-          required: true

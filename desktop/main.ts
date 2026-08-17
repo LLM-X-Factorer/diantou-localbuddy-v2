@@ -31,7 +31,6 @@ import {
   type DesktopArtifactActionRequest,
   type DesktopBugReportDuplicateCheck,
   type DesktopBugReportRequest,
-  DESKTOP_BUG_REPORT_TEXT_LIMITS,
   type DesktopPublicBugReportPreview,
   type DesktopRunActionRequest,
   type OpenDesktopBugReportRequest,
@@ -417,6 +416,11 @@ function registerIpcHandlers(): void {
     return confirmation.response === 1 ? coordinator.quitAndInstall() : coordinator.current;
   });
 
+  ipcMain.handle(DESKTOP_CHANNELS.openLatestRelease, async (event) => {
+    assertTrustedSender(event);
+    await shell.openExternal("https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/latest");
+  });
+
   ipcMain.handle(DESKTOP_CHANNELS.listRuns, async (event, workspace: unknown) => {
     assertTrustedSender(event);
     const canonical = await realpath(expectString(workspace, "workspace"));
@@ -617,7 +621,6 @@ async function buildPublicBugReportForRequest(request: DesktopBugReportRequest) 
   if (run === undefined) throw new Error("找不到要报告的 LocalBuddy Run");
   return buildPublicBugReport({
     run,
-    request,
     build: buildIdentity,
     platform: process.platform,
     arch: process.arch,
@@ -817,24 +820,6 @@ function parseBugReportRequest(value: unknown): DesktopBugReportRequest {
   return {
     workspace: expectString(record.workspace, "workspace"),
     runId: expectString(record.runId, "runId"),
-    actual: expectBugReportText(
-      record.actual,
-      "actual",
-      DESKTOP_BUG_REPORT_TEXT_LIMITS.actual,
-      true,
-    ),
-    expected: expectBugReportText(
-      record.expected,
-      "expected",
-      DESKTOP_BUG_REPORT_TEXT_LIMITS.expected,
-      false,
-    ),
-    reproduction: expectBugReportText(
-      record.reproduction,
-      "reproduction",
-      DESKTOP_BUG_REPORT_TEXT_LIMITS.reproduction,
-      true,
-    ),
   };
 }
 
@@ -948,17 +933,6 @@ function expectString(value: unknown, name: string): string {
   return value;
 }
 
-function expectBugReportText(value: unknown, name: string, maximum: number, required: boolean): string {
-  const result = expectString(value, name);
-  if (Array.from(result).length > maximum) {
-    throw new Error(`${name} must be at most ${maximum} characters`);
-  }
-  if (required && result.trim().length === 0) {
-    throw new Error(`${name} must not be empty`);
-  }
-  return result;
-}
-
 function expectSha256(value: unknown, name: string): string {
   const result = expectString(value, name);
   if (!/^[a-f0-9]{64}$/u.test(result)) throw new Error(`${name} must be a SHA-256 digest`);
@@ -1027,21 +1001,9 @@ async function captureSmokeScreenshotIfRequested(window: BrowserWindow): Promise
         .find((element) => element.innerText.includes('报告问题'));
       targetButton.click();
       const dialog = await waitFor('.bug-report-dialog');
-      const textareas = [...dialog.querySelectorAll('.bug-report-fields textarea')];
-      const reproduction = textareas[2];
-      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
-      setter.call(reproduction, '1. 启动一个合成研究任务。\\n2. 等待运行进入失败状态。\\n3. 打开问题报告。');
-      reproduction.dispatchEvent(new Event('input', { bubbles: true }));
-      const prepareButton = [...dialog.querySelectorAll('.bug-report-prepare-row button')][0];
-      await waitFor('.bug-report-prepare-row button', (element) => !element.disabled);
-      prepareButton.click();
       const preview = await waitFor('.bug-report-preview');
-      await waitFor('.bug-report-prepare-row button', (element) =>
-        !element.disabled && !element.innerText.includes('生成并检查中')
-      );
       preview.scrollIntoView({ block: 'center' });
       await new Promise((resolvePromise) => setTimeout(resolvePromise, 250));
-      const consent = dialog.querySelector('.bug-report-consent input');
       const openButton = dialog.querySelector('.bug-report-open');
       return {
         url: location.href,
@@ -1053,8 +1015,9 @@ async function captureSmokeScreenshotIfRequested(window: BrowserWindow): Promise
         previewVisible: preview !== null,
         previewHasSignature: preview.innerText.includes('localbuddy-signature:v1:'),
         rawWorkspaceAbsent: !preview.innerText.includes('/Users/'),
-        consentChecked: consent?.checked ?? null,
-        openDisabledBeforeConsent: openButton?.disabled ?? null,
+        noRequiredNarrativeFields: dialog.querySelectorAll('.bug-report-fields textarea').length === 0,
+        singleConsentActionVisible: openButton?.innerText.includes('同意并') ?? false,
+        consentActionEnabled: !(openButton?.disabled ?? true),
         duplicateStatus: dialog.querySelector('.duplicate-status')?.innerText.trim() ?? ''
       };
     }

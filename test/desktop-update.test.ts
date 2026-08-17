@@ -27,11 +27,15 @@ test("downloads an update but refuses to restart while a Desktop Run is active",
     feedUrl: "https://updates.example.test/canary/win32/x64/",
     transport,
     canInstall: () => idle,
+    clock: () => new Date("2026-08-17T12:00:00.000Z"),
   });
   assert.equal(coordinator.current.status, "ready");
   await coordinator.checkForUpdates();
   assert.equal(transport.checks, 1);
   transport.emit({ type: "available" });
+  assert.equal(coordinator.current.downloadStartedAt, "2026-08-17T12:00:00.000Z");
+  transport.emit({ type: "available" });
+  assert.equal(coordinator.current.downloadStartedAt, "2026-08-17T12:00:00.000Z");
   transport.emit({ type: "downloaded", releaseName: "0.12.2-canary.18" });
   assert.equal(coordinator.current.status, "downloaded");
 

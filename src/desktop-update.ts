@@ -16,6 +16,7 @@ export interface DesktopUpdateView {
   status: DesktopUpdateStatus;
   build: DesktopBuildIdentity;
   releaseName?: string;
+  downloadStartedAt?: string;
   blockedReason?: string;
   error?: string;
 }
@@ -53,6 +54,7 @@ export class DesktopUpdateCoordinator {
   readonly #transport: DesktopUpdateTransport | undefined;
   readonly #canInstall: () => boolean | Promise<boolean>;
   readonly #onChange: (view: DesktopUpdateView) => void;
+  readonly #clock: () => Date;
   readonly #unsubscribe: (() => void) | undefined;
   #view: DesktopUpdateView;
 
@@ -63,10 +65,12 @@ export class DesktopUpdateCoordinator {
     transport?: DesktopUpdateTransport;
     canInstall: () => boolean | Promise<boolean>;
     onChange?: (view: DesktopUpdateView) => void;
+    clock?: () => Date;
   }) {
     this.#transport = input.transport;
     this.#canInstall = input.canInstall;
     this.#onChange = input.onChange ?? (() => undefined);
+    this.#clock = input.clock ?? (() => new Date());
     this.#view = {
       supported: input.supported,
       configured: false,
@@ -94,7 +98,12 @@ export class DesktopUpdateCoordinator {
     }
     if (this.#view.status === "checking" || this.#view.status === "available") return this.current;
     if (this.#view.status === "downloaded" || this.#view.status === "installing") return this.current;
-    this.#set({ status: "checking", error: undefined, blockedReason: undefined });
+    this.#set({
+      status: "checking",
+      downloadStartedAt: undefined,
+      error: undefined,
+      blockedReason: undefined,
+    });
     try {
       await this.#transport.checkForUpdates();
     } catch (error) {
@@ -123,10 +132,20 @@ export class DesktopUpdateCoordinator {
   #handle(event: DesktopUpdateTransportEvent): void {
     switch (event.type) {
       case "available":
-        this.#set({ status: "available", releaseName: event.releaseName, error: undefined });
+        this.#set({
+          status: "available",
+          releaseName: event.releaseName,
+          downloadStartedAt: this.#view.downloadStartedAt ?? this.#clock().toISOString(),
+          error: undefined,
+        });
         break;
       case "not_available":
-        this.#set({ status: "not_available", releaseName: undefined, error: undefined });
+        this.#set({
+          status: "not_available",
+          releaseName: undefined,
+          downloadStartedAt: undefined,
+          error: undefined,
+        });
         break;
       case "downloaded":
         this.#set({ status: "downloaded", releaseName: event.releaseName, error: undefined });

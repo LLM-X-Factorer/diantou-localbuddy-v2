@@ -12,6 +12,12 @@
 - 只修安全/数据完整性问题、真实任务阻塞、两个场景共同需要的 Core 合同，以及证据/grader 真源问题；
 - 验收合同与退出裁决见 [`M13-PRODUCT-TRUTH-SPRINT.md`](M13-PRODUCT-TRUTH-SPRINT.md)。
 
+### v0.12.7 candidate · Real-user Update + Report UX — in progress
+
+- [Issue #22](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/22) 来自真实 `v0.12.4` 更新体验：原生 updater 没有字节进度，静态“正在获取”像卡死。候选版展示已等待时间、动态活动状态和固定官方下载兜底，不伪造百分比；
+- [Issue #23](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/23) 删除公开问题报告的三段必填叙述、手工生成和额外复选框；LocalBuddy 自动生成安全摘要/Trace，用户检查后以一个明确按钮同意打开 GitHub；
+- 这两项是已发生的真实用户阻塞修复，不恢复通用功能扩张。当前仍是候选代码，不写成已发布能力；真正字节进度属于另行评审的 updater transport 变化。
+
 ### v0.12.6 · Private Run Storage + Product Truth — public unsigned Engineering Alpha
 
 - [Issue #18](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/18) 修复真实用户进入灰度前的数据安全与可解释性阻塞：统一私有 Run 写入、旧状态有界权限修复、符号链接 fail closed，以及默认收起的存储披露；
