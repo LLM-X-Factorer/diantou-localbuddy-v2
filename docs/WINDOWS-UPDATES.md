@@ -1,6 +1,6 @@
 # Windows 开发更新与安装升级
 
-> 状态：当前已发布基线是公开但未签名的 `v0.12.5` Engineering Alpha，仓库已采用 Apache License 2.0。`v0.12.4` 桥接版已让 packaged stable Windows 构建内置公开 GitHub Release 更新源；`v0.12.5` 托管门禁已通过从该桥接版原地升级、五项资产回下载和公开 endpoint 精确 URL 回读。`v0.12.3` 只有失败 Tag，没有 Release 或资产。代码签名和 Windows 11 上 `v0.12.4 -> v0.12.5` 的真人 OTA 仍是独立门禁。
+> 状态：当前已发布基线是公开但未签名的 `v0.12.6` Engineering Alpha，仓库已采用 Apache License 2.0。`v0.12.4` 桥接版已让 packaged stable Windows 构建内置公开 GitHub Release 更新源；托管门禁持续验证上一稳定版原地升级、五项资产和公开 endpoint。`v0.12.3` 只有失败 Tag，没有 Release 或资产。代码签名和 Windows 11 上 `v0.12.5 -> v0.12.6` 的真人 OTA 仍是独立门禁。
 
 ## 一句话方案
 
@@ -80,7 +80,7 @@ https://update.electronjs.org/LLM-X-Factorer/diantou-localbuddy-v2/win32-x64/<cu
 
 该服务从公开 GitHub Releases 解析下一稳定版；Renderer 仍不能修改更新源。Canary、beta、开发包和非 Windows 包默认不接稳定 feed。`LOCALBUDDY_UPDATE_FEED_URL` 只保留给打包验收时的显式 HTTPS/loopback 夹具，不作为用户配置或私有仓库鉴权方案。
 
-`v0.12.2` 本身没有内置更新地址，因此已有用户必须对 `v0.12.4` 做最后一次手动原地安装；不需要先卸载。托管门禁已验证 `v0.12.4 -> v0.12.5`，但只有在真实 Windows 11 上完成同一路径的线上检查、下载、重启、版本读回和 profile 保留后，才可以宣称以后无需回仓库下载。
+`v0.12.2` 本身没有内置更新地址，因此已有用户必须对 `v0.12.4` 做最后一次手动原地安装；不需要先卸载。托管门禁持续验证 `v0.12.4 -> v0.12.5` 和 `v0.12.5 -> v0.12.6`，但只有在真实 Windows 11 上完成线上检查、下载、重启、版本读回和 profile 保留后，才可以宣称以后无需回仓库下载。
 
 ## 应用内更新的安全规则
 

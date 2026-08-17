@@ -1,21 +1,22 @@
 # LocalBuddy V2 Roadmap
 
-> **状态真源**：2026-08-17。仓库已按 Apache License 2.0 公开；当前 Release 为公开但未签名的 `v0.12.5 / Public Bug Reporting + Product Truth` Engineering Alpha，包含 M12.1-M12.4、stable Windows 公共 GitHub feed 和用户主动公开安全问题报告。当前开发阶段仍是 `M13 Product Truth Sprint`：默认冻结通用功能扩张，以 Research Desk 的重复真实任务、非作者用户和目标应用证据决定 `advance/pause/stop`。代码签名、Windows 11 真人和 `v0.12.4 -> v0.12.5` 应用内更新仍开放。
+> **状态真源**：2026-08-17。仓库已按 Apache License 2.0 公开；当前 Release 为公开但未签名的 `v0.12.6 / Private Run Storage + Product Truth` Engineering Alpha，包含 M12.1-M12.4、stable Windows 公共 GitHub feed、用户主动公开安全问题报告和私有 Run 存储加固。当前开发阶段仍是 `M13 Product Truth Sprint`：默认冻结通用功能扩张，以 Research Desk 的重复真实任务、非作者用户和目标应用证据决定 `advance/pause/stop`。代码签名和 Windows 11 真人 OTA 仍开放。
 
 ## 当前里程碑
 
 ### M13 · Product Truth Sprint — active
 
-- `v0.12.5` 作为固定产品事实基线，不边验证边增加通用功能；
+- `v0.12.6` 作为固定产品事实基线，不边验证边增加通用功能；
 - Research Desk 使用同一合同三跑、两个不同主题和至少一次非作者独立运行；
 - Teaching Studio 只做 Owner/真实教学单元发现、现有能力模拟和教师口头走查；Builder Lab 只跑 WB-05 泛化检查；
 - 只修安全/数据完整性问题、真实任务阻塞、两个场景共同需要的 Core 合同，以及证据/grader 真源问题；
 - 验收合同与退出裁决见 [`M13-PRODUCT-TRUTH-SPRINT.md`](M13-PRODUCT-TRUTH-SPRINT.md)。
 
-### Storage privacy hardening — release candidate
+### v0.12.6 · Private Run Storage + Product Truth — public unsigned Engineering Alpha
 
 - [Issue #18](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/18) 修复真实用户进入灰度前的数据安全与可解释性阻塞：统一私有 Run 写入、旧状态有界权限修复、符号链接 fail closed，以及默认收起的存储披露；
 - 本增量不改变 Research 的显式资料合同，不恢复工作区扫描，也不自动迁移/删除旧数据；
+- PR #19 的 macOS、Windows 全量和 Windows 安装/原地升级门禁通过；固定 Tag 的 stable 安装、`v0.12.5 -> v0.12.6`、资产和线上更新源仍以 Release 读回为准；
 - [Issue #17](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/17) 保留为后续 Storage Contract V2：集中私有 Run store、用户可见结果边界、生命周期、导出和可逆迁移。它必须由真实用户/场景需求拉动，不能借安全补丁扩张成新文件管理产品。
 
 ### v0.12.5 · Public Bug Reporting + Product Truth — public unsigned Engineering Alpha

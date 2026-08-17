@@ -1,6 +1,6 @@
 # LocalBuddy 存储与隐私合同
 
-> 状态：已实现为 `v0.12.6` 存储加固候选。Release Gate 完成前，当前已发布版本仍以 [`QUICKSTART.md`](QUICKSTART.md) 为准。
+> 状态：随公开但未签名的 `v0.12.6 / Private Run Storage + Product Truth` Engineering Alpha 发布。
 
 LocalBuddy 把本地数据分为三类：工作区 Run 数据、应用偏好、操作系统凭据。选择“运行位置”，等于选择该工作区的 Run 历史和 Artifact 放在哪里；这不等于授权 Agent 把整个工作区扫描成研究资料。
 
