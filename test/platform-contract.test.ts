@@ -86,6 +86,8 @@ test("declares Windows-first CI plus low-frequency Linux maintenance boundaries"
   const workflow = await readFile(resolve(repository, ".github", "workflows", "ci.yml"), "utf8");
   assert.match(workflow, /windows-2025/);
   assert.match(workflow, /macos-15/);
+  assert.match(workflow, /Parse Windows PowerShell scripts/);
+  assert.match(workflow, /Parser\]::ParseFile/);
   assert.match(workflow, /pnpm check/);
   assert.match(workflow, /playwright install --only-shell chromium/);
   assert.match(workflow, /Install Windows Setup and verify clean first launch without Provider credentials/);
