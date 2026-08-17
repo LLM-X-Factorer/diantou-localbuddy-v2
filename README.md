@@ -4,7 +4,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 
 这不是 Craft Agents 的分支，也不包含腾讯 WorkBuddy 的私有实现。仓库只参考公开产品行为、通用 Agent 架构模式，以及我们自行定义的验收契约。
 
-> **产品判断（2026-08-17）**：仓库已按 Apache License 2.0 公开；[`v0.12.6 / Private Run Storage + Product Truth`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.6) 是当前公开但未签名的 Engineering Alpha Release，包含 M12.1-M12.4、stable Windows 公共更新源、用户主动公开安全问题报告和私有 Run 存储加固。当前仍在 M13 Product Truth Sprint，默认冻结功能扩张，用 Research Desk 重复运行、不同主题和非作者用户决定 `advance/pause/stop`。`v0.12.3` 仅保留失败 Tag 审计；代码签名与 Windows 11 真人 OTA 继续开放。
+> **产品判断（2026-08-17）**：仓库已按 Apache License 2.0 公开；[`v0.12.7 / Real-user Update + One-consent Reporting`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.7) 是当前公开但未签名的 Engineering Alpha Release，包含 M12.1-M12.4、stable Windows 公共更新源、私有 Run 存储、可见更新等待状态和自动公开安全 Trace。当前仍在 M13 Product Truth Sprint，默认冻结通用功能扩张；唯一当前用户已明确批准直接发布本补丁，但代码签名与 Windows 11 真人 OTA 继续开放。
 
 ## 一页状态
 
@@ -19,8 +19,8 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 | 恢复 | Research/Coding 同 Run checkpoint resume；失败 Run 可恢复未完成 Task 链，并保留 replay 兜底 |
 | Artifact | 文本与受限 DOCX；已登记版本可预览、打开、继续修订并与直接父版本比较；DOCX 发布前经独立 Reviewer，当前只覆盖段落、项目符号和表格 |
 | 扩展 | 本地/签名 Skill、MCP stdio/HTTP/OAuth、受限 Playwright Browser |
-| 分发 | Windows `v0.12.6` Setup/ZIP/full nupkg/RELEASES 由 Tag 门禁发布；托管 Windows 验证上一稳定版原地升级，但签名与 Windows 11 真人 OTA 仍未验收 |
-| 当前阶段 | M13 Product Truth Sprint；固定 `v0.12.6`，默认不扩功能，只修真实任务证明的阻塞并作 `advance/pause/stop` 裁决 |
+| 分发 | Windows `v0.12.7` Setup/ZIP/full nupkg/RELEASES 由 Tag 门禁发布；托管 Windows 验证上一稳定版原地升级，但签名与 Windows 11 真人 OTA 仍未验收 |
+| 当前阶段 | M13 Product Truth Sprint；固定 `v0.12.7`，默认不扩功能，只修真实任务证明的阻塞并作 `advance/pause/stop` 裁决 |
 | 当前主动暂缓 | Developer ID、生产 Hardened Runtime、notarization、公开 Gatekeeper |
 
 M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M10.3 继续补齐 Provider 配置闭环；M10.4 把运行位置与资料范围分离；M11.1 再将目标与执行计划变成可检查、可批准的合同。保存不会自动联网；验证连接只请求模型列表；真实 Run 必须由用户生成计划并批准后才启动 Worker。连续真实 dogfooding 仍是开放验证门。
@@ -30,7 +30,7 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 - [`docs/QUICKSTART.md`](docs/QUICKSTART.md)：内部试用者从安装、凭证到第一个 Run 的最短路径；
 - [`docs/PRODUCT-DEFINITION-V2.md`](docs/PRODUCT-DEFINITION-V2.md)：LocalBuddy“可信本地工作台 + 场景产品包”的产品定义、首批候选场景和晋级门禁；
 - [`docs/PRODUCT-PORTFOLIO-DECISION-2026-08-15.md`](docs/PRODUCT-PORTFOLIO-DECISION-2026-08-15.md)：Research Desk 切入口、Teaching Studio 旗舰假设与 Builder Lab 基准角色的 L0 组合裁决；
-- [`docs/KNOWN-LIMITATIONS.md`](docs/KNOWN-LIMITATIONS.md)：`v0.12.6` 分发基线与仍开放门禁；
+- [`docs/KNOWN-LIMITATIONS.md`](docs/KNOWN-LIMITATIONS.md)：`v0.12.7` 分发基线与仍开放门禁；
 - [`docs/M11.1-SPEC.md`](docs/M11.1-SPEC.md)：Goal Contract、Plan Review、批准身份和恢复语义；
 - [`docs/M11.1-VALIDATION.md`](docs/M11.1-VALIDATION.md)：M11.1 本机、原生 Windows 发布与仍开放的真人门禁；
 - [`docs/M12.1-SPEC.md`](docs/M12.1-SPEC.md)：Artifact Thread、父产物身份、只读修订快照和版本 UI 的本地实现合同；
@@ -41,20 +41,20 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 - [`docs/M12.3-VALIDATION.md`](docs/M12.3-VALIDATION.md)：DOCX 自动门禁、Pages 逐页目视和 Electron Artifact Workbench 证据；
 - [`docs/M12.4-SPEC.md`](docs/M12.4-SPEC.md)：独立 DOCX Reviewer、有界修订、事件隐私和脱敏 trace 合同；
 - [`docs/M12.4-VALIDATION.md`](docs/M12.4-VALIDATION.md)：Reviewer 接受/退回/上限/恢复与 trace 专项证据；
-- [`docs/M13-PRODUCT-TRUTH-SPRINT.md`](docs/M13-PRODUCT-TRUTH-SPRINT.md)：固定 `v0.12.6`、Research Desk 真实运行矩阵、非作者用户门和 `advance/pause/stop` 裁决；
+- [`docs/M13-PRODUCT-TRUTH-SPRINT.md`](docs/M13-PRODUCT-TRUTH-SPRINT.md)：固定 `v0.12.7`、Research Desk 真实运行矩阵、非作者用户门和 `advance/pause/stop` 裁决；
 - [`docs/M13-PUBLIC-BUG-REPORTING.md`](docs/M13-PUBLIC-BUG-REPORTING.md)：用户主动公开报告、隐私裁剪、预览确认、去重和本地回退合同；
 - [`docs/STORAGE-AND-PRIVACY.md`](docs/STORAGE-AND-PRIVACY.md)：macOS/Windows/Linux 的 Run、Artifact、偏好和系统凭据位置，权限边界与同步风险；
 - [`docs/CODEX-BENCHMARK-2026-08-14.md`](docs/CODEX-BENCHMARK-2026-08-14.md)：基于 OpenAI 官方文档的 Codex 产品/Agent 基准、LocalBuddy 差距和优先级；
 - [`docs/WORKBUDDY-PRODUCT-BENCHMARK-2026-08-15.md`](docs/WORKBUDDY-PRODUCT-BENCHMARK-2026-08-15.md)：WorkBuddy 公开承诺、LocalBuddy 产品差距、六个黄金任务和统一评分合同；
 - [`benchmarks/workbuddy-core/README.md`](benchmarks/workbuddy-core/README.md)：可物化的产品对标夹具、运行规则和证据要求；
 - [`docs/AGENT-PRODUCT-PRINCIPLES.md`](docs/AGENT-PRODUCT-PRINCIPLES.md)：从真实故障、恢复、并发和发布中沉淀的长期 Agent 产品原则；
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)：当前 `v0.12.6` 架构事实；
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)：当前 `v0.12.7` 架构事实；
 - [`docs/ROADMAP.md`](docs/ROADMAP.md)：已完成里程碑、外部门禁和待确认的下一阶段；
 - [`docs/RELEASE.md`](docs/RELEASE.md)：版本、Tag、CI、Release 与校验流程；
 - [`docs/DOGFOOD.md`](docs/DOGFOOD.md)：真实任务试用矩阵与退出口径；
 - [`docs/WINDOWS-GRAY.md`](docs/WINDOWS-GRAY.md)：Windows 自动化合成灰度、RC 和真人灰度分层；
 - [`docs/WINDOWS-UPDATES.md`](docs/WINDOWS-UPDATES.md)：Windows 高频 Canary、安装升级门禁和稳定版更新源的三通道设计；
-- [`docs/WINDOWS-UPDATE-VALIDATION.md`](docs/WINDOWS-UPDATE-VALIDATION.md)：`v0.12.4` 桥接、`v0.12.5/v0.12.6` 托管升级与 Windows 11 开放门禁；
+- [`docs/WINDOWS-UPDATE-VALIDATION.md`](docs/WINDOWS-UPDATE-VALIDATION.md)：`v0.12.4` 桥接、`v0.12.5-v0.12.7` 托管升级与 Windows 11 开放门禁；
 - [`docs/PUBLIC-REPOSITORY-READINESS.md`](docs/PUBLIC-REPOSITORY-READINESS.md)：公开前凭证、历史元数据、许可证、Release 和在线更新门禁；
 - [`CHANGELOG.md`](CHANGELOG.md)：已发布版本的变更记录。
 
@@ -226,7 +226,7 @@ LocalBuddy V2 以 [Apache License 2.0](LICENSE) 开源；项目归属说明见 [
 - Windows 托管 Runner 已运行版本对应的 Squirrel Setup，从实际安装目录验证无 Provider 首启并调用卸载清理；安装/更新/卸载生命周期由标准 Squirrel 处理器提前收口；
 - 规格与验收见 [`docs/M10.3-SPEC.md`](docs/M10.3-SPEC.md) 和 [`docs/M10.3-VALIDATION.md`](docs/M10.3-VALIDATION.md)。
 
-当前主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。`v0.12.6` 的 Windows Tag 门禁覆盖安装级无凭据首启、完整安装版合成灰度、从上一稳定版原地升级、profile 保留及五项分发资产校验。终端用户 Windows 11、真实 Provider 和第三方生产 MCP OAuth 仍需外部验收，不能用托管 Runner、公开 endpoint 或本地夹具冒充。
+当前主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。`v0.12.7` 的 Windows Tag 门禁覆盖安装级无凭据首启、完整安装版合成灰度、从上一稳定版原地升级、profile 保留及五项分发资产校验。终端用户 Windows 11、真实 Provider 和第三方生产 MCP OAuth 仍需外部验收，不能用托管 Runner、公开 endpoint 或本地夹具冒充。
 
 ## 核心模型
 
@@ -267,7 +267,7 @@ pnpm make:win
 
 它们应分别在 Linux/Windows Runner 上执行；仓库不会把交叉编译配置冒充成目标平台运行验收。
 
-推送 `v*` Tag 会在 `windows-2025` Runner 上执行生产依赖审计、完整测试、Squirrel Setup/ZIP 构建、上一稳定版原地升级和安装版合成灰度，并为 Setup、便携 ZIP、`RELEASES`、full `.nupkg` 生成 LF 格式的 `SHA256SUMS-windows.txt`。同一 Windows 作业确认 Tag 与 `package.json` 完全一致并复核清单后直接发布 Release 资产，不再通过临时 Actions Artifact 中转；预发布 Tag 自动标记 prerelease。Linux 仅在每周/手动维护工作流中构建，不进入 Tag Release。当前公开 Release 为 [`v0.12.6`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.6)，证据见 [`docs/WINDOWS-UPDATE-VALIDATION.md`](docs/WINDOWS-UPDATE-VALIDATION.md)。
+推送 `v*` Tag 会在 `windows-2025` Runner 上执行生产依赖审计、完整测试、Squirrel Setup/ZIP 构建、上一稳定版原地升级和安装版合成灰度，并为 Setup、便携 ZIP、`RELEASES`、full `.nupkg` 生成 LF 格式的 `SHA256SUMS-windows.txt`。同一 Windows 作业确认 Tag 与 `package.json` 完全一致并复核清单后直接发布 Release 资产，不再通过临时 Actions Artifact 中转；预发布 Tag 自动标记 prerelease。Linux 仅在每周/手动维护工作流中构建，不进入 Tag Release。当前公开 Release 为 [`v0.12.7`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.7)，证据见 [`docs/WINDOWS-UPDATE-VALIDATION.md`](docs/WINDOWS-UPDATE-VALIDATION.md)。
 
 ## Headless 真实运行
 
