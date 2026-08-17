@@ -1,6 +1,6 @@
 # LocalBuddy V2 Architecture
 
-> **状态基线**：2026-08-15，`v0.12.4 / Product Truth + Public Update Bridge` 是当前公开但未签名的 Engineering Alpha Release，并继续包含 M11.1 Goal Contract + Plan Review。各历史 Validation 保留对应阶段当时的证据边界。
+> **状态基线**：2026-08-17，`v0.12.5 / Public Bug Reporting + Product Truth` 是当前公开但未签名的 Engineering Alpha Release，并继续包含 M11.1 Goal Contract + Plan Review、M12.1-M12.4 与公开更新桥接。各历史 Validation 保留对应阶段当时的证据边界。
 
 ## 1. 产品判断
 
@@ -249,9 +249,10 @@ Main 只在 packaged Windows 配置 updater：stable 构建根据固定公开仓
 19. **M10.4 Explicit Research Sources（已发布）**：运行位置与本次资料分离；本地 Research 工具只面向明确 source scope；目录按需有界搜索；checkpoint 只复核 read evidence；旧 implicit-workspace Run fail closed。macOS 包与 GUI 已验收，Windows `v0.11.2` Tag Gate、安装版合成灰度和资产回下载核验已完成；真实 Provider v4 dogfood 仍待完成。
 20. **M11.1 Goal Contract + Plan Review（已发布）**：Run Request v5 持久化 outcome、constraints 和 verification criteria；Desktop Orchestrator 计划写入 checkpoint 后等待人工 approve/reject；审批指纹绑定 Goal、Plan 和 scope；pending/approved 决定可恢复。CLI/Core 默认跳过交互 Gate，旧 goal/checkpoint 身份保持兼容。
 21. **v0.12.2 Windows Canary + Safe Updates（已发布）/ v0.12.4 Public Update Bridge（已发布）**：可追踪构建身份、按 SHA 并存 Canary、上一稳定版 Squirrel 原地升级门禁和 Run/Integration 空闲重启 Gate。仓库已按 Apache-2.0 公开，`v0.12.4` stable 已内置公开 GitHub feed 并发布；`v0.12.3` 只保留失败 Tag 审计，代码签名、Windows 11 真人和桥接版到后续稳定版的 OTA 仍开放。
-22. **M12.1 Artifact Revision 第一切片（本地候选）**：Run Request v6 可选绑定父 Artifact、Thread ID、版本和修改原因；Main 复核父 Registry/bytes/SHA-256 后复制为新 Run 的私有只读 Research Source 快照；Renderer 不再把预览正文拼进 Goal，并展示版本关系与上一版入口。富文档编辑、通用 Thread 和版本 diff 尚未完成。
-23. **M12.2 Artifact Thread History + Verified Text Diff（本地候选）**：Main 只从 `.localbuddy/runs` 审计历史汇总同 Thread 的根版本、revision、失败/replay 与分支尝试，并逐 Artifact 复核 Registry/bytes/SHA-256；文本 diff 在 Core 内受 bytes、行数、LCS cells 和渲染行数限制，父合同缺失或漂移时 fail closed。Renderer 只消费结构化历史/diff，不读取文件系统。
-24. **M12.3 Bounded DOCX Artifact（本地候选）**：Integrator 只调用 `write_docx_artifact` 提交有界 Markdown，Core 将其解析为受限段落/项目符号/表格结构，确定性编译 OOXML、回读规范文本并以原子写入登记 Artifact。DOCX 读取限制 ZIP 条目、压缩/展开大小和文本量，拒绝宏、外部关系、嵌入对象及复杂富内容；Desktop 只接收经 SHA-256 复核后的结构预览和 DOCX 直接父版本正文/表格 diff。
-25. **M12.4 Independent DOCX Reviewer + Retained Trace（本地候选）**：DOCX 候选完成本地编译/回读后、原子写入前，先确定性检查父正文、段落、章节和表格保留，再由无工具的 `artifact-reviewer` 比较完整 Goal Contract、Worker 依赖结果、已验证父稿和候选正文；`revise` 复用三次 Artifact Gate 预算，finding 只进私有 checkpoint，事件只保留 verdict/计数/哈希。Benchmark trace 可脱敏导出到一次性 workspace 之外且拒绝覆盖。
+22. **M12.1 Artifact Revision 第一切片（已发布）**：Run Request v6 可选绑定父 Artifact、Thread ID、版本和修改原因；Main 复核父 Registry/bytes/SHA-256 后复制为新 Run 的私有只读 Research Source 快照；Renderer 不再把预览正文拼进 Goal，并展示版本关系与上一版入口。富文档编辑、通用 Thread 和版本 diff 尚未完成。
+23. **M12.2 Artifact Thread History + Verified Text Diff（已发布）**：Main 只从 `.localbuddy/runs` 审计历史汇总同 Thread 的根版本、revision、失败/replay 与分支尝试，并逐 Artifact 复核 Registry/bytes/SHA-256；文本 diff 在 Core 内受 bytes、行数、LCS cells 和渲染行数限制，父合同缺失或漂移时 fail closed。Renderer 只消费结构化历史/diff，不读取文件系统。
+24. **M12.3 Bounded DOCX Artifact（已发布）**：Integrator 只调用 `write_docx_artifact` 提交有界 Markdown，Core 将其解析为受限段落/项目符号/表格结构，确定性编译 OOXML、回读规范文本并以原子写入登记 Artifact。DOCX 读取限制 ZIP 条目、压缩/展开大小和文本量，拒绝宏、外部关系、嵌入对象及复杂富内容；Desktop 只接收经 SHA-256 复核后的结构预览和 DOCX 直接父版本正文/表格 diff。
+25. **M12.4 Independent DOCX Reviewer + Retained Trace（已发布）**：DOCX 候选完成本地编译/回读后、原子写入前，先确定性检查父正文、段落、章节和表格保留，再由无工具的 `artifact-reviewer` 比较完整 Goal Contract、Worker 依赖结果、已验证父稿和候选正文；`revise` 复用三次 Artifact Gate 预算，finding 只进私有 checkpoint，事件只保留 verdict/计数/哈希。Benchmark trace 可脱敏导出到一次性 workspace 之外且拒绝覆盖。
+26. **v0.12.5 Public Bug Reporting（已发布）**：失败 Run 的公开报告由独立纯函数模块按字段白名单生成、脱敏并签名；Main 负责只读去重查询、本地保存和受限 GitHub URL，Renderer 负责预览和逐次同意。应用不自动上传原始诊断或私有运行内容，最终公开提交仍由用户在浏览器完成。
 
 M11 已完成最小 Goal/Plan 控制面，M12.1-M12.4 已建立显式 Artifact 修订链、历史列表、直接父版本差异、受限 DOCX 纵向链路及独立 DOCX Reviewer；通用多轮工作线程、计划编辑、Goal revision 2+、跨 Artifact/人工 Reviewer、Project/Workspace 首页、PDF/XLSX/PPTX 和复杂 Word 保真编辑仍未完成，不能写成已支持能力。

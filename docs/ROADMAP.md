@@ -1,16 +1,24 @@
 # LocalBuddy V2 Roadmap
 
-> **状态真源**：2026-08-16。仓库已按 Apache License 2.0 公开；当前 Release 为公开但未签名的 `v0.12.4 / Product Truth + Public Update Bridge` Engineering Alpha，包含 M12.1-M12.4 产品能力和 stable Windows 公共 GitHub feed。当前开发阶段转入 `M13 Product Truth Sprint`：默认冻结功能扩张，以 Research Desk 的重复真实任务、非作者用户和目标应用证据决定 `advance/pause/stop`。代码签名、Windows 11 真人和 `v0.12.4 -> 后续稳定版` 应用内更新仍开放。
+> **状态真源**：2026-08-17。仓库已按 Apache License 2.0 公开；当前 Release 为公开但未签名的 `v0.12.5 / Public Bug Reporting + Product Truth` Engineering Alpha，包含 M12.1-M12.4、stable Windows 公共 GitHub feed 和用户主动公开安全问题报告。当前开发阶段仍是 `M13 Product Truth Sprint`：默认冻结通用功能扩张，以 Research Desk 的重复真实任务、非作者用户和目标应用证据决定 `advance/pause/stop`。代码签名、Windows 11 真人和 `v0.12.4 -> v0.12.5` 应用内更新仍开放。
 
 ## 当前里程碑
 
 ### M13 · Product Truth Sprint — active
 
-- `v0.12.4` 作为固定产品事实基线，不边验证边增加通用功能；
+- `v0.12.5` 作为固定产品事实基线，不边验证边增加通用功能；
 - Research Desk 使用同一合同三跑、两个不同主题和至少一次非作者独立运行；
 - Teaching Studio 只做 Owner/真实教学单元发现、现有能力模拟和教师口头走查；Builder Lab 只跑 WB-05 泛化检查；
 - 只修安全/数据完整性问题、真实任务阻塞、两个场景共同需要的 Core 合同，以及证据/grader 真源问题；
 - 验收合同与退出裁决见 [`M13-PRODUCT-TRUTH-SPRINT.md`](M13-PRODUCT-TRUTH-SPRINT.md)。
+
+### v0.12.5 · Public Bug Reporting + Product Truth — public unsigned Engineering Alpha
+
+- 失败 Run 可由用户主动生成公开安全预览；报告只包含允许字段、脱敏摘要和稳定签名，不上传原始诊断、Prompt、Artifact、绝对路径、凭据或完整本机标识；
+- 提交前必须由用户查看预览并明确勾选同意；应用只打开预填 GitHub Issue 页面，GitHub 登录与最终提交仍由用户完成；无法或不愿公开时可保存同一份 Markdown 到本地；
+- 公开仓库已上线结构化 Issue Form；主分支模板、预填 URL 和一条合成测试 Issue 已实际回读，测试 Issue 随后关闭并保留审计；
+- 发布门禁以 `v0.12.4 -> v0.12.5` 的 Windows Server 2025 原地升级、profile 保留、五项资产和公开 endpoint 为机器证据；Windows 11 真人 OTA、真实 Provider 和代码签名仍是独立开放门禁；
+- 该增量只缩短真实失败反馈链，不替代 Research Desk 三跑、不同主题、非作者用户和 `advance/pause/stop` 裁决。
 
 ### v0.12.4 · Product Truth + Public Update Bridge — public unsigned Engineering Alpha
 

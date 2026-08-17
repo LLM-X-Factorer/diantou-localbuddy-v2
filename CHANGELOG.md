@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+## 0.12.5 — 2026-08-17
+
+公开但未签名的 Public Bug Reporting + Product Truth Engineering Alpha。本版本把真实用户失败进入公开 Issue 的路径缩短为“本机生成公开安全预览 → 用户明确确认 → 浏览器最终提交”，同时保持 M13 默认冻结通用功能扩张。
+
 ### Added
 
 - 新增用户主动发起的公开安全问题报告候选：先遮盖常见凭据、用户路径、邮箱和 `@` 提及，只输出版本/平台、受控失败分类、状态计数和最近事件类型；用户必须检查完整预览并明确确认，应用才会打开固定 LocalBuddy GitHub Issue Form；
@@ -11,8 +15,8 @@
 
 ### Changed
 
-- 开发阶段转入 M13 Product Truth Sprint：固定 `v0.12.4` 为产品事实基线，默认冻结通用功能扩张，以 Research Desk 同合同三跑、两个独立主题、非作者用户和目标应用结果作 `advance/pause/stop` 裁决；
-- Dogfood、Quickstart、M12 规格/验证和产品方向文档统一回读 `v0.12.4` 已发布事实，并增加文档合同测试，避免当前 Release 与候选期口径再次漂移。
+- 开发阶段转入 M13 Product Truth Sprint：固定 `v0.12.5` 为产品事实基线，默认冻结通用功能扩张，以 Research Desk 同合同三跑、两个独立主题、非作者用户和目标应用结果作 `advance/pause/stop` 裁决；
+- Dogfood、Quickstart、M12 规格/验证和产品方向文档先统一回读 `v0.12.4` 已发布事实，再把固定产品事实基线推进到 `v0.12.5`，并以文档合同测试避免当前 Release 与候选期口径再次漂移。
 
 ## 0.12.4 — 2026-08-15
 

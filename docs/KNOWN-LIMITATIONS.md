@@ -1,26 +1,28 @@
 # LocalBuddy V2 Known Limitations
 
-> 分发基线是公开但未签名的 `v0.12.4 / Product Truth + Public Update Bridge` Engineering Alpha Release，包含 M12.1-M12.4 与公开 GitHub stable feed。`v0.12.3` 只有失败 Tag，没有 Release 或资产。当前灰度与发布优先 Windows，macOS 保留本机回归，Linux降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
+> 分发基线是公开但未签名的 `v0.12.5 / Public Bug Reporting + Product Truth` Engineering Alpha Release，包含 M12.1-M12.4、公开 GitHub stable feed 和用户主动公开安全问题报告。`v0.12.3` 只有失败 Tag，没有 Release 或资产。当前灰度与发布优先 Windows，macOS 保留本机回归，Linux降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
 
 ## Platform and distribution
 
-- Windows `v0.12.4` Setup/ZIP/full nupkg/RELEASES 已通过 Tag workflow 的原生打包、安装版合成灰度、`v0.12.2 -> v0.12.4` 原地升级、profile 保留和回下载 SHA-256 校验并发布。该门禁使用 Windows Server 2025 管理员 Runner 和确定性 Mock Provider，仍不覆盖终端用户设备上的 SmartScreen、标准用户/UAC、真实 Provider 与真实网络；
+- Windows `v0.12.5` Setup/ZIP/full nupkg/RELEASES 由 Tag workflow 执行原生打包、安装版合成灰度、`v0.12.4 -> v0.12.5` 原地升级、profile 保留和回下载 SHA-256 校验。该门禁使用 Windows Server 2025 管理员 Runner 和确定性 Mock Provider，仍不覆盖终端用户设备上的 SmartScreen、标准用户/UAC、真实 Provider 与真实网络；
 - Windows 没有受支持的本地进程隔离宿主，检查命令和本地进程型扩展 fail closed；
 - Linux `0.11.x` DEB 历史上已由 `ubuntu-24.04` Runner 原生构建；当前 Linux 只保留每周/手动维护，不进入 PR 或 Release 门禁，真实图形桌面与 Secret Service 验收暂不优先；
 - macOS 包是 ad-hoc 签名，未启用生产 Hardened Runtime，未 notarize；
 - Windows 包未做代码签名，可能出现 SmartScreen 提示；
 - Tag workflow 只发布 Windows x64 Setup/ZIP；Linux 与 macOS 不自动进入 GitHub Release。Windows Release 前运行安装版合成灰度；
 - `windows-2025` 是 Windows Server 2025 管理员 Runner，不能覆盖 Windows 11 的 SmartScreen、Defender、标准用户/UAC、DPI、输入法、睡眠或企业代理；
-- 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。`0.12.2` Tag 前已复查并继续在干净 Runner 上隔离打包；公开 Engineering Alpha 跟踪稳定上游迁移；
+- 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。`0.12.5` Tag 前已再次复查并继续在干净 Runner 上隔离打包；公开 Engineering Alpha 跟踪稳定上游迁移；
 - 平台无关的 Ed25519 更新协议仍只下载、验签并 staging；`v0.12.4` stable Windows Squirrel updater 已内置公开 feed，但仍没有静默安装、强制更新或自动回滚；
 - `pnpm windows:canary` 只隔离 Electron user-data 和构建目录，不隔离系统 Credential Manager 或工作区 `.localbuddy/`；Canary 与稳定版不应同时写同一测试工作区；
-- `v0.12.2` 没有内置线上 feed，已有用户仍需手动原地安装一次 `v0.12.4` 桥接版；公开 GitHub endpoint 已读回 Setup 地址，但 Windows 11 上从桥接版到后续稳定版的 OTA 尚未验收；
+- `v0.12.2` 没有内置线上 feed，已有用户仍需手动原地安装一次 `v0.12.4` 桥接版；托管发布门禁覆盖 `v0.12.4 -> v0.12.5`，但 Windows 11 上同一路径的真实 OTA 尚未验收；
 - Windows Release 仍未完成可信代码签名；公开下载和在线更新都可能触发 SmartScreen，不能称为面向普通用户的无摩擦安装；
 - CI 的上一稳定版原地升级使用 Windows Server 2025 一次性管理员 Runner，只能证明安装器与 profile 保留合同，不能代替 Windows 11 真人升级。
 
 ## Product experience
 
-- 产品仍以一次目标对应一个 Run；本地候选已让“基于此产物继续”保存父 Artifact、Thread ID、版本和修改原因，但这只是 Research 文本 Artifact 的修订链，不是通用持久聊天线程；
+- 公开问题报告不是后台遥测或自动上传：用户必须查看脱敏预览、明确同意、在浏览器中登录 GitHub 并最终提交；不愿公开时只能保存本地 Markdown；
+- 报告采用字段白名单和尽力脱敏，但不存在对任意自由文本的绝对隐私保证，因此界面要求用户提交前复核；应用不附带原始诊断、Prompt、Artifact、工具参数、Provider 配置或本机绝对路径；
+- 产品仍以一次目标对应一个 Run；已发布的“基于此产物继续”会保存父 Artifact、Thread ID、版本和修改原因，但这只是 Research Artifact 的修订链，不是通用持久聊天线程；
 - “指引与示例”是本地确定性导航，不是可自由问答或使用工具的 Guide Agent；
 - 教程材料是合成内容，只有用户点击开始后的 Provider/Agent 执行才是真实 Run；
 - 没有 Project/Workspace 首页、跨工作区统一搜索或 SQLite 投影；

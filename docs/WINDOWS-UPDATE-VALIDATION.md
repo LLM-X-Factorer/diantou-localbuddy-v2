@@ -1,6 +1,18 @@
 # Windows Update Validation
 
-> 当前已发布版本：公开但未签名的 `v0.12.4 / Product Truth + Public Update Bridge` Engineering Alpha。`v0.12.3` 只有失败 Tag，没有 Release 或资产。公开 endpoint 已读回，但 Windows 11 上 `v0.12.4 -> 后续稳定版` 的真实线上 OTA 与代码签名仍是开放门禁。
+> 当前已发布版本：公开但未签名的 `v0.12.5 / Public Bug Reporting + Product Truth` Engineering Alpha。`v0.12.3` 只有失败 Tag，没有 Release 或资产。托管发布门禁覆盖 `v0.12.4 -> v0.12.5`，但 Windows 11 上同一路径的真实线上 OTA 与代码签名仍是开放门禁。
+
+## 0.12.5 Public Bug Reporting + Product Truth
+
+本版本新增用户主动触发的公开安全问题报告：Main 只接收结构化失败投影，公共报告模块按字段白名单生成脱敏预览和稳定签名；Renderer 必须先展示预览并取得明确同意，之后只能保存同一份本地 Markdown 或打开预填 GitHub Issue 页面。报告不附带原始诊断、Prompt、Artifact、工具参数、Provider 配置、绝对路径或完整本机标识。
+
+实现提交 `71c2ecbf9e1e488f7d5e750e6c50991d9e64f0ea` 经 [PR #13](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/pull/13) 合入 `f63b0e7d6c636771bc64739d834248971fd7a09d`。PR CI `32015093298` 的 macOS 回归、Windows 全量合同和 Windows 干净安装首启通过；PR 条件没有执行上一稳定版升级，因此不能把该 PR 写成 `v0.12.4 -> v0.12.5` 已通过。macOS 本机在合并前通过 `pnpm check`：214 项中 212 passed、2 项 Windows-only 跳过、0 failed；`pnpm build` 和生产依赖高危审计通过。真实 Electron 开发窗口已读回警告、脱敏预览、稳定签名、默认未同意和禁用的 GitHub 按钮，预览中没有测试输入的 `/Users/` 绝对路径。
+
+`v0.12.5` 发布分支再次完成 frozen install、`pnpm check`（214 项中 212 passed、2 项 Windows-only 跳过、0 failed）、`pnpm build`、生产依赖审计和 `git diff --check`。`pnpm audit --prod --audit-level high` 返回无已知漏洞；完整 `pnpm audit --audit-level high` 仍只命中 Electron Forge 7.11.2 经 `@electron/packager` 引入的 `extract-zip 2.0.1` symlink path traversal 公告 `GHSA-jmr9-qjv8-65gv`，报告的 patched versions 为 `<0.0.0`。该开发期打包风险继续只在干净受控 Runner 中承担，不进入运行时依赖，也不通过 ignore 伪装为全绿。
+
+主分支 `.github/ISSUE_TEMPLATE/bug-report.yml` 已通过公开 Contents API 回读；无鉴权预填 Issue URL 返回 HTTP 200 登录页并完整保留 `return_to`。合成 Issue [#14](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/14) 只含虚构数据、`bug` 标签和测试签名，创建后完成标题、正文、标签和状态回读，并于 2026-08-17 关闭保留审计。以上证明公开提交入口可达，不等于真实用户已经提交反馈。
+
+固定 Release Tag 还必须在 Windows Server 2025 完成生产依赖审计、全量合同、安装版合成灰度、`v0.12.4 -> v0.12.5` 原地升级/profile 保留、五项资产发布/回下载和公开 updater endpoint 精确 URL 回读。实际 workflow、Tag 提交、资产字节数和 SHA-256 在发布后追加到本文；任何失败保留为不可改写的发布证据。
 
 ## 0.12.4 公开更新桥接版
 
@@ -95,4 +107,4 @@ PR #6 首轮 Windows 全量测试暴露一条只接受 LF 的源码合同；Wind
 6. 记录 Windows 版本、标准用户/管理员、SmartScreen、Defender、DPI、输入法、代理、安装/升级/卸载结果；
 7. 导出脱敏证据，不上传 Prompt、API Key、工作区正文或 `.localbuddy/` 私有运行状态。
 
-完成上述真机清单前，`v0.12.4` 只能称为公开但未签名的 Engineering Alpha 和更新桥接版，不称为 Windows 11 已验收或生产自动更新。
+完成上述真机清单前，`v0.12.5` 只能称为公开但未签名的 Engineering Alpha，不称为 Windows 11 已验收或生产自动更新。

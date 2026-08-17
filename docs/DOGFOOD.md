@@ -1,6 +1,6 @@
 # LocalBuddy V2 Dogfood Plan
 
-> 状态：`active`。固定产品事实基线为公开但未签名的 `v0.12.4 / Product Truth + Public Update Bridge` Engineering Alpha；当前进入 [`M13 Product Truth Sprint`](M13-PRODUCT-TRUTH-SPRINT.md)。M12.1-M12.4、Windows Tag 自动门禁、资产回下载和公开 feed 读回已经完成；真实 Provider 重复运行、非作者用户、连续使用、Windows 11 真人和桥接版到后续稳定版 OTA 仍是独立门禁。本文不把单元测试、静态 Guide、CI 产物或合成 Provider 重复计作真人 dogfooding。
+> 状态：`active`。固定产品事实基线为公开但未签名的 `v0.12.5 / Public Bug Reporting + Product Truth` Engineering Alpha；当前仍在 [`M13 Product Truth Sprint`](M13-PRODUCT-TRUTH-SPRINT.md)。M12.1-M12.4、用户主动公开安全问题报告、Windows Tag 自动门禁、资产回下载和公开 feed 读回已经完成；真实 Provider 重复运行、非作者用户、连续使用、Windows 11 真人和 `v0.12.4 -> v0.12.5` OTA 仍是独立门禁。本文不把单元测试、静态 Guide、CI 产物或合成 Provider 重复计作真人 dogfooding。
 
 ## 目标
 
@@ -24,6 +24,7 @@
 | 中断恢复 | Research/Coding checkpoint 不重复有副作用工具 |
 | Extensions | Skill/MCP/Browser 按 Run 显式启用，外部副作用逐次审批 |
 | 诊断导出 | 不含目标正文、模型内容、工具参数、凭证和绝对路径 |
+| 公开问题报告 | 用户先看公开安全预览并明确同意；GitHub 最终提交或本地保存由用户决定，不自动上传原始诊断 |
 
 连续使用必须围绕同一个可重复 Job 记录；M13 先完成 Research Desk 固定三跑、两个不同主题和非作者运行，再根据真实频率决定是否需要延长为 7-14 天观察，而不是以单次成功结束。
 
@@ -33,7 +34,7 @@
 
 历史合成灰度提交 `d686cd6` 的 [`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610) 已完成完整故障矩阵和 5 次额外重启，脱敏摘要 9 项检查全部通过；配套 [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 的 Windows 合同、macOS 回归和 Setup 无凭据首启也全部通过。
 
-当前固定 Release `v0.12.4` 指向 `b9f1082772e43c13bde3fe0651ec41412bd1a1db`。Release workflow `31879716752` 的 Windows 作业完成生产依赖审计、204 项合同、安装版合成灰度、`v0.12.2 -> v0.12.4` 原地升级/profile 保留和五项资产发布/回下载校验；整体 workflow 因旧的线上 JSON 检查合同而保留红色，后续检查已在 `main` 修复。合并后的 `main` CI `31881058722` 又通过 `v0.12.4 -> 0.12.5-canary.51` 原地升级、`profilePreserved=true` 和 Canary/feed 上传。以上仍不等于 Windows 11 真人或真实 Provider dogfood。
+上一固定 Release `v0.12.4` 指向 `b9f1082772e43c13bde3fe0651ec41412bd1a1db`。Release workflow `31879716752` 的 Windows 作业完成生产依赖审计、204 项合同、安装版合成灰度、`v0.12.2 -> v0.12.4` 原地升级/profile 保留和五项资产发布/回下载校验；整体 workflow 因旧的线上 JSON 检查合同而保留红色，后续检查已在 `main` 修复。合并后的 `main` CI `31881058722` 又通过 `v0.12.4 -> 0.12.5-canary.51` 原地升级、`profilePreserved=true` 和 Canary/feed 上传。`v0.12.5` 的固定 Tag、发布作业、资产哈希和线上 endpoint 证据以 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md) 为准。以上仍不等于 Windows 11 真人或真实 Provider dogfood。
 
 该阶段不使用真实 Provider Key，不产生模型费用，也不能证明 Windows 11 消费者桌面环境。
 
@@ -87,7 +88,7 @@ Research Desk 进入 closed pilot 前至少满足：
 - Coding 未经批准不修改主工作区，批准后的 diff/commit 可核对；
 - 中断、取消、恢复和 replay 的结果符合各自语义；
 - 所有失败都有明确状态和可导出的脱敏诊断，不伪装成成功；
-- 同一 `v0.12.4` 合同完成三次逐次披露的真实 Provider 运行，并记录中位表现；
+- 同一 `v0.12.5` 合同完成三次逐次披露的真实 Provider 运行，并记录中位表现；
 - 两个不同主题完成可打开、可核查、可修订的 Artifact，排除半导体 Prompt 特调；
 - 至少一位非作者用户独立完成一次，并记录作者介入和再次使用意愿；
 - 真实任务数据足以作出 `advance/pause/stop`，并判断下一阶段优先解决交互、资料摄取、Windows 执行宿主或 Provider 可靠性中的哪一项。
