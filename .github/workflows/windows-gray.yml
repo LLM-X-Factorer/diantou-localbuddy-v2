@@ -61,5 +61,6 @@ jobs:
         with:
           name: localbuddy-windows-synthetic-gray-${{ github.run_id }}
           path: .localbuddy/windows-gray/win32-installer/**
+          include-hidden-files: true
           if-no-files-found: warn
           retention-days: 30

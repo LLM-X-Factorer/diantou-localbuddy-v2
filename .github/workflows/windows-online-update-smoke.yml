@@ -10,7 +10,7 @@ jobs:
   previous-stable-to-latest:
     if: github.event.repository.private == false
     runs-on: windows-2025
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
       - name: Resolve latest and previous stable Releases
@@ -56,5 +56,6 @@ jobs:
         with:
           name: localbuddy-windows-online-update-evidence-manual
           path: .localbuddy/online-update-smoke/windows/**
+          include-hidden-files: true
           if-no-files-found: warn
           retention-days: 90

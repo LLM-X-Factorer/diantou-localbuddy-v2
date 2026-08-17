@@ -18,6 +18,24 @@ jobs:
     runs-on: windows-2025
     steps:
       - uses: actions/checkout@v7
+      - name: Parse Windows PowerShell scripts
+        shell: pwsh
+        run: |
+          $hasParseErrors = $false
+          foreach ($scriptFile in Get-ChildItem -LiteralPath scripts -File -Filter "*.ps1") {
+            $tokens = $null
+            $parseErrors = $null
+            [Management.Automation.Language.Parser]::ParseFile(
+              $scriptFile.FullName,
+              [ref] $tokens,
+              [ref] $parseErrors
+            ) | Out-Null
+            foreach ($parseError in $parseErrors) {
+              Write-Error "$($scriptFile.Name):$($parseError.Extent.StartLineNumber): $($parseError.Message)"
+              $hasParseErrors = $true
+            }
+          }
+          if ($hasParseErrors) { throw "One or more PowerShell scripts could not be parsed" }
       - uses: pnpm/action-setup@v6
         with:
           version: 9.15.9
@@ -105,6 +123,7 @@ jobs:
         with:
           name: localbuddy-installed-clean-first-launch-windows-2025
           path: .localbuddy/first-run-smoke/win32-installer/**
+          include-hidden-files: true
           if-no-files-found: warn
           retention-days: 14
       - name: Upload installed in-place upgrade evidence
@@ -113,6 +132,7 @@ jobs:
         with:
           name: localbuddy-installed-upgrade-windows-2025
           path: .localbuddy/upgrade-smoke/windows/**
+          include-hidden-files: true
           if-no-files-found: warn
           retention-days: 30
       - name: Stage Windows Canary distributables and update feed on main only

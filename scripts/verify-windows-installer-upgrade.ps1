@@ -45,12 +45,146 @@ $evidenceRoot = Join-Path $repository $(if ($remoteFeed) { ".localbuddy/online-u
 $beforeScreenshot = Join-Path $evidenceRoot "before-upgrade.png"
 $afterScreenshot = Join-Path $evidenceRoot "after-upgrade.png"
 $markerPath = Join-Path $userDataRoot "upgrade-test-marker.json"
+$rawDiagnosticsRoot = Join-Path ([IO.Path]::GetTempPath()) "localbuddy-squirrel-diagnostics-$PID"
+$phaseTimings = [ordered]@{}
 New-Item -ItemType Directory -Force -Path $evidenceRoot | Out-Null
+New-Item -ItemType Directory -Force -Path $rawDiagnosticsRoot | Out-Null
 $installedBySmoke = $false
 $originalScreenshot = $env:LOCALBUDDY_SCREENSHOT_PATH
 $hadScreenshot = Test-Path Env:LOCALBUDDY_SCREENSHOT_PATH
 $originalCoordination = $env:LOCALBUDDY_SHARED_COORDINATION
 $hadCoordination = Test-Path Env:LOCALBUDDY_SHARED_COORDINATION
+
+function ConvertTo-SanitizedDiagnosticText {
+  param([string] $Text)
+
+  $sanitized = $Text
+  $rootReplacements = @(
+    @{ source = $repository; replacement = "<repository>" },
+    @{ source = $env:LOCALAPPDATA; replacement = "<local-app-data>" },
+    @{ source = $env:APPDATA; replacement = "<roaming-app-data>" },
+    @{ source = $env:USERPROFILE; replacement = "<user-profile>" },
+    @{ source = [IO.Path]::GetTempPath().TrimEnd([IO.Path]::DirectorySeparatorChar); replacement = "<temp>" }
+  )
+  foreach ($replacement in $rootReplacements) {
+    if (-not [string]::IsNullOrWhiteSpace([string] $replacement.source)) {
+      $sanitized = $sanitized.Replace([string] $replacement.source, [string] $replacement.replacement)
+    }
+  }
+  $sanitized = [regex]::Replace(
+    $sanitized,
+    '(?i)(authorization|access[_-]?token|api[_-]?key|password|secret)\s*[:=]\s*\S+',
+    '$1=<redacted>'
+  )
+  $sanitized = [regex]::Replace($sanitized, '(https://[^\s?]+)\?[^\s]+', '$1?<redacted>')
+  return $sanitized
+}
+
+function Save-SquirrelDiagnostics {
+  if (Test-Path -LiteralPath $installRoot -PathType Container) {
+    $squirrelLogs = @(Get-ChildItem -LiteralPath $installRoot -File -Filter "Squirrel-*.log" -ErrorAction SilentlyContinue)
+    foreach ($sourceLog in $squirrelLogs) {
+      try {
+        $sourceText = [IO.File]::ReadAllText($sourceLog.FullName)
+        $safeText = ConvertTo-SanitizedDiagnosticText -Text $sourceText
+        [IO.File]::WriteAllText(
+          (Join-Path $evidenceRoot $sourceLog.Name),
+          $safeText,
+          [System.Text.UTF8Encoding]::new($false)
+        )
+      } catch {
+        Write-Warning "Could not capture $($sourceLog.Name): $($_.Exception.GetType().Name)"
+      }
+    }
+  }
+
+  $packageState = @()
+  $packagesRoot = Join-Path $installRoot "packages"
+  if (Test-Path -LiteralPath $packagesRoot -PathType Container) {
+    $packageState = @(Get-ChildItem -LiteralPath $packagesRoot -File -ErrorAction SilentlyContinue | ForEach-Object {
+      [ordered]@{ name = $_.Name; bytes = $_.Length }
+    })
+  }
+  $stateJson = ([ordered]@{
+    schemaVersion = 1
+    capturedAt = [DateTime]::UtcNow.ToString("o")
+    packages = $packageState
+  } | ConvertTo-Json -Depth 5) + "`n"
+  [IO.File]::WriteAllText(
+    (Join-Path $evidenceRoot "squirrel-package-state.json"),
+    $stateJson,
+    [System.Text.UTF8Encoding]::new($false)
+  )
+}
+
+function Save-SquirrelProcessOutput {
+  param(
+    [string] $Phase,
+    [string] $RawStandardOutput,
+    [string] $RawStandardError
+  )
+
+  $streams = @(
+    @{ source = $RawStandardOutput; destination = "$Phase-stdout.log" },
+    @{ source = $RawStandardError; destination = "$Phase-stderr.log" }
+  )
+  foreach ($stream in $streams) {
+    if (Test-Path -LiteralPath $stream.source -PathType Leaf) {
+      $safeText = ConvertTo-SanitizedDiagnosticText -Text ([IO.File]::ReadAllText($stream.source))
+      [IO.File]::WriteAllText(
+        (Join-Path $evidenceRoot $stream.destination),
+        $safeText,
+        [System.Text.UTF8Encoding]::new($false)
+      )
+    }
+  }
+}
+
+function Invoke-SquirrelPhase {
+  param(
+    [string] $Phase,
+    [string[]] $Arguments,
+    [int] $TimeoutSeconds
+  )
+
+  $rawStandardOutput = Join-Path $rawDiagnosticsRoot "$Phase-stdout.log"
+  $rawStandardError = Join-Path $rawDiagnosticsRoot "$Phase-stderr.log"
+  $startedAt = [DateTime]::UtcNow
+  Write-Host "Starting Squirrel $Phase phase with a ${TimeoutSeconds}s timeout."
+  $phaseProcess = Start-Process -FilePath $updateExecutable -ArgumentList $Arguments -PassThru `
+    -RedirectStandardOutput $rawStandardOutput -RedirectStandardError $rawStandardError
+
+  while (-not $phaseProcess.WaitForExit(10000)) {
+    Save-SquirrelDiagnostics
+    Save-SquirrelProcessOutput -Phase $Phase -RawStandardOutput $rawStandardOutput -RawStandardError $rawStandardError
+    $elapsedSeconds = [Math]::Floor(([DateTime]::UtcNow - $startedAt).TotalSeconds)
+    $packagesRoot = Join-Path $installRoot "packages"
+    $downloadedBytes = 0
+    if (Test-Path -LiteralPath $packagesRoot -PathType Container) {
+      $downloadedBytes = (Get-ChildItem -LiteralPath $packagesRoot -File -ErrorAction SilentlyContinue |
+        Measure-Object -Property Length -Sum).Sum
+      if ($null -eq $downloadedBytes) { $downloadedBytes = 0 }
+    }
+    Write-Host "Squirrel $Phase is still running after ${elapsedSeconds}s; package bytes on disk: $downloadedBytes."
+    if ($elapsedSeconds -ge $TimeoutSeconds) {
+      Stop-Process -Id $phaseProcess.Id -Force -ErrorAction SilentlyContinue
+      $phaseProcess.WaitForExit()
+      Save-SquirrelDiagnostics
+      Save-SquirrelProcessOutput -Phase $Phase -RawStandardOutput $rawStandardOutput -RawStandardError $rawStandardError
+      throw "Squirrel $Phase exceeded the ${TimeoutSeconds}s diagnostic timeout"
+    }
+  }
+
+  $phaseProcess.WaitForExit()
+  Save-SquirrelDiagnostics
+  Save-SquirrelProcessOutput -Phase $Phase -RawStandardOutput $rawStandardOutput -RawStandardError $rawStandardError
+  $elapsed = [Math]::Round(([DateTime]::UtcNow - $startedAt).TotalSeconds, 3)
+  $phaseTimings[$Phase] = $elapsed
+  if ($phaseProcess.ExitCode -ne 0) {
+    throw "Squirrel $Phase exited with $($phaseProcess.ExitCode)"
+  }
+  Write-Host "Squirrel $Phase completed in ${elapsed}s."
+}
 
 try {
   $setupProcess = Start-Process -FilePath $baseSetupPath -ArgumentList "--silent" -Wait -PassThru
@@ -68,8 +202,13 @@ try {
 
   $updateExecutable = Join-Path $installRoot "Update.exe"
   if (-not (Test-Path -LiteralPath $updateExecutable -PathType Leaf)) { throw "Installed Squirrel Update.exe is missing" }
-  $updateProcess = Start-Process -FilePath $updateExecutable -ArgumentList @("--update", $resolvedFeedRoot) -Wait -PassThru
-  if ($updateProcess.ExitCode -ne 0) { throw "Squirrel update exited with $($updateProcess.ExitCode)" }
+  if ($remoteFeed) {
+    Invoke-SquirrelPhase -Phase "check-for-update" -Arguments @("--checkForUpdate", $resolvedFeedRoot) -TimeoutSeconds 120
+    Invoke-SquirrelPhase -Phase "download" -Arguments @("--download", $resolvedFeedRoot) -TimeoutSeconds 1500
+    Invoke-SquirrelPhase -Phase "update" -Arguments @("--update", $resolvedFeedRoot) -TimeoutSeconds 480
+  } else {
+    Invoke-SquirrelPhase -Phase "update" -Arguments @("--update", $resolvedFeedRoot) -TimeoutSeconds 600
+  }
 
   $targetExecutables = @(Get-ChildItem -LiteralPath $installRoot -Recurse -File -Filter "LocalBuddy.exe" | Where-Object {
     $_.Directory.Name -like "app-*" -and $_.FullName -ne $baseExecutables[0].FullName
@@ -95,6 +234,7 @@ try {
     targetInstallDirectory = $targetExecutables[0].Directory.Name
     profilePreserved = $true
     feedKind = $(if ($remoteFeed) { "github-release-static" } else { "local-candidate" })
+    phaseSeconds = $phaseTimings
     beforeScreenshot = [IO.Path]::GetFileName($beforeScreenshot)
     afterScreenshot = [IO.Path]::GetFileName($afterScreenshot)
   }
@@ -106,6 +246,10 @@ try {
   )
   $summaryJson
 } finally {
+  Save-SquirrelDiagnostics
+  if (Test-Path -LiteralPath $rawDiagnosticsRoot -PathType Container) {
+    Remove-Item -LiteralPath $rawDiagnosticsRoot -Recurse -Force
+  }
   if ($hadScreenshot) { $env:LOCALBUDDY_SCREENSHOT_PATH = $originalScreenshot } else { Remove-Item Env:LOCALBUDDY_SCREENSHOT_PATH -ErrorAction SilentlyContinue }
   if ($hadCoordination) { $env:LOCALBUDDY_SHARED_COORDINATION = $originalCoordination } else { Remove-Item Env:LOCALBUDDY_SHARED_COORDINATION -ErrorAction SilentlyContinue }
   if ($installedBySmoke) {
