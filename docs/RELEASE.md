@@ -65,7 +65,7 @@ git push origin vX.Y.Z
 6. 同一 Windows 作业复核 Tag/包版本和 Windows SHA-256 后直接创建或更新 GitHub Release，不通过临时 Actions Artifact 中转正式二进制；
 7. `vX.Y.Z-rc.N` 等带预发布后缀的 Tag 自动标记为 prerelease。
 
-稳定 Windows 包会把 `update.electronjs.org/<owner>/<repo>/win32-<arch>/<current-version>` 作为内置只读 feed。公开 Tag Release 的独立 `online-update-smoke` 作业会从上一稳定版本查询该 endpoint，最多等待十分钟，解析公开 JSON 并精确核对新版本 Setup 下载地址；Setup、ZIP、full nupkg、`RELEASES` 和清单由 Windows 发布作业分别复核。不能把带鉴权的 Release API 访问冒充普通用户可用的更新服务。
+下一补丁起，稳定 Windows x64 包会把 `https://github.com/<owner>/<repo>/releases/latest/download` 作为内置只读 feed。公开 Tag Release 的独立 `online-update-smoke` 作业会在 Windows Runner 安装上一稳定版，通过公网 `RELEASES` 和 full nupkg 完成原地升级，再读回目标 UI 与 profile 标记；Setup、ZIP、full nupkg、`RELEASES` 和清单仍由 Windows 发布作业分别复核。不能把带鉴权的 Release API、单次 curl 或本地 feed 冒充普通用户可用的更新链路。
 
 `v0.12.2` 没有内置 feed，因此首次启用在线更新必须发布一个需要手动原地安装的桥接版本。桥接后的下一稳定版才是线上 OTA 真正验收目标；只验证 endpoint 或 CI 本地 feed 不等于用户升级成功。
 
@@ -82,7 +82,7 @@ Linux 不再进入 Tag Release。`.github/workflows/linux-maintenance.yml` 只�
 3. 用 Release 清单重新计算并验证 SHA-256；
 4. 核对 GitHub asset digest、文件字节数和清单；
 5. 在真实 Windows 11 设备执行安装、从上一稳定版升级、启动、凭证、真实 Provider Run、忙碌时更新阻断、恢复和卸载矩阵；
-6. 若仓库已公开，从上一稳定版请求公共 updater endpoint，并在真实安装版完成检查、下载、重启和版本读回；
+6. 若仓库已公开，从上一稳定版通过第一方 GitHub Release feed 完成 `Update.exe` 下载、安装、目标 UI 和 profile 读回；随后仍在真实 Windows 11 安装版完成应用内检查、下载、重启和版本读回；
 7. 把真实结果写入 Validation 和 [`DOGFOOD.md`](DOGFOOD.md)。
 
 发布后的下一次 `main` CI 会读取最新稳定 Tag。若 `package.json` 仍等于该稳定版，Canary 自动使用下一个 patch 的预发布版本，例如 `v0.12.2` 之后生成 `0.12.3-canary.*`；这样文档提交也不会因为 Squirrel 拒绝稳定版降级为同号 prerelease 而失败。
@@ -91,10 +91,10 @@ Linux 不再进入 Tag Release。`.github/workflows/linux-maintenance.yml` 只�
 
 ## 5. 回滚与修复
 
-- 平台无关的 Ed25519 更新协议仍只 staging；`v0.12.4` 起的 stable Windows 包内置公共 GitHub feed，其余 channel 默认关闭，当前没有强制更新；
+- 平台无关的 Ed25519 更新协议仍只 staging；下一补丁起的 stable Windows x64 包内置第一方 GitHub Release feed，其余 channel 默认关闭，当前没有强制更新；
 - 发现错误资产时停止传播，保留证据并判断是否属于未交付的发布恢复；
 - 已交付版本使用新的 patch 版本修复，不重写 Git 历史；
 - 集成代码回滚使用普通 revert commit，不 amend 已推送提交；
 - Release 事实变化后同步 Changelog、Known Limitations 和 Validation。
 
-`v0.12.4` 的桥接发布、`v0.12.5-v0.12.7` 的原地升级、回下载和公开 endpoint 证据见 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md)；`v0.12.1` 的 Goal Contract Release 见 [`M11.1-VALIDATION.md`](M11.1-VALIDATION.md)。旧 Release 不回写、不替换；Linux 资产不进入 Windows-first Tag Release。
+`v0.12.4` 的桥接发布、`v0.12.5-v0.12.7` 的本地原地升级、Release 资产和第三方 endpoint 成功/失败证据见 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md)；旧 Release 不回写、不替换，第一方 feed 修复使用新的 patch 版本；Linux 资产不进入 Windows-first Tag Release。

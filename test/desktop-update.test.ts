@@ -65,7 +65,7 @@ test("configures the public GitHub Release feed only for packaged stable Windows
     build: { ...build, version: "0.12.3", channel: "stable" },
     platform: "win32",
     arch: "x64",
-  }), "https://update.electronjs.org/LLM-X-Factorer/diantou-localbuddy-v2/win32-x64/0.12.3");
+  }), "https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/latest/download");
 
   assert.equal(resolveDesktopUpdateFeed({ build, platform: "win32", arch: "x64" }), undefined);
   assert.equal(resolveDesktopUpdateFeed({
@@ -78,6 +78,11 @@ test("configures the public GitHub Release feed only for packaged stable Windows
     platform: "darwin",
     arch: "arm64",
   }), undefined);
+  assert.throws(() => resolveDesktopUpdateFeed({
+    build: { ...build, version: "0.12.3", channel: "stable" },
+    platform: "win32",
+    arch: "arm64",
+  }), /architecture is unsupported/);
 });
 
 test("allows an explicit safe feed override for packaged Windows acceptance builds", () => {

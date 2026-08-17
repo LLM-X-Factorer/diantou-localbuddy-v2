@@ -1,6 +1,6 @@
 # LocalBuddy V2 Dogfood Plan
 
-> 状态：`active`。固定产品事实基线为公开但未签名的 `v0.12.7 / Real-user Update + One-consent Reporting` Engineering Alpha；当前仍在 [`M13 Product Truth Sprint`](M13-PRODUCT-TRUTH-SPRINT.md)。M12.1-M12.4、私有 Run 存储、可见更新等待状态和自动公开安全 Trace 已经完成；真实 Provider 重复运行、非作者用户、连续使用、Windows 11 真人和 `v0.12.6 -> v0.12.7` OTA 仍是独立门禁。本文不把单元测试、静态 Guide、CI 产物或合成 Provider 重复计作真人 dogfooding。
+> 状态：`active`。固定产品事实基线为公开但未签名的 `v0.12.7 / Real-user Update + One-consent Reporting` Engineering Alpha；当前仍在 [`M13 Product Truth Sprint`](M13-PRODUCT-TRUTH-SPRINT.md)。M12.1-M12.4、私有 Run 存储、可见更新等待状态和自动公开安全 Trace 已经完成；`v0.12.7` 第三方 OTA 发现失败，下一补丁正切换第一方 feed。真实 Provider 重复运行、非作者用户、连续使用、Windows 11 真人 OTA 仍是独立门禁。
 
 ## 目标
 
@@ -34,7 +34,7 @@
 
 历史合成灰度提交 `d686cd6` 的 [`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610) 已完成完整故障矩阵和 5 次额外重启，脱敏摘要 9 项检查全部通过；配套 [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 的 Windows 合同、macOS 回归和 Setup 无凭据首启也全部通过。
 
-当前固定 Release 目标为 `v0.12.7`。实现 PR #24 已合入 `a165750571594fd2247b2db857217fb5c2a7bded`；合并后的 [`main` CI `32036190030`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32036190030) 通过 macOS/Windows 合同、Windows 干净安装和 `v0.12.6 -> 0.12.7-canary.67` 原地升级，升级摘要为 `profilePreserved=true`。固定 Tag、stable 灰度、正式资产和公开 endpoint 仍以 Release workflow 的结果补录。以上自动化仍不等于 Windows 11 真人、真实 Provider dogfood 或 M13 产品成立证据。
+当前固定 Release 为 `v0.12.7`。`main` CI [`32038546919`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32038546919) 通过 macOS/Windows 合同、Windows 干净安装和 `v0.12.6 -> 0.12.7-canary.69`；Release workflow [`32038914446`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32038914446) 的 Windows 作业通过 stable 灰度、`v0.12.6 -> v0.12.7`、profile 保留和五项资产，但第三方线上更新作业连续十分钟 HTTP 404 后失败。下一补丁只有在第一方 GitHub Release feed 的 Windows `Update.exe` 真升级通过后才发布。
 
 该阶段不使用真实 Provider Key，不产生模型费用，也不能证明 Windows 11 消费者桌面环境。
 
@@ -42,8 +42,8 @@
 
 设备到位后按顺序执行：
 
-1. 安装 `v0.12.6` 并保留一个非敏感 profile 标记，核对版本与来源；
-2. 在应用内发现、下载并原地升级到 `v0.12.7`，不先卸载旧版；
+1. 从 `v0.12.7` 手动覆盖安装带第一方 feed 的下一补丁，并保留一个非敏感 profile 标记；
+2. 待再下一个 stable 发布后，在应用内发现、下载并原地升级，不先卸载旧版；
 3. Windows Credential Manager 写入并读取 DeepSeek/OpenAI 凭证；
 4. 真实 Research Run、两个活动 Run、取消和 checkpoint resume；
 5. Artifact 打开和诊断导出；

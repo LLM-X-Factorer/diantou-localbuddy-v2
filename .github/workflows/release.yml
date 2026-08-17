@@ -106,40 +106,33 @@ jobs:
   online-update-smoke:
     needs: [windows-release]
     if: github.event.repository.private == false
-    runs-on: ubuntu-24.04
+    runs-on: windows-2025
+    timeout-minutes: 20
     steps:
-      - name: Verify the public Windows updater resolves the new Release
-        shell: bash
+      - uses: actions/checkout@v7
+      - name: Download previous stable Setup
+        shell: pwsh
         env:
           PREVIOUS_VERSION: ${{ needs.windows-release.outputs.previous_version }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
-          package_version="${GITHUB_REF_NAME#v}"
-          feed_url="https://update.electronjs.org/${GITHUB_REPOSITORY}/win32-x64/${PREVIOUS_VERSION}"
-          expected_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${package_version}/LocalBuddy-${package_version}-Setup.exe"
-          for attempt in $(seq 1 40); do
-            response=$(curl --http1.1 --location --silent --show-error \
-              --write-out $'\n%{http_code}' "$feed_url" || true)
-            http_status="${response##*$'\n'}"
-            body="${response%$'\n'*}"
-            echo "Updater response attempt ${attempt}/40: HTTP ${http_status}"
-            if [[ "$http_status" == "200" ]] && RESPONSE="$body" node --input-type=module - "$package_version" "$expected_url" <<'NODE'
-          const [, , version, expectedUrl] = process.argv;
-          let response;
-          try {
-            response = JSON.parse(process.env.RESPONSE ?? "");
-          } catch {
-            process.exit(1);
-          }
-          if (response.name !== `LocalBuddy v${version}` || response.url !== expectedUrl) {
-            process.exit(1);
-          }
-          NODE
-            then
-              echo "Public updater resolved LocalBuddy ${package_version} from ${PREVIOUS_VERSION}."
-              exit 0
-            fi
-            sleep 15
-          done
-          echo "Public updater did not resolve LocalBuddy ${package_version} within ten minutes." >&2
-          exit 1
+          New-Item -ItemType Directory -Force previous-release-online | Out-Null
+          gh release download "v$env:PREVIOUS_VERSION" --repo $env:GITHUB_REPOSITORY --pattern "LocalBuddy-*-Setup.exe" --dir previous-release-online
+          if ($LASTEXITCODE -ne 0) { throw "Could not download previous stable Setup" }
+          $setups = @(Get-ChildItem previous-release-online -File -Filter "LocalBuddy-*-Setup.exe")
+          if ($setups.Count -ne 1) { throw "Expected exactly one previous stable Setup" }
+          "LOCALBUDDY_ONLINE_BASE_SETUP=$($setups[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Upgrade previous stable through the first-party GitHub Release feed
+        shell: pwsh
+        run: |
+          $feedRoot = "https://github.com/$env:GITHUB_REPOSITORY/releases/latest/download"
+          pwsh -NoLogo -NoProfile -File scripts/verify-windows-installer-upgrade.ps1 -BaseSetup $env:LOCALBUDDY_ONLINE_BASE_SETUP -FeedRoot $feedRoot
+      - name: Upload sanitized online-update evidence
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: localbuddy-windows-online-update-evidence-${{ github.ref_name }}
+          path: .localbuddy/online-update-smoke/windows/**
+          if-no-files-found: warn
+          retention-days: 90

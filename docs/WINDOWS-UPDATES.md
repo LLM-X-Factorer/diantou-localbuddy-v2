@@ -1,6 +1,6 @@
 # Windows 开发更新与安装升级
 
-> 状态：当前已发布基线是公开但未签名的 `v0.12.7` Engineering Alpha，仓库已采用 Apache License 2.0。`v0.12.4` 桥接版已让 packaged stable Windows 构建内置公开 GitHub Release 更新源；托管门禁持续验证上一稳定版原地升级、五项资产和公开 endpoint。`v0.12.3` 只有失败 Tag，没有 Release 或资产。代码签名和 Windows 11 上 `v0.12.6 -> v0.12.7` 的真人 OTA 仍是独立门禁。
+> 状态：当前已发布基线是公开但未签名的 `v0.12.7` Engineering Alpha。该版本的正式 Windows 包、原地升级和五项资产通过，但它依赖的第三方公共更新服务在发布后连续十分钟返回 HTTP 404。下一补丁候选改用仓库自己控制的 GitHub Release 静态 feed；完成 Windows 真升级并发布前，现有用户仍应手动覆盖安装，不要把第三方 endpoint 或 CI 本地升级冒充已可用 OTA。
 
 ## 一句话方案
 
@@ -18,7 +18,7 @@ pnpm windows:canary
 |---|---|---|---|
 | Canary 快速同步 | 今天的代码在 Windows 上能不能快速打开和试用 | 下载 CI 便携 ZIP，按 SHA 并存，使用独立 user-data | Setup 安装、卸载和原地升级 |
 | 安装/升级门禁 | 新用户安装和老用户升级会不会坏 | CI 先做干净安装，再做 `上一稳定版 -> 当前候选版` 原地升级并检查用户数据 | Windows 11、SmartScreen、UAC 和真实网络 |
-| 稳定版应用内更新 | 已安装用户能否在应用内检查并安全重启升级 | 公开 GitHub Release + Electron 官方 feed + 手动检查 + 下载完成后人工确认重启 | 未签名包的 SmartScreen 信誉，也不能替代 Windows 11 真人验收 |
+| 稳定版应用内更新 | 已安装用户能否在应用内检查并安全重启升级 | 第一方 GitHub Release 静态 Squirrel feed + 手动检查 + 下载完成后人工确认重启 | 未签名包的 SmartScreen 信誉，也不能替代 Windows 11 真人验收 |
 
 如果每次只重装，我们只能证明“新装还能开”，反而会漏掉用户真正关心的旧数据、旧配置和升级路径。反过来，只跑 Canary 也会漏掉安装器问题。
 
@@ -72,15 +72,15 @@ Canary 的 UI 会显示 `channel + version + short SHA`，用于确认“我实�
 
 ## 稳定版在线更新
 
-`0.12.4` 不再要求普通用户设置环境变量。packaged、stable、Windows 构建会由 Main 固定使用以下只读服务地址，并带上运行中的版本和架构：
+下一补丁的 packaged、stable、Windows x64 构建会由 Main 固定使用以下第一方只读地址：
 
 ```text
-https://update.electronjs.org/LLM-X-Factorer/diantou-localbuddy-v2/win32-x64/<current-version>
+https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/latest/download
 ```
 
-该服务从公开 GitHub Releases 解析下一稳定版；Renderer 仍不能修改更新源。Canary、beta、开发包和非 Windows 包默认不接稳定 feed。`LOCALBUDDY_UPDATE_FEED_URL` 只保留给打包验收时的显式 HTTPS/loopback 夹具，不作为用户配置或私有仓库鉴权方案。
+Squirrel 直接读取该地址下的 `RELEASES`，再下载清单指定的 full nupkg；两者都来自同一个经过 Tag、版本和 SHA-256 门禁的公开 Release，不再经过第三方版本发现缓存。Renderer 仍不能修改更新源。Canary、beta、开发包和非 Windows 包默认不接稳定 feed；当前只发布 Windows x64，其他架构 fail closed。`LOCALBUDDY_UPDATE_FEED_URL` 只保留给打包验收时的显式 HTTPS/loopback 夹具，不作为用户配置或私有仓库鉴权方案。
 
-`v0.12.2` 本身没有内置更新地址，因此已有用户必须对 `v0.12.4` 做最后一次手动原地安装；不需要先卸载。托管门禁持续验证 `v0.12.4 -> v0.12.5`、`v0.12.5 -> v0.12.6` 和 `v0.12.6 -> v0.12.7`，但只有在真实 Windows 11 上完成线上检查、下载、重启、版本读回和 profile 保留后，才可以宣称以后无需回仓库下载。
+`v0.12.4-v0.12.7` 已发布包仍写死第三方 feed，无法由仓库在服务器侧改址。唯一当前用户需要对带第一方 feed 的下一补丁做一次手动原地安装；不需要先卸载。之后每个 Tag workflow 都必须在 Windows Runner 上从上一稳定版通过同一公网 feed 真升级，并且只有真实 Windows 11 完成线上检查、下载、重启、版本读回和 profile 保留后，才可以宣称普通用户无需回仓库下载。
 
 ## 应用内更新的安全规则
 
@@ -96,7 +96,7 @@ Windows 安装包已经接入 Electron/Squirrel 更新控制器。`0.12.4` 起�
 - Renderer 不能设置 feed，也不能绕过 Main 的空闲检查；
 - 当前没有静默安装、强制更新或自动回滚。
 
-Release workflow 从 `0.12.2` 起发布 Setup、便携 ZIP、`RELEASES`、full NuGet package 和 SHA-256 清单。`0.12.4` 起，验收通过的 Windows 作业直接把这些长期分发资产上传到 GitHub Release，不再用受配额约束的临时 Actions Artifact 中转；脱敏截图/摘要仍是尽力保存的短期证据，不阻断已通过完整验证的正式资产发布。公开仓库的 Tag Release 还会从上一稳定版本请求 Electron feed，解析 JSON 并精确核对新版本 Setup 下载地址；full nupkg 与 `RELEASES` 由发布资产合同另行保证。`v0.12.4` 首次发布的旧冒烟把 full nupkg 错当作 JSON 响应且只等待五分钟，因而在 endpoint 刷新前约 42 秒标红；修复后的后续发布最多等待十分钟。代码签名和真实 Windows 11 OTA 仍是独立门禁，不能因为线上 endpoint 返回成功就写成“生产自动更新已验收”。
+Release workflow 从 `0.12.2` 起发布 Setup、便携 ZIP、`RELEASES`、full NuGet package 和 SHA-256 清单。验收通过的 Windows 作业直接把长期分发资产上传到 GitHub Release，不经临时 Artifact 中转；脱敏截图/摘要仍是尽力保存的短期证据。下一补丁起，独立线上门禁会安装上一稳定版，直接让 Squirrel `Update.exe` 从 GitHub `releases/latest/download` 下载并安装目标 full nupkg，再读回目标 UI 和 profile 标记。另有手动 workflow 可重复检查当前已发布的 stable。代码签名和真实 Windows 11 OTA 仍是独立门禁，不能因为托管 Runner 成功就写成“生产自动更新已验收”。
 
 ## 验收记录
 
