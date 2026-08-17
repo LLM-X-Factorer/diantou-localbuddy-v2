@@ -4,6 +4,11 @@
 
 ## Unreleased
 
+### Added
+
+- 新增用户主动发起的公开安全问题报告候选：先遮盖常见凭据、用户路径、邮箱和 `@` 提及，只输出版本/平台、受控失败分类、状态计数和最近事件类型；用户必须检查完整预览并明确确认，应用才会打开固定 LocalBuddy GitHub Issue Form；
+- 新增无鉴权的公开 Issue 去重签名、本地 Markdown 回退和预览内容 SHA-256 防漂移校验。应用不自动发布、不上传原始诊断包、不保存 GitHub Token，也不把去重检查冒充遥测。
+
 ### Changed
 
 - 开发阶段转入 M13 Product Truth Sprint：固定 `v0.12.4` 为产品事实基线，默认冻结通用功能扩张，以 Research Desk 同合同三跑、两个独立主题、非作者用户和目标应用结果作 `advance/pause/stop` 裁决；

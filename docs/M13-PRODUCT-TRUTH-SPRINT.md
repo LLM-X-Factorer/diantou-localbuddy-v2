@@ -21,6 +21,8 @@ M13 期间默认冻结通用功能面。只有以下改动可以进入实现：
 - 至少两个已接受场景共同需要的 Core 合同；
 - 修复 grader、trace 或文档真源，使已经发生的结果能被准确分类。
 
+用户主动、公开安全、可预览的问题报告属于最后一类：它缩短真实失败进入可归因 Issue 的路径，不增加任务能力。合同与隐私边界见 [`M13-PUBLIC-BUG-REPORTING.md`](M13-PUBLIC-BUG-REPORTING.md)。
+
 PPTX、XLSX、RAG、Memory、自动化、远程助理、Marketplace、Hosted Credits 和团队协作不因“产品看起来应该有”而进入 M13。
 
 ## 3. Research Desk 主验证轨

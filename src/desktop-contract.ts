@@ -23,6 +23,9 @@ export const DESKTOP_CHANNELS = {
   loadArtifactThread: "localbuddy:load-artifact-thread",
   loadArtifactRevisionDiff: "localbuddy:load-artifact-revision-diff",
   exportDiagnostics: "localbuddy:export-diagnostics",
+  prepareBugReport: "localbuddy:prepare-bug-report",
+  saveBugReport: "localbuddy:save-bug-report",
+  openBugReport: "localbuddy:open-bug-report",
   resolveToolApproval: "localbuddy:resolve-tool-approval",
   resolvePlanReview: "localbuddy:resolve-plan-review",
   openArtifact: "localbuddy:open-artifact",
@@ -429,6 +432,57 @@ export interface ResolveDesktopPlanReviewRequest extends DesktopRunActionRequest
   decision: "approve" | "reject";
 }
 
+export const DESKTOP_BUG_REPORT_TEXT_LIMITS = {
+  actual: 180,
+  expected: 160,
+  reproduction: 280,
+} as const;
+
+export interface DesktopBugReportRequest extends DesktopRunActionRequest {
+  actual: string;
+  expected: string;
+  reproduction: string;
+}
+
+export interface OpenDesktopBugReportRequest extends DesktopBugReportRequest {
+  confirmedPublicSubmission: true;
+  confirmedPreviewSha256: string;
+}
+
+export interface DesktopBugReportDuplicateCheck {
+  status: "found" | "none" | "unavailable";
+  issueNumber?: number;
+  title?: string;
+  url?: string;
+}
+
+export interface DesktopPublicBugReportPreview {
+  version: 1;
+  destination: string;
+  title: string;
+  issueUrl: string;
+  signature: string;
+  previewSha256: string;
+  fields: {
+    actual: string;
+    expected: string;
+    reproduction: string;
+    environment: string;
+    trace: string;
+  };
+  previewMarkdown: string;
+  included: readonly string[];
+  omitted: readonly string[];
+  redactions: readonly string[];
+  duplicateCheck: DesktopBugReportDuplicateCheck;
+}
+
+export interface DesktopBugReportOpenResult {
+  status: "new-issue-opened" | "duplicate-opened";
+  url: string;
+  signature: string;
+}
+
 export interface DesktopApi {
   bootstrap(): Promise<DesktopBootstrap>;
   selectWorkspace(): Promise<string | null>;
@@ -462,6 +516,9 @@ export interface DesktopApi {
     request: DesktopArtifactActionRequest,
   ): Promise<DesktopArtifactRevisionDiffView>;
   exportDiagnostics(request: DesktopRunActionRequest): Promise<string | null>;
+  prepareBugReport(request: DesktopBugReportRequest): Promise<DesktopPublicBugReportPreview>;
+  saveBugReport(request: DesktopBugReportRequest): Promise<string | null>;
+  openBugReport(request: OpenDesktopBugReportRequest): Promise<DesktopBugReportOpenResult>;
   resolveToolApproval(request: ResolveDesktopToolApprovalRequest): Promise<DesktopRunView>;
   resolvePlanReview(request: ResolveDesktopPlanReviewRequest): Promise<DesktopRunView>;
   openArtifact(request: DesktopArtifactActionRequest): Promise<void>;

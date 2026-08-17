@@ -42,6 +42,7 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 - [`docs/M12.4-SPEC.md`](docs/M12.4-SPEC.md)：独立 DOCX Reviewer、有界修订、事件隐私和脱敏 trace 合同；
 - [`docs/M12.4-VALIDATION.md`](docs/M12.4-VALIDATION.md)：Reviewer 接受/退回/上限/恢复与 trace 专项证据；
 - [`docs/M13-PRODUCT-TRUTH-SPRINT.md`](docs/M13-PRODUCT-TRUTH-SPRINT.md)：固定 `v0.12.4`、Research Desk 真实运行矩阵、非作者用户门和 `advance/pause/stop` 裁决；
+- [`docs/M13-PUBLIC-BUG-REPORTING.md`](docs/M13-PUBLIC-BUG-REPORTING.md)：用户主动公开报告、隐私裁剪、预览确认、去重和本地回退合同；
 - [`docs/CODEX-BENCHMARK-2026-08-14.md`](docs/CODEX-BENCHMARK-2026-08-14.md)：基于 OpenAI 官方文档的 Codex 产品/Agent 基准、LocalBuddy 差距和优先级；
 - [`docs/WORKBUDDY-PRODUCT-BENCHMARK-2026-08-15.md`](docs/WORKBUDDY-PRODUCT-BENCHMARK-2026-08-15.md)：WorkBuddy 公开承诺、LocalBuddy 产品差距、六个黄金任务和统一评分合同；
 - [`benchmarks/workbuddy-core/README.md`](benchmarks/workbuddy-core/README.md)：可物化的产品对标夹具、运行规则和证据要求；

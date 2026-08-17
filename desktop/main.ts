@@ -29,7 +29,12 @@ import {
   DESKTOP_CHANNELS,
   type ApproveDesktopIntegrationRequest,
   type DesktopArtifactActionRequest,
+  type DesktopBugReportDuplicateCheck,
+  type DesktopBugReportRequest,
+  DESKTOP_BUG_REPORT_TEXT_LIMITS,
+  type DesktopPublicBugReportPreview,
   type DesktopRunActionRequest,
+  type OpenDesktopBugReportRequest,
   type RevertDesktopIntegrationRequest,
   type ResolveDesktopPlanReviewRequest,
   type ResolveDesktopToolApprovalRequest,
@@ -56,12 +61,21 @@ import {
   type DesktopBuildIdentity,
 } from "../src/build-identity.js";
 import { DesktopUpdateCoordinator, resolveDesktopUpdateFeed } from "../src/desktop-update.js";
+import {
+  buildPublicBugReport,
+  findDuplicatePublicBugReport,
+  isAllowedPublicBugReportUrl,
+} from "../src/public-bug-report.js";
 import { electronDesktopUpdateTransport } from "./update-controller.js";
 
 const currentDirectory = dirname(fileURLToPath(import.meta.url));
 const rendererRoot = resolve(currentDirectory, "..", "renderer");
 const preloadPath = resolve(currentDirectory, "preload.cjs");
 const rendererUrl = "localbuddy://app/index.html";
+const bugReportDuplicateCache = new Map<string, {
+  checkedAt: number;
+  result: DesktopBugReportDuplicateCheck;
+}>();
 
 protocol.registerSchemesAsPrivileged([{
   scheme: "localbuddy",
@@ -523,6 +537,51 @@ function registerIpcHandlers(): void {
     return result.filePath;
   });
 
+  ipcMain.handle(DESKTOP_CHANNELS.prepareBugReport, async (event, request: unknown) => {
+    assertTrustedSender(event);
+    return preparePublicBugReport(parseBugReportRequest(request));
+  });
+
+  ipcMain.handle(DESKTOP_CHANNELS.saveBugReport, async (event, request: unknown) => {
+    assertTrustedSender(event);
+    const report = await buildPublicBugReportForRequest(parseBugReportRequest(request));
+    const shortSignature = report.signature.slice(-64, -52);
+    const options: Electron.SaveDialogOptions = {
+      title: "保存公开安全问题报告",
+      defaultPath: resolve(app.getPath("documents"), `localbuddy-public-bug-${shortSignature}.md`),
+      filters: [{ name: "Markdown", extensions: ["md"] }],
+      properties: ["createDirectory", "showOverwriteConfirmation"],
+    };
+    const result = await dialog.showSaveDialog(options);
+    if (result.canceled || result.filePath === undefined) return null;
+    await writeFile(result.filePath, report.previewMarkdown, { encoding: "utf8", mode: 0o600 });
+    if (process.platform !== "win32") await chmod(result.filePath, 0o600);
+    return result.filePath;
+  });
+
+  ipcMain.handle(DESKTOP_CHANNELS.openBugReport, async (event, request: unknown) => {
+    assertTrustedSender(event);
+    const parsed = parseOpenBugReportRequest(request);
+    const report = await preparePublicBugReport(parsed);
+    if (report.previewSha256 !== parsed.confirmedPreviewSha256) {
+      throw new Error("运行状态或报告内容在预览后发生变化，请重新生成并检查公开预览");
+    }
+    const duplicateUrl = report.duplicateCheck.status === "found"
+      ? report.duplicateCheck.url
+      : undefined;
+    const target = duplicateUrl ?? report.issueUrl;
+    const kind = duplicateUrl === undefined ? "new" : "existing";
+    if (!isAllowedPublicBugReportUrl(target, kind)) {
+      throw new Error("GitHub 问题报告目标地址未通过安全校验");
+    }
+    await shell.openExternal(target);
+    return {
+      status: duplicateUrl === undefined ? "new-issue-opened" : "duplicate-opened",
+      url: target,
+      signature: report.signature,
+    };
+  });
+
   ipcMain.handle(DESKTOP_CHANNELS.resolveToolApproval, async (event, request: unknown) => {
     assertTrustedSender(event);
     return runManager.resolveToolApproval(parseResolveToolApprovalRequest(request));
@@ -550,6 +609,42 @@ function registerIpcHandlers(): void {
       mainWindow.webContents.send(DESKTOP_CHANNELS.runUpdated, run);
     }
   });
+}
+
+async function buildPublicBugReportForRequest(request: DesktopBugReportRequest) {
+  const runs = await runManager.list(request.workspace);
+  const run = runs.find((candidate) => candidate.runId === request.runId);
+  if (run === undefined) throw new Error("找不到要报告的 LocalBuddy Run");
+  return buildPublicBugReport({
+    run,
+    request,
+    build: buildIdentity,
+    platform: process.platform,
+    arch: process.arch,
+  });
+}
+
+async function preparePublicBugReport(
+  request: DesktopBugReportRequest,
+): Promise<DesktopPublicBugReportPreview> {
+  const report = await buildPublicBugReportForRequest(request);
+  const cached = bugReportDuplicateCache.get(report.signature);
+  let duplicateCheck: DesktopBugReportDuplicateCheck;
+  if (cached !== undefined && Date.now() - cached.checkedAt < 60_000) {
+    duplicateCheck = cached.result;
+  } else {
+    duplicateCheck = await findDuplicatePublicBugReport(
+      report.signature,
+      fetch,
+      AbortSignal.timeout(4_000),
+    );
+    bugReportDuplicateCache.set(report.signature, { checkedAt: Date.now(), result: duplicateCheck });
+    if (bugReportDuplicateCache.size > 64) {
+      const oldest = bugReportDuplicateCache.keys().next().value as string | undefined;
+      if (oldest !== undefined) bugReportDuplicateCache.delete(oldest);
+    }
+  }
+  return { ...report, duplicateCheck };
 }
 
 function assertTrustedSender(event: IpcMainInvokeEvent): void {
@@ -717,6 +812,44 @@ function parseRunActionRequest(value: unknown): DesktopRunActionRequest {
   };
 }
 
+function parseBugReportRequest(value: unknown): DesktopBugReportRequest {
+  const record = expectRecord(value, "bug report request");
+  return {
+    workspace: expectString(record.workspace, "workspace"),
+    runId: expectString(record.runId, "runId"),
+    actual: expectBugReportText(
+      record.actual,
+      "actual",
+      DESKTOP_BUG_REPORT_TEXT_LIMITS.actual,
+      true,
+    ),
+    expected: expectBugReportText(
+      record.expected,
+      "expected",
+      DESKTOP_BUG_REPORT_TEXT_LIMITS.expected,
+      false,
+    ),
+    reproduction: expectBugReportText(
+      record.reproduction,
+      "reproduction",
+      DESKTOP_BUG_REPORT_TEXT_LIMITS.reproduction,
+      true,
+    ),
+  };
+}
+
+function parseOpenBugReportRequest(value: unknown): OpenDesktopBugReportRequest {
+  const record = expectRecord(value, "public bug report request");
+  if (record.confirmedPublicSubmission !== true) {
+    throw new Error("必须先检查公开预览并明确确认");
+  }
+  return {
+    ...parseBugReportRequest(record),
+    confirmedPublicSubmission: true,
+    confirmedPreviewSha256: expectSha256(record.confirmedPreviewSha256, "confirmedPreviewSha256"),
+  };
+}
+
 function parseArtifactActionRequest(value: unknown): DesktopArtifactActionRequest {
   const record = expectRecord(value, "artifact action request");
   return {
@@ -815,6 +948,23 @@ function expectString(value: unknown, name: string): string {
   return value;
 }
 
+function expectBugReportText(value: unknown, name: string, maximum: number, required: boolean): string {
+  const result = expectString(value, name);
+  if (Array.from(result).length > maximum) {
+    throw new Error(`${name} must be at most ${maximum} characters`);
+  }
+  if (required && result.trim().length === 0) {
+    throw new Error(`${name} must not be empty`);
+  }
+  return result;
+}
+
+function expectSha256(value: unknown, name: string): string {
+  const result = expectString(value, name);
+  if (!/^[a-f0-9]{64}$/u.test(result)) throw new Error(`${name} must be a SHA-256 digest`);
+  return result;
+}
+
 function expectNumber(value: unknown, name: string): number {
   if (typeof value !== "number") {
     throw new Error(`${name} must be a number`);
@@ -851,7 +1001,9 @@ async function captureSmokeScreenshotIfRequested(window: BrowserWindow): Promise
   if (target === undefined) {
     return;
   }
+  const requestedView = process.env.LOCALBUDDY_SMOKE_VIEW ?? "provider";
   const diagnostics = await window.webContents.executeJavaScript(`(async () => {
+    const requestedView = ${JSON.stringify(requestedView)};
     const waitFor = async (selector, ready = () => true) => {
       const deadline = Date.now() + 10_000;
       while (Date.now() < deadline) {
@@ -862,6 +1014,50 @@ async function captureSmokeScreenshotIfRequested(window: BrowserWindow): Promise
       throw new Error('Timed out waiting for ' + selector);
     };
     const buildIdentity = await waitFor('.build-identity', (element) => !element.innerText.includes('unknown'));
+    if (requestedView === 'bug-report') {
+      if (document.querySelector('.guide-state') !== null) {
+        const enterWorkbench = [...document.querySelectorAll('.guide-header-actions button')]
+          .find((element) => element.innerText.includes('进入工作台'));
+        enterWorkbench?.click();
+      }
+      const reportButton = await waitFor('.header-actions button', () =>
+        [...document.querySelectorAll('.header-actions button')].some((element) => element.innerText.includes('报告问题'))
+      );
+      const targetButton = [...document.querySelectorAll('.header-actions button')]
+        .find((element) => element.innerText.includes('报告问题'));
+      targetButton.click();
+      const dialog = await waitFor('.bug-report-dialog');
+      const textareas = [...dialog.querySelectorAll('.bug-report-fields textarea')];
+      const reproduction = textareas[2];
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+      setter.call(reproduction, '1. 启动一个合成研究任务。\\n2. 等待运行进入失败状态。\\n3. 打开问题报告。');
+      reproduction.dispatchEvent(new Event('input', { bubbles: true }));
+      const prepareButton = [...dialog.querySelectorAll('.bug-report-prepare-row button')][0];
+      await waitFor('.bug-report-prepare-row button', (element) => !element.disabled);
+      prepareButton.click();
+      const preview = await waitFor('.bug-report-preview');
+      await waitFor('.bug-report-prepare-row button', (element) =>
+        !element.disabled && !element.innerText.includes('生成并检查中')
+      );
+      preview.scrollIntoView({ block: 'center' });
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, 250));
+      const consent = dialog.querySelector('.bug-report-consent input');
+      const openButton = dialog.querySelector('.bug-report-open');
+      return {
+        url: location.href,
+        title: document.title,
+        requestedView,
+        buildIdentity: buildIdentity.innerText.trim(),
+        dialogVisible: dialog !== null,
+        publicWarningVisible: dialog.innerText.includes('GitHub Issue 是公开内容'),
+        previewVisible: preview !== null,
+        previewHasSignature: preview.innerText.includes('localbuddy-signature:v1:'),
+        rawWorkspaceAbsent: !preview.innerText.includes('/Users/'),
+        consentChecked: consent?.checked ?? null,
+        openDisabledBeforeConsent: openButton?.disabled ?? null,
+        duplicateStatus: dialog.querySelector('.duplicate-status')?.innerText.trim() ?? ''
+      };
+    }
     const providerEntry = await waitFor('.provider-entry');
     const startButton = await waitFor('.start-button');
     const goalContract = await waitFor('.goal-contract-heading');
