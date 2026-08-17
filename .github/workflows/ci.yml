@@ -105,6 +105,7 @@ jobs:
         with:
           name: localbuddy-installed-clean-first-launch-windows-2025
           path: .localbuddy/first-run-smoke/win32-installer/**
+          include-hidden-files: true
           if-no-files-found: warn
           retention-days: 14
       - name: Upload installed in-place upgrade evidence
@@ -113,6 +114,7 @@ jobs:
         with:
           name: localbuddy-installed-upgrade-windows-2025
           path: .localbuddy/upgrade-smoke/windows/**
+          include-hidden-files: true
           if-no-files-found: warn
           retention-days: 30
       - name: Stage Windows Canary distributables and update feed on main only

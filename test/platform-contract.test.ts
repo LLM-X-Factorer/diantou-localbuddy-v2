@@ -74,6 +74,11 @@ test("declares Windows-first CI plus low-frequency Linux maintenance boundaries"
   assert.match(upgradeVerification, /User profile marker was lost during the in-place update/);
   assert.match(upgradeVerification, /buildIdentity/);
   assert.match(upgradeVerification, /upgrade-summary\.json/);
+  assert.match(upgradeVerification, /--checkForUpdate/);
+  assert.match(upgradeVerification, /--download/);
+  assert.match(upgradeVerification, /Squirrel \$Phase exceeded the \$\{TimeoutSeconds\}s diagnostic timeout/);
+  assert.match(upgradeVerification, /squirrel-package-state\.json/);
+  assert.match(upgradeVerification, /ConvertTo-SanitizedDiagnosticText/);
   const githubCliRetry = await readFile(resolve(repository, "scripts", "invoke-github-cli-with-retry.ps1"), "utf8");
   assert.match(githubCliRetry, /MaximumAttempts = 5/);
   assert.match(githubCliRetry, /Start-Sleep -Seconds \$delaySeconds/);
@@ -93,6 +98,7 @@ test("declares Windows-first CI plus low-frequency Linux maintenance boundaries"
   assert.match(workflow, /verify-windows-installer-upgrade\.ps1/);
   assert.match(workflow, /Windows install and in-place upgrade/);
   assert.match(workflow, /\.localbuddy\/first-run-smoke\/win32-installer\/\*\*/);
+  assert.ok((workflow.match(/include-hidden-files: true/g) ?? []).length >= 2);
   assert.doesNotMatch(workflow, /make:linux/);
 
   const windowsGray = await readFile(resolve(repository, ".github", "workflows", "windows-gray.yml"), "utf8");
@@ -141,6 +147,7 @@ test("tag releases publish Windows only after installed-app synthetic gray passe
   assert.match(workflow, /https:\/\/github\.com\/\$env:GITHUB_REPOSITORY\/releases\/latest\/download/);
   assert.match(workflow, /Upgrade previous stable through the first-party GitHub Release feed/);
   assert.match(workflow, /localbuddy-windows-online-update-evidence/);
+  assert.ok((workflow.match(/include-hidden-files: true/g) ?? []).length >= 3);
   assert.doesNotMatch(workflow, /update\.electronjs\.org/);
   assert.doesNotMatch(workflow, /grep -Fq "LocalBuddy-\$\{package_version\}-full\.nupkg"/);
   const onlineSmoke = await readFile(resolve(repository, ".github", "workflows", "windows-online-update-smoke.yml"), "utf8");
@@ -151,6 +158,8 @@ test("tag releases publish Windows only after installed-app synthetic gray passe
   assert.doesNotMatch(onlineSmoke, /gh api "repos\/\$env:GITHUB_REPOSITORY\/releases/);
   assert.match(onlineSmoke, /releases\/latest\/download/);
   assert.match(onlineSmoke, /verify-windows-installer-upgrade\.ps1/);
+  assert.match(onlineSmoke, /timeout-minutes: 45/);
+  assert.match(onlineSmoke, /include-hidden-files: true/);
   const publishScript = await readFile(resolve(repository, "scripts", "publish-windows-release.mjs"), "utf8");
   assert.match(publishScript, /--prerelease/);
   assert.match(publishScript, /Checksum mismatch/);

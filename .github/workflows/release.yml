@@ -66,6 +66,7 @@ jobs:
         with:
           name: localbuddy-windows-gray-evidence-${{ github.ref_name }}
           path: .localbuddy/windows-gray/win32-installer/**
+          include-hidden-files: true
           if-no-files-found: warn
           retention-days: 90
       - name: Upload sanitized installed-upgrade evidence
@@ -75,6 +76,7 @@ jobs:
         with:
           name: localbuddy-windows-upgrade-evidence-${{ github.ref_name }}
           path: .localbuddy/upgrade-smoke/windows/**
+          include-hidden-files: true
           if-no-files-found: warn
           retention-days: 90
       - name: Collect release assets and checksums
@@ -112,7 +114,7 @@ jobs:
     needs: [windows-release]
     if: github.event.repository.private == false
     runs-on: windows-2025
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
       - name: Download previous stable Setup
@@ -142,5 +144,6 @@ jobs:
         with:
           name: localbuddy-windows-online-update-evidence-${{ github.ref_name }}
           path: .localbuddy/online-update-smoke/windows/**
+          include-hidden-files: true
           if-no-files-found: warn
           retention-days: 90
