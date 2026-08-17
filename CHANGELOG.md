@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+## 0.12.6 — 2026-08-17
+
+公开但未签名的 Private Run Storage + Product Truth Engineering Alpha。本版本不增加任务能力；它在真实用户灰度前收紧 Run 私有数据权限、解释三个平台的实际存储边界，并保持 M13 产品事实验证路线不变。
+
 ### Added
 
 - Desktop 在 Goal Contract 下方新增默认收起的“存储与隐私”说明，显示当前 Run 记录、Artifact 和系统凭据的真实边界；识别常见云同步目录与 Windows UNC 路径时明确警告，不把“本地路径”误报成“仅本机可见”。
@@ -20,6 +24,12 @@
 ### Documentation
 
 - 新增 [`docs/STORAGE-AND-PRIVACY.md`](docs/STORAGE-AND-PRIVACY.md)，记录三个操作系统上的 Run、Artifact、偏好、协调状态与系统凭据位置，以及明文 checkpoint/browser cookie、同步目录和当前无自动迁移/删除的限制。
+
+### Pre-release evidence
+
+- 实现提交 `29dc11c7dbdcd9f5147d19003f7030ba42b71417` 经 [PR #19](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/pull/19) 合入 `70cbfda4dbba4bd15257bc02805fee4d0e69a197`；PR CI `32023121563` 的 macOS、Windows 全量和 Windows 安装/原地升级作业通过；
+- macOS 本机 `pnpm check` 为 220 项：218 passed、2 项 Windows-only 跳过、0 failed；源码构建、ad-hoc App/ZIP/DMG、DMG 完整性、14 个相对 symlink、Fuse、内置 Browser、隔离无凭据首启和存储说明展开读回通过；
+- 正式 Tag、Windows stable 安装版灰度、`v0.12.5 -> v0.12.6` 原地升级、资产回下载与公开 updater endpoint 回读仍以 Release Gate 的固定 Tag 结果为准，不能由 PR 或本机包替代。
 
 ## 0.12.5 — 2026-08-17
 

@@ -1,6 +1,21 @@
 # Windows Update Validation
 
-> 当前已发布版本：公开但未签名的 `v0.12.5 / Public Bug Reporting + Product Truth` Engineering Alpha。`v0.12.3` 只有失败 Tag，没有 Release 或资产。托管发布门禁覆盖 `v0.12.4 -> v0.12.5`，但 Windows 11 上同一路径的真实线上 OTA 与代码签名仍是开放门禁。
+> 当前已发布版本：公开但未签名的 `v0.12.6 / Private Run Storage + Product Truth` Engineering Alpha。`v0.12.3` 只有失败 Tag，没有 Release 或资产。托管发布门禁覆盖上一稳定版原地升级，但 Windows 11 上 `v0.12.5 -> v0.12.6` 的真实线上 OTA 与代码签名仍是开放门禁。
+
+## 0.12.6 Private Run Storage + Product Truth
+
+本版本将 Run Request、事件、checkpoint、Artifact、Browser state、Integration 与 revision source 收口到统一私有写入层；macOS/Linux 新目录/文件为 `0700`/`0600`，Windows 保持继承所选位置 ACL 的真实边界。旧 Run 只在获得工作区锁后有界修复已知状态树，不扫描、移动或删除用户源文件。Desktop 默认收起展示精确位置，并对已知同步/网络目录告警。
+
+实现提交 `29dc11c7dbdcd9f5147d19003f7030ba42b71417` 经 [PR #19](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/pull/19) 合入 `70cbfda4dbba4bd15257bc02805fee4d0e69a197`。PR CI [`32023121563`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32023121563) 的 macOS、Windows 全量与 Windows 安装/原地升级作业全部通过；本机 220 项合同、App/ZIP/DMG、隔离无凭据首启、DMG/签名/Fuse/Browser 和存储说明读回通过。
+
+### v0.12.6 Release 待回读
+
+- annotated Tag、固定 Release 提交与 workflow/job ID；
+- stable 安装版合成灰度与 `v0.12.5 -> v0.12.6` 的 `profilePreserved=true`；
+- Setup、ZIP、full nupkg、`RELEASES` 和 SHA 清单的字节数与哈希；
+- 无鉴权 updater endpoint 返回的精确 `v0.12.6` Setup URL。
+
+以上四项在 Tag Gate 完成前保持开放，不用 PR/本机证据预填为已通过。
 
 ## 0.12.5 Public Bug Reporting + Product Truth
 
@@ -114,12 +129,12 @@ PR #6 首轮 Windows 全量测试暴露一条只接受 LF 的源码合同；Wind
 
 ## Windows 11 手工验收清单
 
-1. 安装并启动 `v0.12.4`，用测试 Provider 和测试工作区创建可识别但不敏感的 profile 标记；
-2. 在 `v0.12.4` 内手动检查更新，确认发现并下载 `v0.12.5`；
+1. 安装并启动 `v0.12.5`，用测试 Provider 和测试工作区创建可识别但不敏感的 profile 标记；
+2. 在 `v0.12.5` 内手动检查更新，确认发现并下载 `v0.12.6`；
 3. 在一个 Run 运行时准备重启安装，确认应用拒绝退出；结束 Run 后再次确认并完成升级；
-4. 重启后读回 `v0.12.5`、最近工作区、运行历史、profile 标记和 Credential Manager 状态；
+4. 重启后读回 `v0.12.6`、最近工作区、运行历史、profile 标记和 Credential Manager 状态；
 5. 完成真实 Research Run、两个活动 Run、取消、checkpoint resume、Artifact 打开和本地诊断/公开问题预览；
 6. 记录 Windows 版本、标准用户/管理员、SmartScreen、Defender、DPI、输入法、代理、安装/升级/卸载结果；
 7. 导出脱敏证据，不上传 Prompt、API Key、工作区正文或 `.localbuddy/` 私有运行状态。
 
-完成上述真机清单前，`v0.12.5` 只能称为公开但未签名的 Engineering Alpha，不称为 Windows 11 已验收或生产自动更新。
+完成上述真机清单前，`v0.12.6` 只能称为公开但未签名的 Engineering Alpha，不称为 Windows 11 已验收或生产自动更新。

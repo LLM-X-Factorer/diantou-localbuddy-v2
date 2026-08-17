@@ -1,7 +1,7 @@
 # M13 Product Truth Sprint
 
 > 状态：`active`，2026-08-16。
-> 固定基线：公开但未签名的 `v0.12.5 / Public Bug Reporting + Product Truth` Engineering Alpha。
+> 固定基线：公开但未签名的 `v0.12.6 / Private Run Storage + Product Truth` Engineering Alpha。
 > 决策目标：判断 Research Desk 应该 `advance`、`pause` 还是 `stop`；本里程碑不是新一轮功能开发。
 
 ## 1. 第一性问题
@@ -34,7 +34,7 @@ PPTX、XLSX、RAG、Memory、自动化、远程助理、Marketplace、Hosted Cre
 - 一位非作者试用者，以不含个人信息的 `participant-*` 标识记录；
 - 一份人类可读的 `research-desk-v1` Scenario Product Contract；机器可读持久化仍由 Issue #4 管理；
 - 固定的 Goal、Source、Artifact、Review、停止条件和硬失败；
-- Provider、模型和 `v0.12.5` 安装包身份；
+- Provider、模型和 `v0.12.6` 安装包身份；
 - 经过正反例校准的人工 scorecard 与确定性 grader。
 
 未命名真实试用者前，可以准备合同和合成夹具，但不能把作者自测写成非作者验收。
@@ -100,7 +100,7 @@ PPTX、XLSX、RAG、Memory、自动化、远程助理、Marketplace、Hosted Cre
 Issue #7 并行管理，不用托管 Runner 代替真机：
 
 1. Windows 11 从 `v0.12.2` 手动原地安装 `v0.12.4`，不卸载旧版；
-2. 在 Windows 11 上完成 `v0.12.4 -> v0.12.5` 应用内检查、下载、忙碌 Run 阻断、重启安装和 profile/版本读回；
+2. 在 Windows 11 上完成 `v0.12.5 -> v0.12.6` 应用内检查、下载、忙碌 Run 阻断、重启安装和 profile/版本读回；
 3. 在面向普通公众分发前选择可信代码签名方案。
 
 Windows 11 门禁没有完成时，只能称公开 Engineering Alpha 和更新桥接版。
