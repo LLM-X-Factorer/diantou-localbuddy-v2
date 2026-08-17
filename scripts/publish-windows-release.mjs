@@ -5,6 +5,11 @@ import { basename, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const CHECKSUM_FILE = "SHA256SUMS-windows.txt";
+const GITHUB_MAX_ATTEMPTS = 5;
+
+function waitSynchronously(milliseconds) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+}
 
 async function sha256(path) {
   const hash = createHash("sha256");
@@ -13,15 +18,27 @@ async function sha256(path) {
 }
 
 function runGitHub(args, { allowFailure = false, quiet = false } = {}) {
-  const result = spawnSync("gh", args, {
-    shell: false,
-    stdio: quiet ? "ignore" : "inherit",
-  });
-  if (result.error) throw result.error;
-  if (!allowFailure && result.status !== 0) {
-    throw new Error(`gh ${args.slice(0, 2).join(" ")} failed with exit code ${result.status ?? "unknown"}`);
+  for (let attempt = 1; attempt <= GITHUB_MAX_ATTEMPTS; attempt += 1) {
+    const result = spawnSync("gh", args, {
+      shell: false,
+      stdio: quiet ? "ignore" : "inherit",
+    });
+    if (result.error) throw result.error;
+    if (result.status === 0) return true;
+    if (attempt < GITHUB_MAX_ATTEMPTS) {
+      const delaySeconds = attempt * 3;
+      process.stderr.write(
+        `GitHub CLI attempt ${attempt}/${GITHUB_MAX_ATTEMPTS} failed for gh ${args.slice(0, 2).join(" ")}; retrying in ${delaySeconds}s.\n`,
+      );
+      waitSynchronously(delaySeconds * 1_000);
+      continue;
+    }
+    if (!allowFailure) {
+      throw new Error(`gh ${args.slice(0, 2).join(" ")} failed after ${GITHUB_MAX_ATTEMPTS} attempts`);
+    }
+    return false;
   }
-  return result.status === 0;
+  return false;
 }
 
 export async function verifyReleaseCandidate({ assetsDirectory, packagePath, tag }) {

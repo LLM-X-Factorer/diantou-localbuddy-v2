@@ -74,6 +74,10 @@ test("declares Windows-first CI plus low-frequency Linux maintenance boundaries"
   assert.match(upgradeVerification, /User profile marker was lost during the in-place update/);
   assert.match(upgradeVerification, /buildIdentity/);
   assert.match(upgradeVerification, /upgrade-summary\.json/);
+  const githubCliRetry = await readFile(resolve(repository, "scripts", "invoke-github-cli-with-retry.ps1"), "utf8");
+  assert.match(githubCliRetry, /MaximumAttempts = 5/);
+  assert.match(githubCliRetry, /Start-Sleep -Seconds \$delaySeconds/);
+  assert.doesNotMatch(githubCliRetry, /GH_TOKEN/);
   const workflow = await readFile(resolve(repository, ".github", "workflows", "ci.yml"), "utf8");
   assert.match(workflow, /windows-2025/);
   assert.match(workflow, /macos-15/);
@@ -83,6 +87,7 @@ test("declares Windows-first CI plus low-frequency Linux maintenance boundaries"
   assert.match(workflow, /pnpm verify:first-run-windows-installer/);
   assert.match(workflow, /prepare-windows-canary-version\.mjs/);
   assert.match(workflow, /LOCALBUDDY_UPGRADE_BASE_TAG/);
+  assert.match(workflow, /invoke-github-cli-with-retry\.ps1/);
   assert.match(workflow, /localbuddy-windows-canary-feed/);
   assert.match(workflow, /if: always\(\) && github\.event_name == 'push'/);
   assert.match(workflow, /verify-windows-installer-upgrade\.ps1/);
@@ -124,6 +129,7 @@ test("tag releases publish Windows only after installed-app synthetic gray passe
   assert.doesNotMatch(workflow, /SHA256SUMS-linux\.txt/);
   assert.match(workflow, /Verify and publish Windows-first GitHub Release from verified Windows bytes/);
   assert.match(workflow, /node scripts\/publish-windows-release\.mjs/);
+  assert.match(workflow, /invoke-github-cli-with-retry\.ps1/);
   assert.match(workflow, /continue-on-error: true/);
   assert.match(workflow, /pnpm verify:windows-gray-installer/);
   assert.match(workflow, /verify-windows-installer-upgrade\.ps1/);
@@ -140,7 +146,8 @@ test("tag releases publish Windows only after installed-app synthetic gray passe
   const onlineSmoke = await readFile(resolve(repository, ".github", "workflows", "windows-online-update-smoke.yml"), "utf8");
   assert.match(onlineSmoke, /workflow_dispatch:/);
   assert.match(onlineSmoke, /windows-2025/);
-  assert.match(onlineSmoke, /gh release list/);
+  assert.match(onlineSmoke, /"release", "list"/);
+  assert.match(onlineSmoke, /invoke-github-cli-with-retry\.ps1/);
   assert.doesNotMatch(onlineSmoke, /gh api "repos\/\$env:GITHUB_REPOSITORY\/releases/);
   assert.match(onlineSmoke, /releases\/latest\/download/);
   assert.match(onlineSmoke, /verify-windows-installer-upgrade\.ps1/);
@@ -148,6 +155,7 @@ test("tag releases publish Windows only after installed-app synthetic gray passe
   assert.match(publishScript, /--prerelease/);
   assert.match(publishScript, /Checksum mismatch/);
   assert.match(publishScript, /shell: false/);
+  assert.match(publishScript, /GITHUB_MAX_ATTEMPTS = 5/);
 });
 
 test("current product-truth documents stay aligned with the released package", async () => {
