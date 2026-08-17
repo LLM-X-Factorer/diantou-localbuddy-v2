@@ -24,14 +24,15 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $latestTag -ne $expectedTag) {
             throw "Default-branch package version $expectedTag is not the latest stable Release ($latestTag)"
           }
-          $releases = gh api "repos/$env:GITHUB_REPOSITORY/releases?per_page=100" | ConvertFrom-Json
+          $releases = gh release list --repo $env:GITHUB_REPOSITORY --limit 100 --json tagName,isDraft,isPrerelease,publishedAt | ConvertFrom-Json
           if ($LASTEXITCODE -ne 0) { throw "Could not list stable Releases" }
           $previous = @($releases | Where-Object {
-            -not $_.draft -and -not $_.prerelease -and $_.tag_name -ne $latestTag -and $_.tag_name -match '^v\d+\.\d+\.\d+$'
+            -not $_.isDraft -and -not $_.isPrerelease -and $_.tagName -ne $latestTag -and $_.tagName -match '^v\d+\.\d+\.\d+$'
           } | Select-Object -First 1)
           if ($previous.Count -ne 1) { throw "Could not resolve a previous stable Release" }
+          Write-Host "Resolved online update smoke: $($previous[0].tagName) -> $latestTag"
           New-Item -ItemType Directory -Force previous-release-online | Out-Null
-          gh release download $previous[0].tag_name --repo $env:GITHUB_REPOSITORY --pattern "LocalBuddy-*-Setup.exe" --dir previous-release-online
+          gh release download $previous[0].tagName --repo $env:GITHUB_REPOSITORY --pattern "LocalBuddy-*-Setup.exe" --dir previous-release-online
           if ($LASTEXITCODE -ne 0) { throw "Could not download previous stable Setup" }
           $setups = @(Get-ChildItem previous-release-online -File -Filter "LocalBuddy-*-Setup.exe")
           if ($setups.Count -ne 1) { throw "Expected exactly one previous stable Setup" }
