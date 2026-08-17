@@ -112,14 +112,6 @@ button { cursor: pointer; }
 .bug-report-warning { margin-bottom: 12px; padding: 10px 12px; color: #74530d; border: 1px solid #e6cf7d; border-radius: 10px; background: #fff6d8; }
 .bug-report-warning strong { font-size: 10px; }
 .bug-report-warning p { margin: 4px 0 0; font-size: 8px; line-height: 1.55; }
-.bug-report-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
-.bug-report-fields label { display: grid; gap: 5px; min-width: 0; color: #52677d; font-size: 9px; font-weight: 800; }
-.bug-report-fields label > span { display: flex; justify-content: space-between; gap: 8px; }
-.bug-report-fields small { color: #98a2ac; font-weight: 500; }
-.bug-report-fields textarea { width: 100%; min-height: 70px; padding: 9px 10px; color: #30445d; resize: vertical; border: 1px solid #d9dfe2; border-radius: 9px; background: #fff; font-size: 9px; line-height: 1.5; outline: none; }
-.bug-report-fields textarea:focus { border-color: #88a8ca; box-shadow: 0 0 0 2px rgba(70,118,167,.12); }
-.bug-report-fields .bug-report-reproduction { grid-column: 1 / -1; }
-.bug-report-fields .bug-report-reproduction textarea { min-height: 78px; }
 .bug-report-prepare-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 11px; padding: 9px 10px; border: 1px solid #dfe3e1; border-radius: 9px; background: #f5f7f4; }
 .bug-report-prepare-row p { margin: 0; color: #718091; font-size: 8px; line-height: 1.45; }
 .bug-report-prepare-row button { flex: 0 0 auto; padding: 8px 10px; color: #fff; border: 0; border-radius: 8px; background: #0a3472; font-size: 8px; font-weight: 800; }
@@ -136,8 +128,6 @@ button { cursor: pointer; }
 .bug-report-preview pre { max-height: 245px; margin: 0; padding: 10px; overflow: auto; color: #d8e4ef; border-radius: 8px; background: #111a24; font: 8px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .bug-report-redactions { display: flex; align-items: center; gap: 7px; margin-top: 8px; color: #718294; font-size: 8px; }
 .bug-report-redactions strong { color: #405a73; }
-.bug-report-consent { display: flex; align-items: flex-start; gap: 7px; margin-top: 9px; padding: 9px; color: #4c5f73; border: 1px solid #d6deda; border-radius: 8px; background: #fff; font-size: 8px; line-height: 1.5; }
-.bug-report-consent input { flex: 0 0 auto; margin-top: 1px; }
 .bug-report-dialog > footer { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 13px; padding-top: 12px; border-top: 1px solid #e1e4e2; }
 .bug-report-dialog > footer p { max-width: 450px; margin: 0; color: #7f8d9a; font-size: 8px; line-height: 1.5; }
 .bug-report-dialog > footer > div { display: flex; flex: 0 0 auto; gap: 7px; }
@@ -519,6 +509,12 @@ button { cursor: pointer; }
 .update-actions small, .update-warning { color: #7b8995; font-size: 7px; line-height: 1.35; }
 .update-actions button { padding: 5px 7px; color: #1d4f79; border: 1px solid #c4d3df; border-radius: 6px; background: #edf4f8; font-size: 7px; font-weight: 800; }
 .update-actions button:disabled { cursor: default; opacity: .5; }
+.update-download-progress { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 5px 7px; margin-top: 7px; }
+.update-progress-track { grid-column: 1 / -1; height: 4px; overflow: hidden; border-radius: 999px; background: #dce5eb; }
+.update-progress-track span { display: block; width: 42%; height: 100%; border-radius: inherit; background: #5d8aae; animation: update-progress-pulse 1.25s ease-in-out infinite; }
+.update-download-progress small { color: #7b8995; font-size: 7px; line-height: 1.35; }
+.update-download-progress button { padding: 0; color: #315f84; border: 0; background: transparent; font-size: 7px; font-weight: 800; cursor: pointer; }
+@keyframes update-progress-pulse { from { transform: translateX(-115%); } to { transform: translateX(245%); } }
 .update-warning { display: block; margin-top: 6px; color: #98534f; }
 
 @media (max-width: 1180px) {

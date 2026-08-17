@@ -90,6 +90,7 @@ Windows 安装包已经接入 Electron/Squirrel 更新控制器。`0.12.4` 起�
 
 - 用户手动点击检查，不在后台擅自发起；
 - Squirrel 可在应用仍打开时下载；
+- 原生 Electron/Squirrel transport 不提供字节级进度。界面显示真实下载阶段、已等待时间和不确定进度动画，不伪造百分比；固定的 `releases/latest` 官方页为慢速/异常网络提供手动覆盖安装兜底；
 - 下载完成后必须由用户确认重启；
 - 有 Agent Run 正在启动/运行，或 Integration 正在写入主工作区时，拒绝退出安装；
 - Renderer 不能设置 feed，也不能绕过 Main 的空闲检查；

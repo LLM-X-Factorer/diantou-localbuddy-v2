@@ -3,7 +3,6 @@ import { createHash } from "node:crypto";
 import type { DesktopBuildIdentity } from "./build-identity.js";
 import type {
   DesktopBugReportDuplicateCheck,
-  DesktopBugReportRequest,
   DesktopPublicBugReportPreview,
   DesktopRunView,
 } from "./desktop-contract.js";
@@ -28,26 +27,13 @@ const TASK_STATUSES = [
 
 export interface PublicBugReportBuildInput {
   run: DesktopRunView;
-  request: DesktopBugReportRequest;
   build: DesktopBuildIdentity;
   platform: NodeJS.Platform;
   arch: string;
 }
 
-interface SanitizedText {
-  value: string;
-  redactions: string[];
-}
-
 export function buildPublicBugReport(input: PublicBugReportBuildInput): Omit<DesktopPublicBugReportPreview, "duplicateCheck"> {
-  const actual = sanitizePublicBugReportText(input.request.actual);
-  const expected = sanitizePublicBugReportText(input.request.expected);
-  const reproduction = sanitizePublicBugReportText(input.request.reproduction);
-  const redactions = [...new Set([
-    ...actual.redactions,
-    ...expected.redactions,
-    ...reproduction.redactions,
-  ])].sort();
+  const redactions: string[] = [];
   const failureCode = classifyFailure(input.run);
   const taskCounts = Object.fromEntries(TASK_STATUSES.map((status) => [
     status,
@@ -97,16 +83,19 @@ export function buildPublicBugReport(input: PublicBugReportBuildInput): Omit<Des
     `events: total=${safeCount(input.run.eventCount)} / recent_types=${recentEventTypes.join(" > ") || "none"}`,
   ].join("\n");
   const title = `[Bug] ${input.run.metrics.failureStage ?? "runtime"}/${failureCode} on ${input.platform} · v${input.build.version}`;
+  const problem = [
+    `LocalBuddy recorded a ${input.run.mode} Run with status ${input.run.status}.`,
+    `The public-safe failure classification is ${input.run.metrics.failureStage ?? "unknown"}/${failureCode}.`,
+    "The exact prompt, source material, model output, raw error, local path, and reproduction steps were intentionally not collected for this public report.",
+  ].join("\n");
   const fields = {
-    actual: actual.value,
-    expected: expected.value,
-    reproduction: reproduction.value,
+    problem,
     environment,
     trace,
   };
   const issueUrl = buildIssueFormUrl(title, fields);
   const included = [
-    "你检查后的现象、预期和复现步骤",
+    "LocalBuddy 自动生成的受控问题分类",
     "LocalBuddy 版本、构建通道、操作系统和 CPU 架构",
     "受控失败分类、状态计数和最近事件类型顺序",
   ];
@@ -122,7 +111,7 @@ export function buildPublicBugReport(input: PublicBugReportBuildInput): Omit<Des
     .digest("hex");
 
   return {
-    version: 1,
+    version: 2,
     destination: PUBLIC_BUG_REPORT_DESTINATION,
     title,
     issueUrl,
@@ -134,28 +123,6 @@ export function buildPublicBugReport(input: PublicBugReportBuildInput): Omit<Des
     omitted,
     redactions,
   };
-}
-
-export function sanitizePublicBugReportText(value: string): SanitizedText {
-  let result = value.replace(/\r\n?/g, "\n").trim();
-  const redactions = new Set<string>();
-  const replace = (pattern: RegExp, replacement: string, label: string) => {
-    const updated = result.replace(pattern, replacement);
-    if (updated !== result) redactions.add(label);
-    result = updated;
-  };
-
-  replace(/\bhttps?:\/\/[^\s/@:]+:[^\s/@]+@[^\s]+/giu, "[redacted credential URL]", "带凭据的网址");
-  replace(/\b(?:sk|pk)-[a-z0-9_-]{8,}\b/giu, "[redacted secret]", "疑似 API Key");
-  replace(/\bBearer\s+[a-z0-9._~+/=-]{8,}/giu, "Bearer [redacted]", "Bearer Token");
-  replace(/\b(api[ _-]?key|access[ _-]?token|refresh[ _-]?token|token|secret|password|authorization)\s*[:=]\s*[^\s,;]+/giu, "$1=[redacted]", "疑似凭据字段");
-  replace(/\b[A-Z]:\\Users\\[^\\\s]+(?:\\[^\s"'<>]*)?/giu, "[redacted local path]", "Windows 用户路径");
-  replace(/\/(?:Users|home)\/[^/\s]+(?:\/[^\s"'<>]*)?/gu, "[redacted local path]", "本机用户路径");
-  replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu, "[redacted email]", "邮箱地址");
-  replace(/@/gu, "＠", "@ 提及");
-  replace(/</gu, "‹", "HTML 标记");
-  replace(/>/gu, "›", "HTML 标记");
-  return { value: result, redactions: [...redactions] };
 }
 
 export async function findDuplicatePublicBugReport(
@@ -206,8 +173,9 @@ export function isAllowedPublicBugReportUrl(value: string, kind: "new" | "existi
     return url.pathname === `${prefix}new`
       && url.searchParams.get("template") === "bug-report.yml"
       && url.searchParams.has("title")
-      && url.searchParams.has("actual")
-      && url.searchParams.has("reproduction");
+      && url.searchParams.has("problem")
+      && url.searchParams.has("environment")
+      && url.searchParams.has("trace");
   } catch {
     return false;
   }
@@ -247,7 +215,7 @@ function buildIssueFormUrl(title: string, fields: DesktopPublicBugReportPreview[
   for (const [key, value] of Object.entries(fields)) url.searchParams.set(key, value);
   const result = url.toString();
   if (result.length > PUBLIC_BUG_REPORT_URL_LIMIT) {
-    throw new Error("公开报告超过 GitHub 安全预填长度，请缩短现象或复现步骤");
+    throw new Error("公开安全 Trace 超过 GitHub 预填长度");
   }
   if (!isAllowedPublicBugReportUrl(result, "new")) throw new Error("公开报告目标地址无效");
   return result;
@@ -263,16 +231,10 @@ function renderPublicBugReportMarkdown(
   return [
     `# ${title}`,
     "",
-    "> 以下五个字段会被预填到公开 GitHub Issue；LocalBuddy 不会自动发布。",
+    "> 以下三个字段由 LocalBuddy 自动生成并预填到公开 GitHub Issue；LocalBuddy 不会自动发布。",
     "",
-    "## 实际发生",
-    fields.actual || "（未填写）",
-    "",
-    "## 预期结果",
-    fields.expected || "（未填写）",
-    "",
-    "## 复现步骤",
-    fields.reproduction || "（未填写）",
+    "## 问题摘要",
+    fields.problem,
     "",
     "## 环境",
     "```text",
@@ -288,7 +250,9 @@ function renderPublicBugReportMarkdown(
     "以下核对说明只保存在本机预览，不会被预填到 GitHub：",
     ...included.map((item) => `- 包含：${item}`),
     ...omitted.map((item) => `- 未包含：${item}`),
-    ...(redactions.length === 0 ? ["- 自动遮盖：未触发"] : redactions.map((item) => `- 自动遮盖：${item}`)),
+    ...(redactions.length === 0
+      ? ["- 隐私边界：未读取自由文本，因此无需逐字遮盖"]
+      : redactions.map((item) => `- 自动遮盖：${item}`)),
     "",
   ].join("\n");
 }

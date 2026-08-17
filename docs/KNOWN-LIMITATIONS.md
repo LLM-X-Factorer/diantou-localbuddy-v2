@@ -5,6 +5,7 @@
 ## Platform and distribution
 
 - Windows `v0.12.6` Setup/ZIP/full nupkg/RELEASES 已由 Tag workflow 完成原生打包、安装版合成灰度、`v0.12.5 -> v0.12.6` 原地升级、profile 保留和回下载 SHA-256 校验。该门禁使用 Windows Server 2025 管理员 Runner 和确定性 Mock Provider，仍不覆盖终端用户设备上的 SmartScreen、标准用户/UAC、真实 Provider 与真实网络；
+- 原生 Electron/Squirrel updater 不提供字节级下载事件；v0.12.7 候选只显示真实阶段、已等待时间和不确定进度动画，并提供固定官方下载页兜底，不宣称百分比、速度或剩余时间；
 - Windows 没有受支持的本地进程隔离宿主，检查命令和本地进程型扩展 fail closed；
 - Linux `0.11.x` DEB 历史上已由 `ubuntu-24.04` Runner 原生构建；当前 Linux 只保留每周/手动维护，不进入 PR 或 Release 门禁，真实图形桌面与 Secret Service 验收暂不优先；
 - macOS 包是 ad-hoc 签名，未启用生产 Hardened Runtime，未 notarize；
@@ -28,8 +29,8 @@
 
 ## Product experience
 
-- 公开问题报告不是后台遥测或自动上传：用户必须查看脱敏预览、明确同意、在浏览器中登录 GitHub 并最终提交；不愿公开时只能保存本地 Markdown；
-- 报告采用字段白名单和尽力脱敏，但不存在对任意自由文本的绝对隐私保证，因此界面要求用户提交前复核；应用不附带原始诊断、Prompt、Artifact、工具参数、Provider 配置或本机绝对路径；
+- 公开问题报告不是后台遥测或自动上传：用户必须查看自动生成的安全预览，以“同意并在 GitHub 继续提交”明确确认，再在浏览器中登录 GitHub 并最终提交；不愿公开时可保存本地 Markdown；
+- 报告只从结构化允许字段生成，不接收自由叙述，也不附带原始诊断、Prompt、Artifact、工具参数、Provider 配置、本机绝对路径或原始错误；自动分类仍可能不够具体，因此界面要求用户提交前复核；
 - 产品仍以一次目标对应一个 Run；已发布的“基于此产物继续”会保存父 Artifact、Thread ID、版本和修改原因，但这只是 Research Artifact 的修订链，不是通用持久聊天线程；
 - “指引与示例”是本地确定性导航，不是可自由问答或使用工具的 Guide Agent；
 - 教程材料是合成内容，只有用户点击开始后的 Provider/Agent 执行才是真实 Run；
