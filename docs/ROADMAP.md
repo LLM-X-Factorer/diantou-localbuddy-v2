@@ -17,7 +17,7 @@
 - 失败 Run 可由用户主动生成公开安全预览；报告只包含允许字段、脱敏摘要和稳定签名，不上传原始诊断、Prompt、Artifact、绝对路径、凭据或完整本机标识；
 - 提交前必须由用户查看预览并明确勾选同意；应用只打开预填 GitHub Issue 页面，GitHub 登录与最终提交仍由用户完成；无法或不愿公开时可保存同一份 Markdown 到本地；
 - 公开仓库已上线结构化 Issue Form；主分支模板、预填 URL 和一条合成测试 Issue 已实际回读，测试 Issue 随后关闭并保留审计；
-- 发布门禁以 `v0.12.4 -> v0.12.5` 的 Windows Server 2025 原地升级、profile 保留、五项资产和公开 endpoint 为机器证据；Windows 11 真人 OTA、真实 Provider 和代码签名仍是独立开放门禁；
+- Release workflow `32017121369` 已完成 `v0.12.4 -> v0.12.5` 的 Windows Server 2025 原地升级、`profilePreserved=true`、五项资产发布/回下载和公开 endpoint HTTP 200 精确 URL 回读；Windows 11 真人 OTA、真实 Provider 和代码签名仍是独立开放门禁；
 - 该增量只缩短真实失败反馈链，不替代 Research Desk 三跑、不同主题、非作者用户和 `advance/pause/stop` 裁决。
 
 ### v0.12.4 · Product Truth + Public Update Bridge — public unsigned Engineering Alpha

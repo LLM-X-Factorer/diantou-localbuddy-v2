@@ -18,6 +18,13 @@
 - 开发阶段转入 M13 Product Truth Sprint：固定 `v0.12.5` 为产品事实基线，默认冻结通用功能扩张，以 Research Desk 同合同三跑、两个独立主题、非作者用户和目标应用结果作 `advance/pause/stop` 裁决；
 - Dogfood、Quickstart、M12 规格/验证和产品方向文档先统一回读 `v0.12.4` 已发布事实，再把固定产品事实基线推进到 `v0.12.5`，并以文档合同测试避免当前 Release 与候选期口径再次漂移。
 
+### Evidence
+
+- annotated Tag `v0.12.5` 解引用到合并提交 `e50ba87474e437fb2778cab7b3873fb073d7c6f7`；非 draft、非 prerelease Release 已发布 Setup、ZIP、full nupkg、`RELEASES` 和 SHA-256 清单；
+- Release workflow `32017121369` 的 Windows 作业通过生产依赖审计、214 项合同、安装版合成灰度、`v0.12.4 -> v0.12.5` 原地升级和 `profilePreserved=true`；独立公开更新源作业首次请求即返回 HTTP 200；
+- 五项 Release 资产已独立下载到新临时目录，四项分发文件全部匹配清单，清单自身及每个 GitHub asset digest 也一致；从 `0.12.4` 请求无鉴权 updater endpoint 返回 `LocalBuddy v0.12.5` 和精确 Setup URL；
+- 公开 Issue Form 已从 `main` 回读；合成测试 Issue #14 经标题、正文、`bug` 标签和状态回读后关闭保留审计。Windows 11 真人 OTA、真实 Provider 和代码签名仍未验收。
+
 ## 0.12.4 — 2026-08-15
 
 公开但未签名的 Product Truth + Public Update Bridge Engineering Alpha。现有 `v0.12.2` 用户仍需手动原地安装一次本版本；真正的应用内更新验收目标是 `v0.12.4 -> 后续稳定版`。

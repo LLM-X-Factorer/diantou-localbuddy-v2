@@ -34,7 +34,7 @@
 
 历史合成灰度提交 `d686cd6` 的 [`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610) 已完成完整故障矩阵和 5 次额外重启，脱敏摘要 9 项检查全部通过；配套 [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 的 Windows 合同、macOS 回归和 Setup 无凭据首启也全部通过。
 
-上一固定 Release `v0.12.4` 指向 `b9f1082772e43c13bde3fe0651ec41412bd1a1db`。Release workflow `31879716752` 的 Windows 作业完成生产依赖审计、204 项合同、安装版合成灰度、`v0.12.2 -> v0.12.4` 原地升级/profile 保留和五项资产发布/回下载校验；整体 workflow 因旧的线上 JSON 检查合同而保留红色，后续检查已在 `main` 修复。合并后的 `main` CI `31881058722` 又通过 `v0.12.4 -> 0.12.5-canary.51` 原地升级、`profilePreserved=true` 和 Canary/feed 上传。`v0.12.5` 的固定 Tag、发布作业、资产哈希和线上 endpoint 证据以 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md) 为准。以上仍不等于 Windows 11 真人或真实 Provider dogfood。
+当前固定 Release `v0.12.5` 解引用到 `e50ba87474e437fb2778cab7b3873fb073d7c6f7`。Release workflow `32017121369` 的 Windows 作业完成生产依赖审计、214 项合同、安装版合成灰度、`v0.12.4 -> v0.12.5` 原地升级/profile 保留和五项资产发布；资产随后在新目录独立回下载并全部匹配 SHA-256 清单，公开 endpoint 从 `0.12.4` 返回 HTTP 200 和精确 `v0.12.5` Setup URL。以上仍不等于 Windows 11 真人、真实 Provider dogfood 或 M13 产品成立证据。
 
 该阶段不使用真实 Provider Key，不产生模型费用，也不能证明 Windows 11 消费者桌面环境。
 
@@ -42,13 +42,13 @@
 
 设备到位后按顺序执行：
 
-1. 从 `v0.12.2` 保留非敏感 profile，下载 `v0.12.4` Setup/ZIP 并核对 SHA-256；
-2. 不卸载旧版，原地安装 `v0.12.4`，完成首次启动、退出、再次启动和最终卸载；
+1. 安装 `v0.12.4` 并保留一个非敏感 profile 标记，核对版本与来源；
+2. 在应用内发现、下载并原地升级到 `v0.12.5`，不先卸载旧版；
 3. Windows Credential Manager 写入并读取 DeepSeek/OpenAI 凭证；
 4. 真实 Research Run、两个活动 Run、取消和 checkpoint resume；
 5. Artifact 打开和诊断导出；
 6. 验证本地进程型工具明确 fail closed，不发生无隔离降级；
-7. 发布后续稳定版时完成应用内检查、下载、忙碌 Run 重启阻断、安装、版本/profile 读回；
+7. 完成忙碌 Run 重启阻断、安装后版本/profile 读回；
 8. 记录 SmartScreen、路径、中文文件名、长路径和杀进程恢复表现。
 
 Windows 执行宿主不在本阶段临时补做；先用真机证据确定 WSL2、容器或 Windows 原生隔离方案的产品边界。
