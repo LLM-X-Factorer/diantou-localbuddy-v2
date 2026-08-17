@@ -1,6 +1,6 @@
 # M13 Public Bug Reporting
 
-> 状态：`Unreleased source candidate`，2026-08-17。未包含在当前 `v0.12.4` Release；安装包、Windows 11 真人和线上 Issue Form 仍需发布候选验收。
+> 状态：`released in v0.12.5 public unsigned Engineering Alpha`，2026-08-17。源码、PR 门禁、线上 Issue Form 和合成测试 Issue 已验收；Windows 11 真人与代码签名仍开放。
 
 ## 为什么现在做
 
@@ -58,4 +58,4 @@ M13 的目标不是增加更多 Agent 能力，而是让真实用户的失败能
 - 发布前在真实公开 Issue Form 做一次不提交或使用专用测试 Issue 的端到端检查；没有用户授权不得创建测试 Issue；
 - Windows Release 候选仍需在真实 Windows 11 上确认默认浏览器打开、缩放、中文输入和应用内更新链。
 
-完成源码与本机门禁不等于该能力已经随 `v0.12.4` 发布，也不等于真实用户反馈闭环已经成立。
+随 `v0.12.5` 发布只证明反馈链可用，不等于已经获得真实用户反馈或完成产品成立验证。

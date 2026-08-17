@@ -1,6 +1,6 @@
 # LocalBuddy V2 Release Runbook
 
-> 当前公开但未签名的 Release：`v0.12.4 / Product Truth + Public Update Bridge Engineering Alpha`，并继续包含 M11.1 Goal Contract + Plan Review。Git push、Tag 和 Release 都是外部状态变更，必须获得用户明确授权。
+> 当前公开但未签名的 Release：`v0.12.5 / Public Bug Reporting + Product Truth Engineering Alpha`，并继续包含 M11.1 Goal Contract + Plan Review、M12.1-M12.4 与公开更新桥接。Git push、Tag 和 Release 都是外部状态变更，必须获得用户明确授权。
 
 ## 1. 发布真源
 
@@ -91,10 +91,10 @@ Linux 不再进入 Tag Release。`.github/workflows/linux-maintenance.yml` 只�
 
 ## 5. 回滚与修复
 
-- 平台无关的 Ed25519 更新协议仍只 staging；已发布的 `v0.12.4` stable Windows 桥接版内置公共 GitHub feed，其余 channel 默认关闭，当前没有强制更新；
+- 平台无关的 Ed25519 更新协议仍只 staging；`v0.12.4` 起的 stable Windows 包内置公共 GitHub feed，其余 channel 默认关闭，当前没有强制更新；
 - 发现错误资产时停止传播，保留证据并判断是否属于未交付的发布恢复；
 - 已交付版本使用新的 patch 版本修复，不重写 Git 历史；
 - 集成代码回滚使用普通 revert commit，不 amend 已推送提交；
 - Release 事实变化后同步 Changelog、Known Limitations 和 Validation。
 
-`v0.12.4` 的桥接发布、原地升级、回下载和公开 endpoint 证据见 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md)；`v0.12.1` 的 Goal Contract Release 见 [`M11.1-VALIDATION.md`](M11.1-VALIDATION.md)。旧 Release 不回写、不替换；Linux 资产不进入 Windows-first Tag Release。
+`v0.12.4` 的桥接发布与 `v0.12.5` 的原地升级、回下载和公开 endpoint 证据见 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md)；`v0.12.1` 的 Goal Contract Release 见 [`M11.1-VALIDATION.md`](M11.1-VALIDATION.md)。旧 Release 不回写、不替换；Linux 资产不进入 Windows-first Tag Release。

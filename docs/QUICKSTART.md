@@ -1,13 +1,13 @@
 # LocalBuddy V2 Internal Quickstart
 
-> 适用版本：当前公开但未签名的 Engineering Alpha Release `v0.12.4 / Product Truth + Public Update Bridge`。当前灰度与发布优先 Windows；macOS 保留回归，Linux 降为维护。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
+> 适用版本：当前公开但未签名的 Engineering Alpha Release `v0.12.5 / Public Bug Reporting + Product Truth`。当前灰度与发布优先 Windows；macOS 保留回归，Linux 降为维护。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
 
 ## 1. 选择可用入口
 
 | 平台 | 当前可用入口 | 已证明范围 |
 |---|---|---|
 | macOS arm64 | 从仓库执行 `pnpm desktop`，或使用本机生成的 ad-hoc ZIP/DMG | 本机 Renderer、Fuse、ASAR、内置浏览器和包完整性烟测 |
-| Windows x64 | 使用公开 [`v0.12.4` Release](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.4) 的 Setup/ZIP | Release Runner 已完成合同、无凭据首启、安装版合成灰度、`v0.12.2 -> v0.12.4` 原地升级/profile 保留和五项资产校验；终端用户 Windows 11、代码签名和真实 OTA 仍待验收 |
+| Windows x64 | 使用公开 [`v0.12.5` Release](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.5) 的 Setup/ZIP | Release Runner 覆盖合同、无凭据首启、安装版合成灰度、`v0.12.4 -> v0.12.5` 原地升级/profile 保留和五项资产校验；终端用户 Windows 11、代码签名和真实 OTA 仍待验收 |
 | Linux x64 | 当前不提供新 Release | 每周/手动构建维护；真实图形桌面验收暂不优先 |
 
 Windows 包未签名。只有明确获准参与内部测试时才下载；不要把 SmartScreen 提示解释为已完成发布信誉或代码签名。
@@ -97,7 +97,7 @@ Windows 当前没有受支持的本地进程隔离宿主，涉及检查命令或
 - 已读取资料发生变化时 checkpoint 会阻止恢复；运行位置中的无关文件不会影响恢复；
 - v1-v3 whole-workspace 历史 Run 必须新建 Run 并重新选择资料，不能按 v4 语义静默继续；
 - 不要手动删除受保护的 worktree；在 Run 终态后使用界面的显式清理；
-- 需要反馈问题时导出脱敏诊断包，并另行描述复现步骤；诊断包不包含目标正文、模型内容、工具参数、凭证或绝对工作区路径。
+- 需要反馈问题时优先点击“报告问题”：只填写最小现象/复现步骤，生成公开安全预览并逐项检查；应用只打开 GitHub 表单，最终发布仍由用户完成。GitHub 不可用时可保存本地 Markdown；内部深度排障仍可另行导出脱敏诊断包。
 
 已登记的有限文本 Artifact 可以在校验路径、大小和 SHA-256 后内嵌预览。“基于此产物继续”只会把可审计引用预填到组合器，仍需用户检查并手工启动新 Run；不会自动发送 Artifact 正文。
 
