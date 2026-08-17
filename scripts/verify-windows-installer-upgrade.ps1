@@ -46,7 +46,10 @@ $beforeScreenshot = Join-Path $evidenceRoot "before-upgrade.png"
 $afterScreenshot = Join-Path $evidenceRoot "after-upgrade.png"
 $markerPath = Join-Path $userDataRoot "upgrade-test-marker.json"
 $rawDiagnosticsRoot = Join-Path ([IO.Path]::GetTempPath()) "localbuddy-squirrel-diagnostics-$PID"
+$directorySeparators = [char[]]@([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+$tempRoot = [IO.Path]::GetTempPath().TrimEnd($directorySeparators)
 $phaseTimings = [ordered]@{}
+$activeSquirrelProcess = $null
 New-Item -ItemType Directory -Force -Path $evidenceRoot | Out-Null
 New-Item -ItemType Directory -Force -Path $rawDiagnosticsRoot | Out-Null
 $installedBySmoke = $false
@@ -64,7 +67,7 @@ function ConvertTo-SanitizedDiagnosticText {
     @{ source = $env:LOCALAPPDATA; replacement = "<local-app-data>" },
     @{ source = $env:APPDATA; replacement = "<roaming-app-data>" },
     @{ source = $env:USERPROFILE; replacement = "<user-profile>" },
-    @{ source = [IO.Path]::GetTempPath().TrimEnd([IO.Path]::DirectorySeparatorChar); replacement = "<temp>" }
+    @{ source = $tempRoot; replacement = "<temp>" }
   )
   foreach ($replacement in $rootReplacements) {
     if (-not [string]::IsNullOrWhiteSpace([string] $replacement.source)) {
@@ -98,23 +101,27 @@ function Save-SquirrelDiagnostics {
     }
   }
 
-  $packageState = @()
-  $packagesRoot = Join-Path $installRoot "packages"
-  if (Test-Path -LiteralPath $packagesRoot -PathType Container) {
-    $packageState = @(Get-ChildItem -LiteralPath $packagesRoot -File -ErrorAction SilentlyContinue | ForEach-Object {
-      [ordered]@{ name = $_.Name; bytes = $_.Length }
-    })
+  try {
+    $packageState = @()
+    $packagesRoot = Join-Path $installRoot "packages"
+    if (Test-Path -LiteralPath $packagesRoot -PathType Container) {
+      $packageState = @(Get-ChildItem -LiteralPath $packagesRoot -File -ErrorAction SilentlyContinue | ForEach-Object {
+        [ordered]@{ name = $_.Name; bytes = $_.Length }
+      })
+    }
+    $stateJson = ([ordered]@{
+      schemaVersion = 1
+      capturedAt = [DateTime]::UtcNow.ToString("o")
+      packages = $packageState
+    } | ConvertTo-Json -Depth 5) + "`n"
+    [IO.File]::WriteAllText(
+      (Join-Path $evidenceRoot "squirrel-package-state.json"),
+      $stateJson,
+      [System.Text.UTF8Encoding]::new($false)
+    )
+  } catch {
+    Write-Warning "Could not capture Squirrel package state: $($_.Exception.GetType().Name)"
   }
-  $stateJson = ([ordered]@{
-    schemaVersion = 1
-    capturedAt = [DateTime]::UtcNow.ToString("o")
-    packages = $packageState
-  } | ConvertTo-Json -Depth 5) + "`n"
-  [IO.File]::WriteAllText(
-    (Join-Path $evidenceRoot "squirrel-package-state.json"),
-    $stateJson,
-    [System.Text.UTF8Encoding]::new($false)
-  )
 }
 
 function Save-SquirrelProcessOutput {
@@ -129,13 +136,17 @@ function Save-SquirrelProcessOutput {
     @{ source = $RawStandardError; destination = "$Phase-stderr.log" }
   )
   foreach ($stream in $streams) {
-    if (Test-Path -LiteralPath $stream.source -PathType Leaf) {
-      $safeText = ConvertTo-SanitizedDiagnosticText -Text ([IO.File]::ReadAllText($stream.source))
-      [IO.File]::WriteAllText(
-        (Join-Path $evidenceRoot $stream.destination),
-        $safeText,
-        [System.Text.UTF8Encoding]::new($false)
-      )
+    try {
+      if (Test-Path -LiteralPath $stream.source -PathType Leaf) {
+        $safeText = ConvertTo-SanitizedDiagnosticText -Text ([IO.File]::ReadAllText($stream.source))
+        [IO.File]::WriteAllText(
+          (Join-Path $evidenceRoot $stream.destination),
+          $safeText,
+          [System.Text.UTF8Encoding]::new($false)
+        )
+      }
+    } catch {
+      Write-Warning "Could not capture $($stream.destination): $($_.Exception.GetType().Name)"
     }
   }
 }
@@ -151,37 +162,44 @@ function Invoke-SquirrelPhase {
   $rawStandardError = Join-Path $rawDiagnosticsRoot "$Phase-stderr.log"
   $startedAt = [DateTime]::UtcNow
   Write-Host "Starting Squirrel $Phase phase with a ${TimeoutSeconds}s timeout."
-  $phaseProcess = Start-Process -FilePath $updateExecutable -ArgumentList $Arguments -PassThru `
+  $script:activeSquirrelProcess = Start-Process -FilePath $updateExecutable -ArgumentList $Arguments -PassThru `
     -RedirectStandardOutput $rawStandardOutput -RedirectStandardError $rawStandardError
-
-  while (-not $phaseProcess.WaitForExit(10000)) {
-    Save-SquirrelDiagnostics
-    Save-SquirrelProcessOutput -Phase $Phase -RawStandardOutput $rawStandardOutput -RawStandardError $rawStandardError
-    $elapsedSeconds = [Math]::Floor(([DateTime]::UtcNow - $startedAt).TotalSeconds)
-    $packagesRoot = Join-Path $installRoot "packages"
-    $downloadedBytes = 0
-    if (Test-Path -LiteralPath $packagesRoot -PathType Container) {
-      $downloadedBytes = (Get-ChildItem -LiteralPath $packagesRoot -File -ErrorAction SilentlyContinue |
-        Measure-Object -Property Length -Sum).Sum
-      if ($null -eq $downloadedBytes) { $downloadedBytes = 0 }
+  $phaseProcess = $script:activeSquirrelProcess
+  $phaseExitCode = $null
+  try {
+    while (-not $phaseProcess.WaitForExit(10000)) {
+      Save-SquirrelDiagnostics
+      $elapsedSeconds = [Math]::Floor(([DateTime]::UtcNow - $startedAt).TotalSeconds)
+      $packagesRoot = Join-Path $installRoot "packages"
+      $downloadedBytes = 0
+      if (Test-Path -LiteralPath $packagesRoot -PathType Container) {
+        $downloadedBytes = (Get-ChildItem -LiteralPath $packagesRoot -File -ErrorAction SilentlyContinue |
+          Measure-Object -Property Length -Sum).Sum
+        if ($null -eq $downloadedBytes) { $downloadedBytes = 0 }
+      }
+      Write-Host "Squirrel $Phase is still running after ${elapsedSeconds}s; package bytes on disk: $downloadedBytes."
+      if ($elapsedSeconds -ge $TimeoutSeconds) {
+        throw "Squirrel $Phase exceeded the ${TimeoutSeconds}s diagnostic timeout"
+      }
     }
-    Write-Host "Squirrel $Phase is still running after ${elapsedSeconds}s; package bytes on disk: $downloadedBytes."
-    if ($elapsedSeconds -ge $TimeoutSeconds) {
+    $phaseProcess.WaitForExit()
+    $phaseExitCode = $phaseProcess.ExitCode
+  } finally {
+    if (-not $phaseProcess.HasExited) {
       Stop-Process -Id $phaseProcess.Id -Force -ErrorAction SilentlyContinue
       $phaseProcess.WaitForExit()
-      Save-SquirrelDiagnostics
-      Save-SquirrelProcessOutput -Phase $Phase -RawStandardOutput $rawStandardOutput -RawStandardError $rawStandardError
-      throw "Squirrel $Phase exceeded the ${TimeoutSeconds}s diagnostic timeout"
     }
+    if ($null -eq $phaseExitCode) { $phaseExitCode = $phaseProcess.ExitCode }
+    Save-SquirrelDiagnostics
+    Save-SquirrelProcessOutput -Phase $Phase -RawStandardOutput $rawStandardOutput -RawStandardError $rawStandardError
+    $phaseProcess.Dispose()
+    $script:activeSquirrelProcess = $null
   }
 
-  $phaseProcess.WaitForExit()
-  Save-SquirrelDiagnostics
-  Save-SquirrelProcessOutput -Phase $Phase -RawStandardOutput $rawStandardOutput -RawStandardError $rawStandardError
   $elapsed = [Math]::Round(([DateTime]::UtcNow - $startedAt).TotalSeconds, 3)
   $phaseTimings[$Phase] = $elapsed
-  if ($phaseProcess.ExitCode -ne 0) {
-    throw "Squirrel $Phase exited with $($phaseProcess.ExitCode)"
+  if ($phaseExitCode -ne 0) {
+    throw "Squirrel $Phase exited with $phaseExitCode"
   }
   Write-Host "Squirrel $Phase completed in ${elapsed}s."
 }
@@ -246,9 +264,17 @@ try {
   )
   $summaryJson
 } finally {
+  if ($null -ne $activeSquirrelProcess -and -not $activeSquirrelProcess.HasExited) {
+    Stop-Process -Id $activeSquirrelProcess.Id -Force -ErrorAction SilentlyContinue
+    $activeSquirrelProcess.WaitForExit()
+  }
   Save-SquirrelDiagnostics
   if (Test-Path -LiteralPath $rawDiagnosticsRoot -PathType Container) {
-    Remove-Item -LiteralPath $rawDiagnosticsRoot -Recurse -Force
+    try {
+      Remove-Item -LiteralPath $rawDiagnosticsRoot -Recurse -Force -ErrorAction Stop
+    } catch {
+      Write-Warning "Could not remove temporary Squirrel diagnostics: $($_.Exception.GetType().Name)"
+    }
   }
   if ($hadScreenshot) { $env:LOCALBUDDY_SCREENSHOT_PATH = $originalScreenshot } else { Remove-Item Env:LOCALBUDDY_SCREENSHOT_PATH -ErrorAction SilentlyContinue }
   if ($hadCoordination) { $env:LOCALBUDDY_SHARED_COORDINATION = $originalCoordination } else { Remove-Item Env:LOCALBUDDY_SHARED_COORDINATION -ErrorAction SilentlyContinue }
