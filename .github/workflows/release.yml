@@ -42,12 +42,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          . ./scripts/invoke-github-cli-with-retry.ps1
           New-Item -ItemType Directory -Force previous-release | Out-Null
-          $tag = gh release view --repo $env:GITHUB_REPOSITORY --json tagName --jq .tagName
-          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($tag)) { throw "Could not resolve previous stable Release" }
+          $tag = Invoke-LocalBuddyGitHubCli -Description "resolve previous stable Release" -Arguments @(
+            "release", "view", "--repo", $env:GITHUB_REPOSITORY, "--json", "tagName", "--jq", ".tagName"
+          )
+          if ([string]::IsNullOrWhiteSpace($tag)) { throw "Could not resolve previous stable Release" }
           "version=$($tag.TrimStart('v'))" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          gh release download $tag --repo $env:GITHUB_REPOSITORY --pattern "LocalBuddy-*-Setup.exe" --dir previous-release
-          if ($LASTEXITCODE -ne 0) { throw "Could not download previous stable Setup" }
+          Invoke-LocalBuddyGitHubCli -Description "download previous stable Setup" -Arguments @(
+            "release", "download", $tag, "--repo", $env:GITHUB_REPOSITORY,
+            "--pattern", "LocalBuddy-*-Setup.exe", "--dir", "previous-release"
+          ) | Out-Null
           $setups = @(Get-ChildItem previous-release -File -Filter "LocalBuddy-*-Setup.exe")
           if ($setups.Count -ne 1) { throw "Expected exactly one previous stable Setup" }
           "LOCALBUDDY_UPGRADE_BASE_SETUP=$($setups[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
@@ -116,9 +121,12 @@ jobs:
           PREVIOUS_VERSION: ${{ needs.windows-release.outputs.previous_version }}
           GH_TOKEN: ${{ github.token }}
         run: |
+          . ./scripts/invoke-github-cli-with-retry.ps1
           New-Item -ItemType Directory -Force previous-release-online | Out-Null
-          gh release download "v$env:PREVIOUS_VERSION" --repo $env:GITHUB_REPOSITORY --pattern "LocalBuddy-*-Setup.exe" --dir previous-release-online
-          if ($LASTEXITCODE -ne 0) { throw "Could not download previous stable Setup" }
+          Invoke-LocalBuddyGitHubCli -Description "download previous stable Setup" -Arguments @(
+            "release", "download", "v$env:PREVIOUS_VERSION", "--repo", $env:GITHUB_REPOSITORY,
+            "--pattern", "LocalBuddy-*-Setup.exe", "--dir", "previous-release-online"
+          ) | Out-Null
           $setups = @(Get-ChildItem previous-release-online -File -Filter "LocalBuddy-*-Setup.exe")
           if ($setups.Count -ne 1) { throw "Expected exactly one previous stable Setup" }
           "LOCALBUDDY_ONLINE_BASE_SETUP=$($setups[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
