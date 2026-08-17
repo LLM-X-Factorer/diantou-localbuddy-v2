@@ -1,6 +1,8 @@
 param(
   [Parameter(Mandatory = $true)]
-  [string] $BaseSetup
+  [string] $BaseSetup,
+
+  [string] $FeedRoot
 )
 
 Set-StrictMode -Version Latest
@@ -14,11 +16,24 @@ $repository = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $packageJson = Get-Content -LiteralPath (Join-Path $repository "package.json") -Raw | ConvertFrom-Json
 $targetVersion = [string] $packageJson.version
 $baseSetupPath = (Resolve-Path $BaseSetup).Path
-$feedRoots = @(Get-ChildItem -LiteralPath (Join-Path $repository ".localbuddy/forge-out/make/squirrel.windows") -Recurse -File -Filter "RELEASES" | ForEach-Object { $_.Directory.FullName })
-if ($feedRoots.Count -ne 1) { throw "Expected exactly one generated Squirrel update feed" }
-$feedRoot = $feedRoots[0]
-$fullPackages = @(Get-ChildItem -LiteralPath $feedRoot -File -Filter "*-full.nupkg")
-if ($fullPackages.Count -ne 1) { throw "Expected exactly one full nupkg in the generated update feed" }
+$remoteFeed = -not [string]::IsNullOrWhiteSpace($FeedRoot)
+if ($remoteFeed) {
+  $feedUri = [Uri] $FeedRoot
+  if ($feedUri.Scheme -ne "https" -or
+      $feedUri.Host -ne "github.com" -or
+      -not [string]::IsNullOrEmpty($feedUri.UserInfo) -or
+      -not [string]::IsNullOrEmpty($feedUri.Query) -or
+      -not [string]::IsNullOrEmpty($feedUri.Fragment)) {
+    throw "Remote Squirrel feed must be a public credential-free GitHub HTTPS URL"
+  }
+  $resolvedFeedRoot = $feedUri.AbsoluteUri.TrimEnd("/")
+} else {
+  $feedRoots = @(Get-ChildItem -LiteralPath (Join-Path $repository ".localbuddy/forge-out/make/squirrel.windows") -Recurse -File -Filter "RELEASES" | ForEach-Object { $_.Directory.FullName })
+  if ($feedRoots.Count -ne 1) { throw "Expected exactly one generated Squirrel update feed" }
+  $resolvedFeedRoot = $feedRoots[0]
+  $fullPackages = @(Get-ChildItem -LiteralPath $resolvedFeedRoot -File -Filter "*-full.nupkg")
+  if ($fullPackages.Count -ne 1) { throw "Expected exactly one full nupkg in the generated update feed" }
+}
 
 $installRoot = Join-Path $env:LOCALAPPDATA "LocalBuddy"
 $userDataRoot = Join-Path $env:APPDATA "LocalBuddy"
@@ -26,7 +41,7 @@ if ((Test-Path -LiteralPath $installRoot) -or (Test-Path -LiteralPath $userDataR
   throw "Refusing to overwrite an existing LocalBuddy installation or user profile"
 }
 
-$evidenceRoot = Join-Path $repository ".localbuddy/upgrade-smoke/windows"
+$evidenceRoot = Join-Path $repository $(if ($remoteFeed) { ".localbuddy/online-update-smoke/windows" } else { ".localbuddy/upgrade-smoke/windows" })
 $beforeScreenshot = Join-Path $evidenceRoot "before-upgrade.png"
 $afterScreenshot = Join-Path $evidenceRoot "after-upgrade.png"
 $markerPath = Join-Path $userDataRoot "upgrade-test-marker.json"
@@ -53,7 +68,7 @@ try {
 
   $updateExecutable = Join-Path $installRoot "Update.exe"
   if (-not (Test-Path -LiteralPath $updateExecutable -PathType Leaf)) { throw "Installed Squirrel Update.exe is missing" }
-  $updateProcess = Start-Process -FilePath $updateExecutable -ArgumentList @("--update", $feedRoot) -Wait -PassThru
+  $updateProcess = Start-Process -FilePath $updateExecutable -ArgumentList @("--update", $resolvedFeedRoot) -Wait -PassThru
   if ($updateProcess.ExitCode -ne 0) { throw "Squirrel update exited with $($updateProcess.ExitCode)" }
 
   $targetExecutables = @(Get-ChildItem -LiteralPath $installRoot -Recurse -File -Filter "LocalBuddy.exe" | Where-Object {
@@ -79,6 +94,7 @@ try {
     targetVersion = $targetVersion
     targetInstallDirectory = $targetExecutables[0].Directory.Name
     profilePreserved = $true
+    feedKind = $(if ($remoteFeed) { "github-release-static" } else { "local-candidate" })
     beforeScreenshot = [IO.Path]::GetFileName($beforeScreenshot)
     afterScreenshot = [IO.Path]::GetFileName($afterScreenshot)
   }

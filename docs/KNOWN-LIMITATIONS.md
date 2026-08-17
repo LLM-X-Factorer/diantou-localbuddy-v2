@@ -5,6 +5,7 @@
 ## Platform and distribution
 
 - Windows `v0.12.7` Setup/ZIP/full nupkg/RELEASES 由 Tag workflow 完成原生打包、安装版合成灰度、`v0.12.6 -> v0.12.7` 原地升级、profile 保留和回下载 SHA-256 校验。该门禁使用 Windows Server 2025 管理员 Runner 和确定性 Mock Provider，仍不覆盖终端用户设备上的 SmartScreen、标准用户/UAC、真实 Provider 与真实网络；
+- `v0.12.7` 内置的第三方公共更新服务在发布后连续十分钟返回 HTTP 404，因此该版本只能手动覆盖安装，不能宣称应用内 OTA 可用。下一补丁的候选代码改用 GitHub Release 第一方静态 Squirrel feed；在 Windows `Update.exe` 真升级和新版本发布完成前仍是未交付修复；
 - 原生 Electron/Squirrel updater 不提供字节级下载事件；v0.12.7 候选只显示真实阶段、已等待时间和不确定进度动画，并提供固定官方下载页兜底，不宣称百分比、速度或剩余时间；
 - Windows 没有受支持的本地进程隔离宿主，检查命令和本地进程型扩展 fail closed；
 - Linux `0.11.x` DEB 历史上已由 `ubuntu-24.04` Runner 原生构建；当前 Linux 只保留每周/手动维护，不进入 PR 或 Release 门禁，真实图形桌面与 Secret Service 验收暂不优先；
@@ -15,7 +16,7 @@
 - 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。`0.12.7` Tag 前已再次复查并继续在干净 Runner 上隔离打包；公开 Engineering Alpha 跟踪稳定上游迁移；
 - 平台无关的 Ed25519 更新协议仍只下载、验签并 staging；`v0.12.4` stable Windows Squirrel updater 已内置公开 feed，但仍没有静默安装、强制更新或自动回滚；
 - `pnpm windows:canary` 只隔离 Electron user-data 和构建目录，不隔离系统 Credential Manager 或工作区 `.localbuddy/`；Canary 与稳定版不应同时写同一测试工作区；
-- `v0.12.2` 没有内置线上 feed，已有用户仍需手动原地安装一次 `v0.12.4` 桥接版；托管发布门禁覆盖稳定版原地升级，但 Windows 11 上 `v0.12.6 -> v0.12.7` 的真实 OTA 尚未验收；
+- `v0.12.2` 没有内置线上 feed；`v0.12.4-v0.12.7` 仍依赖当前不稳定的第三方 feed。已有用户需要手动原地安装下一补丁以切换到第一方 feed；不需要先卸载，托管发布门禁和 Windows 11 真人 OTA 仍分别验收；
 
 ## Storage and privacy
 

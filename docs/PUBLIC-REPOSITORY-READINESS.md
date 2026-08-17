@@ -45,9 +45,9 @@ The publication did not rewrite Git history or move historical Tags merely to hi
 `v0.12.3` stopped in the Windows test gate before packaging, so its immutable Tag is retained as failure evidence and no Release/assets exist. The bridge shipped as public unsigned Engineering Alpha `v0.12.4`.
 
 1. Existing `v0.12.2` users perform one final manual in-place install of the `v0.12.4` bridge Release; uninstall is not required.
-2. The bridge stable build derives its feed from `https://update.electronjs.org/LLM-X-Factorer/diantou-localbuddy-v2/win32-<arch>/<current-version>`.
+2. Builds through `v0.12.7` derive their feed from `update.electronjs.org`. That service returned HTTP 404 throughout the `v0.12.7` post-release gate, so the next patch switches packaged stable Windows x64 builds to `https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/latest/download`.
 3. Each stable Tag from `v0.12.5` publishes Setup, ZIP, `RELEASES`, full nupkg and checksums.
-4. The post-release workflow asks the public update service for an update from the prior stable version, parses its JSON and requires the exact new Setup URL. The Release publisher separately requires Setup, ZIP, `RELEASES`, full nupkg and checksums.
+4. The post-release workflow installs the prior stable Setup on Windows and uses Squirrel `Update.exe` against the first-party GitHub Release feed. It must install the new version, launch its UI and preserve a non-sensitive profile marker. The Release publisher separately requires Setup, ZIP, `RELEASES`, full nupkg and checksums.
 5. A real Windows 11 device checks, downloads, waits for Run/Integration idle, restarts, installs and reads back the new version while preserving a non-sensitive profile marker.
 
 Until step 5 is complete, LocalBuddy may say that the public updater is implemented or that the endpoint is reachable; it must not say that no-reinstall online updates are production-verified.

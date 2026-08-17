@@ -4,7 +4,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 
 这不是 Craft Agents 的分支，也不包含腾讯 WorkBuddy 的私有实现。仓库只参考公开产品行为、通用 Agent 架构模式，以及我们自行定义的验收契约。
 
-> **产品判断（2026-08-17）**：仓库已按 Apache License 2.0 公开；[`v0.12.7 / Real-user Update + One-consent Reporting`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.7) 是当前公开但未签名的 Engineering Alpha Release，包含 M12.1-M12.4、stable Windows 公共更新源、私有 Run 存储、可见更新等待状态和自动公开安全 Trace。当前仍在 M13 Product Truth Sprint，默认冻结通用功能扩张；唯一当前用户已明确批准直接发布本补丁，但代码签名与 Windows 11 真人 OTA 继续开放。
+> **产品判断（2026-08-17）**：仓库已按 Apache License 2.0 公开；[`v0.12.7 / Real-user Update + One-consent Reporting`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.7) 是当前公开但未签名的 Engineering Alpha Release。其 Windows 安装包与本地原地升级有效，但第三方线上更新发现门禁失败，现有用户应手动覆盖安装；下一补丁候选切到仓库自己控制的 GitHub Release feed。当前仍在 M13 Product Truth Sprint，只追加这个真实交付阻塞修复，不恢复通用功能扩张。
 
 ## 一页状态
 
@@ -19,7 +19,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 | 恢复 | Research/Coding 同 Run checkpoint resume；失败 Run 可恢复未完成 Task 链，并保留 replay 兜底 |
 | Artifact | 文本与受限 DOCX；已登记版本可预览、打开、继续修订并与直接父版本比较；DOCX 发布前经独立 Reviewer，当前只覆盖段落、项目符号和表格 |
 | 扩展 | 本地/签名 Skill、MCP stdio/HTTP/OAuth、受限 Playwright Browser |
-| 分发 | Windows `v0.12.7` Setup/ZIP/full nupkg/RELEASES 由 Tag 门禁发布；托管 Windows 验证上一稳定版原地升级，但签名与 Windows 11 真人 OTA 仍未验收 |
+| 分发 | Windows `v0.12.7` Setup/ZIP/full nupkg/RELEASES 已发布；第三方 OTA 发现失败，下一补丁候选改用第一方 GitHub Release feed；签名与 Windows 11 真人 OTA 仍未验收 |
 | 当前阶段 | M13 Product Truth Sprint；固定 `v0.12.7`，默认不扩功能，只修真实任务证明的阻塞并作 `advance/pause/stop` 裁决 |
 | 当前主动暂缓 | Developer ID、生产 Hardened Runtime、notarization、公开 Gatekeeper |
 
@@ -226,7 +226,7 @@ LocalBuddy V2 以 [Apache License 2.0](LICENSE) 开源；项目归属说明见 [
 - Windows 托管 Runner 已运行版本对应的 Squirrel Setup，从实际安装目录验证无 Provider 首启并调用卸载清理；安装/更新/卸载生命周期由标准 Squirrel 处理器提前收口；
 - 规格与验收见 [`docs/M10.3-SPEC.md`](docs/M10.3-SPEC.md) 和 [`docs/M10.3-VALIDATION.md`](docs/M10.3-VALIDATION.md)。
 
-当前主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。`v0.12.7` 的 Windows Tag 门禁覆盖安装级无凭据首启、完整安装版合成灰度、从上一稳定版原地升级、profile 保留及五项分发资产校验。终端用户 Windows 11、真实 Provider 和第三方生产 MCP OAuth 仍需外部验收，不能用托管 Runner、公开 endpoint 或本地夹具冒充。
+当前主动暂缓的是正式 Apple Developer ID、生产 Hardened Runtime entitlements、notarization 和公开 Gatekeeper 验收。`v0.12.7` 的 Windows Tag 门禁覆盖安装级无凭据首启、完整安装版合成灰度、从上一稳定版原地升级、profile 保留及五项分发资产校验；第三方线上更新作业失败，已转为下一补丁的第一方 feed 修复门禁。终端用户 Windows 11、真实 Provider 和第三方生产 MCP OAuth 仍需外部验收，不能用托管 Runner、公开 endpoint 或本地夹具冒充。
 
 ## 核心模型
 

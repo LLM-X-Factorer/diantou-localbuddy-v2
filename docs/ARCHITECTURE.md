@@ -224,7 +224,7 @@ trusted runtime feed -> Electron autoUpdater -> update state machine
                                               -> Squirrel restart/install
 ```
 
-Main 只在 packaged Windows 配置 updater：stable 构建根据固定公开仓库、当前版本和架构生成 `update.electronjs.org` feed，Canary/beta/dev 默认关闭；显式 feed 只保留给 HTTPS/loopback 验收夹具。Renderer 不能提交 URL 或直接调用 `autoUpdater`。下载与安装分离：检查/下载可以发生在应用打开期间，真正退出安装必须再次确认 `DesktopRunManager.isIdle()`；该状态同时覆盖启动中/运行中的 Run 和正在写回的 Integration。
+Main 只在 packaged Windows x64 配置 updater：stable 构建固定使用仓库自己的 `https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/latest/download` Squirrel feed，Canary/beta/dev 默认关闭；显式 feed 只保留给 HTTPS/loopback 验收夹具。Renderer 不能提交 URL 或直接调用 `autoUpdater`。`RELEASES` 和 full nupkg 由同一个经过校验的 GitHub Release 发布；下载与安装分离，真正退出安装必须再次确认 `DesktopRunManager.isIdle()`，该状态同时覆盖启动中/运行中的 Run 和正在写回的 Integration。
 
 开发 Canary 不走安装覆盖。CI 的便携 ZIP 按 Git SHA 解压到并存目录并使用独立 Electron user-data；稳定版安装目录不变。安装器正确性则由另一条 `上一稳定版 -> 候选版` Squirrel 原地升级验证负责。这两个通道故意不合并，因为便携包不能证明安装升级，反复干净安装也不能证明旧 profile 被保留。
 

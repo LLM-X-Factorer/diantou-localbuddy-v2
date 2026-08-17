@@ -4,6 +4,15 @@
 
 ## Unreleased
 
+### Fixed
+
+- [Issue #26](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/26) 将 stable Windows 更新源改为仓库自己控制的 GitHub Release 静态 Squirrel feed；不再把版本发现完全依赖于 `update.electronjs.org`。当前只发布 Windows x64，因此非 x64 架构继续 fail closed；Canary、beta、开发包和非 Windows 构建仍不接稳定更新源。
+- 发布后门禁不再只请求第三方 JSON：Windows Runner 会真实安装上一稳定版，通过 `releases/latest/download` 获取 `RELEASES` 和 full nupkg，完成原地升级、目标 UI 读回和 profile 标记保留。另有手动工作流可对已经发布的稳定版本重复同一链路。
+
+### Evidence pending
+
+- `v0.12.7` 发布时，正式安装包、合成任务、`v0.12.6 -> v0.12.7` 原地升级和五项 Release 资产通过；第三方公共更新服务连续十分钟返回 HTTP 404，且同一时段 Electron Fiddle 控制请求也返回同类 404。新的第一方 feed 必须先通过真实 Windows `Update.exe` 验证，再发布新的补丁版本。
+
 ## 0.12.7 — 2026-08-17
 
 公开但未签名的 Real-user Update + One-consent Reporting Engineering Alpha。本版本直接修复唯一当前用户在 `v0.12.4` 更新和问题反馈中遇到的摩擦：更新过程不再像静默卡死，公开问题报告不再要求用户重复填写系统已经掌握的信息。
@@ -16,12 +25,13 @@
 
 - Windows 更新从“发现更新”到“下载完成”期间显示诚实的后台下载动画和已等待时间，并提供固定官方下载页兜底；Electron/Squirrel 当前不提供字节进度，因此界面不伪造百分比，也不重复触发下载。
 
-### Pre-release evidence
+### Evidence
 
 - 实现提交 `def45c18d72eb1ec697b039a14db6c36b0d3aeb9` 经 [PR #24](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/pull/24) 合入 `a165750571594fd2247b2db857217fb5c2a7bded`；Issues #22/#23 已关闭；
 - macOS 本机 `pnpm check` 共 219 项：217 passed、2 项 Windows-only 跳过、0 failed；`pnpm build`、生产依赖审计和一次不含真实用户数据的 Electron 问题报告 UI smoke 通过，预览无绝对工作区路径且只剩一个公开同意动作；`v0.12.7` App/ZIP/DMG、DMG 完整性、ad-hoc 签名、14 个相对 symlink、Fuse、内置 Browser 和隔离无凭据首启通过；
-- 合并后的 `main` CI [`32036190030`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32036190030) 全绿；Windows Server 2025 构建并安装 `0.12.7-canary.67`，从 `v0.12.6` 原地升级后读回 `profilePreserved=true`；
-- 唯一当前用户明确批准在单用户 Engineering Alpha 阶段直接发布，不再等待额外真实用户。正式 Tag、stable 安装版合成灰度、五项资产和公开 updater endpoint 仍必须由固定 Tag 的 Release workflow 验证；Windows 11 真人 OTA、代码签名和真实网络仍未验收。
+- 合并后的 `main` CI [`32038546919`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32038546919) 全绿；Windows Server 2025 构建并安装 `0.12.7-canary.69`，从 `v0.12.6` 原地升级后读回 `profilePreserved=true`；
+- annotated Tag `v0.12.7` 解引用到合并提交 `f1b02ccb11b3a24e00ef91102a3a11d18e7a8405`；Release workflow [`32038914446`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32038914446) 的 Windows 作业通过生产依赖审计、219 项合同、stable 安装版合成任务、`v0.12.6 -> v0.12.7` 原地升级、profile 保留和五项资产发布；
+- 同一 workflow 的 `online-update-smoke` 连续 40 次收到第三方 endpoint HTTP 404 后如实失败；当前 `v0.12.7` 可手动覆盖安装，但不能宣称应用内更新链路可用。唯一当前用户授权继续做破坏性补丁发布；Windows 11 真人 OTA、代码签名和真实网络仍未验收。
 
 ## 0.12.6 — 2026-08-17
 
