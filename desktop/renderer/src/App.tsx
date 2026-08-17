@@ -16,7 +16,9 @@ import type {
   DesktopArtifactThreadView,
   DesktopWorkspaceReadiness,
   DesktopUpdateView,
+  DesktopPublicBugReportPreview,
 } from "../../../src/desktop-contract";
+import { DESKTOP_BUG_REPORT_TEXT_LIMITS } from "../../../src/desktop-contract";
 import {
   GUIDE_TEMPLATES,
   type GuideTemplateId,
@@ -59,6 +61,12 @@ interface ArtifactContinuationDraft {
   threadId?: string;
 }
 
+interface BugReportDraft {
+  actual: string;
+  expected: string;
+  reproduction: string;
+}
+
 export function App() {
   const [workspace, setWorkspace] = useState("");
   const [recentWorkspaces, setRecentWorkspaces] = useState<readonly string[]>([]);
@@ -97,6 +105,15 @@ export function App() {
   const [loadingIntegrationDiff, setLoadingIntegrationDiff] = useState(false);
   const [exportingDiagnostics, setExportingDiagnostics] = useState(false);
   const [diagnosticsStatus, setDiagnosticsStatus] = useState<string>();
+  const [bugReportOpen, setBugReportOpen] = useState(false);
+  const [bugReportDraft, setBugReportDraft] = useState<BugReportDraft>({ actual: "", expected: "", reproduction: "" });
+  const [bugReportPreview, setBugReportPreview] = useState<DesktopPublicBugReportPreview>();
+  const [bugReportConsent, setBugReportConsent] = useState(false);
+  const [bugReportError, setBugReportError] = useState<string>();
+  const [bugReportStatus, setBugReportStatus] = useState<string>();
+  const [preparingBugReport, setPreparingBugReport] = useState(false);
+  const [savingBugReport, setSavingBugReport] = useState(false);
+  const [openingBugReport, setOpeningBugReport] = useState(false);
   const [artifactPreview, setArtifactPreview] = useState<DesktopArtifactPreviewView>();
   const [artifactThread, setArtifactThread] = useState<DesktopArtifactThreadView>();
   const [artifactRevisionDiff, setArtifactRevisionDiff] = useState<DesktopArtifactRevisionDiffView>();
@@ -141,6 +158,10 @@ export function App() {
   useEffect(() => {
     setIntegrationDiff(undefined);
     setDiagnosticsStatus(undefined);
+    setBugReportOpen(false);
+    setBugReportPreview(undefined);
+    setBugReportConsent(false);
+    setBugReportError(undefined);
     setArtifactPreview(undefined);
     setArtifactThread(undefined);
     setArtifactRevisionDiff(undefined);
@@ -678,6 +699,78 @@ export function App() {
     }
   }
 
+  function beginBugReport() {
+    if (selectedRun === undefined) return;
+    setBugReportDraft({
+      actual: `这次运行出现了需要反馈的问题；当前状态为${statusLabel(selectedRun.status)}${selectedRun.metrics.failureStage === undefined ? "" : `，记录阶段为${failureStageLabel(selectedRun.metrics.failureStage)}`}。`,
+      expected: "LocalBuddy 应说明可恢复的下一步，或安全地完成本次运行。",
+      reproduction: "",
+    });
+    setBugReportPreview(undefined);
+    setBugReportConsent(false);
+    setBugReportError(undefined);
+    setBugReportOpen(true);
+  }
+
+  function updateBugReportDraft(field: keyof BugReportDraft, value: string) {
+    setBugReportDraft((current) => ({ ...current, [field]: value }));
+    setBugReportPreview(undefined);
+    setBugReportConsent(false);
+    setBugReportError(undefined);
+  }
+
+  function currentBugReportRequest() {
+    if (selectedRun === undefined) throw new Error("没有可报告的 Run");
+    return { workspace, runId: selectedRun.runId, ...bugReportDraft };
+  }
+
+  async function prepareBugReport() {
+    setBugReportError(undefined);
+    setBugReportConsent(false);
+    setPreparingBugReport(true);
+    try {
+      setBugReportPreview(await window.localbuddy.prepareBugReport(currentBugReportRequest()));
+    } catch (cause) {
+      setBugReportError(toMessage(cause));
+    } finally {
+      setPreparingBugReport(false);
+    }
+  }
+
+  async function saveBugReport() {
+    setBugReportError(undefined);
+    setSavingBugReport(true);
+    try {
+      const path = await window.localbuddy.saveBugReport(currentBugReportRequest());
+      if (path !== null) setBugReportStatus(`公开安全问题报告已保存在本机：${path}`);
+    } catch (cause) {
+      setBugReportError(toMessage(cause));
+    } finally {
+      setSavingBugReport(false);
+    }
+  }
+
+  async function openBugReportOnGitHub() {
+    if (!bugReportConsent || bugReportPreview === undefined) return;
+    setBugReportError(undefined);
+    setOpeningBugReport(true);
+    try {
+      const result = await window.localbuddy.openBugReport({
+        ...currentBugReportRequest(),
+        confirmedPublicSubmission: true,
+        confirmedPreviewSha256: bugReportPreview.previewSha256,
+      });
+      setBugReportStatus(result.status === "duplicate-opened"
+        ? "已在浏览器中打开可能重复的公开 Issue；LocalBuddy 没有发布新内容。"
+        : "已在浏览器中打开预填的公开 Issue；请再次检查并由你点击 Submit new issue。");
+      setBugReportOpen(false);
+    } catch (cause) {
+      setBugReportError(toMessage(cause));
+    } finally {
+      setOpeningBugReport(false);
+    }
+  }
+
   async function resolveToolApproval(approvalId: string, decision: "approve" | "deny") {
     if (selectedRun === undefined) return;
     setError(undefined);
@@ -807,6 +900,24 @@ export function App() {
         />
       )}
 
+      {bugReportOpen && selectedRun && (
+        <BugReportDialog
+          draft={bugReportDraft}
+          preview={bugReportPreview}
+          consent={bugReportConsent}
+          error={bugReportError}
+          preparing={preparingBugReport}
+          saving={savingBugReport}
+          opening={openingBugReport}
+          onChange={updateBugReportDraft}
+          onPrepare={prepareBugReport}
+          onSave={saveBugReport}
+          onOpen={openBugReportOnGitHub}
+          onConsent={setBugReportConsent}
+          onClose={() => setBugReportOpen(false)}
+        />
+      )}
+
       <main className="workspace-main">
         <header className="main-header">
           <div>
@@ -822,6 +933,7 @@ export function App() {
             </div>
           ) : selectedRun && (
             <div className="header-actions">
+              <button onClick={beginBugReport}>报告问题</button>
               <button onClick={exportDiagnostics} disabled={exportingDiagnostics}>
                 {exportingDiagnostics ? "导出中…" : "导出脱敏诊断"}
               </button>
@@ -832,6 +944,7 @@ export function App() {
 
         {error && <div className="error-banner">{error}</div>}
         {diagnosticsStatus && <div className="success-banner">{diagnosticsStatus}</div>}
+        {bugReportStatus && <div className="success-banner">{bugReportStatus}</div>}
         {guideVisible ? (
           <FirstRunGuide
             workspace={workspace}
@@ -898,6 +1011,7 @@ export function App() {
                   {selectedRun.error && <small>{toMessage(selectedRun.error)}</small>}
                 </div>
                 <div className="recovery-actions">
+                  <button className="report-failure-button" onClick={beginBugReport}>报告这次失败</button>
                   {selectedRun.checkpoint?.status === "available" && (
                     <button onClick={resumeRun}>重试未完成 Task 链</button>
                   )}
@@ -1591,6 +1705,142 @@ export function App() {
           {update.error && <small className="update-warning">{update.error}</small>}
         </div>
       </aside>
+    </div>
+  );
+}
+
+function BugReportDialog({
+  draft,
+  preview,
+  consent,
+  error,
+  preparing,
+  saving,
+  opening,
+  onChange,
+  onPrepare,
+  onSave,
+  onOpen,
+  onConsent,
+  onClose,
+}: {
+  draft: BugReportDraft;
+  preview?: DesktopPublicBugReportPreview;
+  consent: boolean;
+  error?: string;
+  preparing: boolean;
+  saving: boolean;
+  opening: boolean;
+  onChange(field: keyof BugReportDraft, value: string): void;
+  onPrepare(): void;
+  onSave(): void;
+  onOpen(): void;
+  onConsent(value: boolean): void;
+  onClose(): void;
+}) {
+  const duplicate = preview?.duplicateCheck;
+  const ready = draft.actual.trim().length > 0 && draft.reproduction.trim().length > 0;
+  return (
+    <div className="provider-settings-overlay bug-report-overlay">
+      <section className="bug-report-dialog" role="dialog" aria-modal="true" aria-labelledby="bug-report-title">
+        <header>
+          <div>
+            <span>PUBLIC BUG REPORT</span>
+            <h2 id="bug-report-title">报告 LocalBuddy 问题</h2>
+            <p>先生成一份公开安全预览；应用不会静默上传，也不会替你点击 GitHub 的发布按钮。</p>
+          </div>
+          <button className="provider-dialog-close" type="button" onClick={onClose} aria-label="关闭问题报告">×</button>
+        </header>
+
+        <div className="bug-report-warning" role="note">
+          <strong>GitHub Issue 是公开内容</strong>
+          <p>不要填写提示词、业务正文、资料或工件内容、本地路径、凭据和原始事件日志。即使应用会自动遮盖常见敏感信息，也请以预览为准逐项检查。</p>
+        </div>
+
+        <div className="bug-report-fields">
+          <label>
+            <span>实际发生了什么 <small>{Array.from(draft.actual).length}/{DESKTOP_BUG_REPORT_TEXT_LIMITS.actual}</small></span>
+            <textarea
+              value={draft.actual}
+              maxLength={DESKTOP_BUG_REPORT_TEXT_LIMITS.actual}
+              onChange={(event) => onChange("actual", event.target.value)}
+              placeholder="只描述可见现象，不粘贴任务正文或原始错误"
+            />
+          </label>
+          <label>
+            <span>你原本期待什么 <small>{Array.from(draft.expected).length}/{DESKTOP_BUG_REPORT_TEXT_LIMITS.expected}</small></span>
+            <textarea
+              value={draft.expected}
+              maxLength={DESKTOP_BUG_REPORT_TEXT_LIMITS.expected}
+              onChange={(event) => onChange("expected", event.target.value)}
+              placeholder="可选"
+            />
+          </label>
+          <label className="bug-report-reproduction">
+            <span>怎样复现 <small>{Array.from(draft.reproduction).length}/{DESKTOP_BUG_REPORT_TEXT_LIMITS.reproduction}</small></span>
+            <textarea
+              value={draft.reproduction}
+              maxLength={DESKTOP_BUG_REPORT_TEXT_LIMITS.reproduction}
+              onChange={(event) => onChange("reproduction", event.target.value)}
+              placeholder="请写最小步骤，并去掉项目名、路径和私人资料"
+            />
+          </label>
+        </div>
+
+        <div className="bug-report-prepare-row">
+          <p>生成预览会读取 GitHub 的公开 Issue 列表检查重复；不会把这份报告发送给 GitHub。</p>
+          <button type="button" onClick={onPrepare} disabled={!ready || preparing || saving || opening}>
+            {preparing ? "生成并检查中…" : preview ? "重新生成公开预览" : "生成公开预览"}
+          </button>
+        </div>
+
+        {preview && (
+          <div className="bug-report-preview">
+            <div className="bug-report-preview-heading">
+              <div>
+                <strong>将打开：{preview.destination}</strong>
+                <span>{preview.title}</span>
+              </div>
+              <span className={`duplicate-status ${duplicate?.status ?? "unavailable"}`}>
+                {duplicate?.status === "found"
+                  ? `发现可能重复的 Issue #${duplicate.issueNumber}`
+                  : duplicate?.status === "none"
+                  ? "未发现同签名的公开 Issue"
+                  : "暂时无法检查重复，不影响本地保存"}
+              </span>
+            </div>
+            <pre>{preview.previewMarkdown}</pre>
+            <div className="bug-report-redactions">
+              <strong>自动遮盖</strong>
+              <span>{preview.redactions.length === 0 ? "未触发；仍需人工检查" : preview.redactions.join("、")}</span>
+            </div>
+            <label className="bug-report-consent">
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={(event) => onConsent(event.target.checked)}
+              />
+              <span>我已检查上面所有将被预填的公开字段；其中不含私人资料、凭据、提示词、路径或业务正文。</span>
+            </label>
+          </div>
+        )}
+
+        {error && <div className="provider-settings-error" role="alert">{error}</div>}
+
+        <footer>
+          <p>{duplicate?.status === "found"
+            ? "继续后只会打开已有 Issue，方便你核对和补充；LocalBuddy 不会自动留言。"
+            : "继续后会在系统浏览器打开预填表单；你还需要登录 GitHub、再次检查并亲自点击 Submit new issue。"}</p>
+          <div>
+            <button type="button" className="bug-report-save" onClick={onSave} disabled={!preview || preparing || saving || opening}>
+              {saving ? "保存中…" : "保存本地报告"}
+            </button>
+            <button type="button" className="bug-report-open" onClick={onOpen} disabled={!preview || !consent || preparing || saving || opening}>
+              {opening ? "正在打开…" : duplicate?.status === "found" ? "查看已有 Issue" : "在 GitHub 中继续提交"}
+            </button>
+          </div>
+        </footer>
+      </section>
     </div>
   );
 }
