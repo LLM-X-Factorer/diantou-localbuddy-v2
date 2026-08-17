@@ -34,7 +34,7 @@
 
 历史合成灰度提交 `d686cd6` 的 [`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610) 已完成完整故障矩阵和 5 次额外重启，脱敏摘要 9 项检查全部通过；配套 [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 的 Windows 合同、macOS 回归和 Setup 无凭据首启也全部通过。
 
-当前固定 Release 为 `v0.12.6`；实现 PR #19 已通过 macOS、Windows 全量和 Windows 安装/原地升级门禁。固定 Tag、stable 灰度、`v0.12.5 -> v0.12.6`、五项资产和公开 endpoint 必须在 Release workflow 后补录精确提交与运行证据。上一稳定版 `v0.12.5` 的完整证据保留在 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md)，以上自动化仍不等于 Windows 11 真人、真实 Provider dogfood 或 M13 产品成立证据。
+当前固定 Release 为 `v0.12.6`，Tag 解引用到 `7b78db16d6d73543dc93f69cfce123c2f044cf0a`。Release workflow [`32024271769`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32024271769) 已通过 stable 安装版合成灰度、`v0.12.5 -> v0.12.6` 原地升级和 `profilePreserved=true`；五项资产重新下载匹配 SHA-256，公开 endpoint 从 `0.12.5` 返回 HTTP 200 和精确 `v0.12.6` Setup URL。完整证据见 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md)，以上自动化仍不等于 Windows 11 真人、真实 Provider dogfood 或 M13 产品成立证据。
 
 该阶段不使用真实 Provider Key，不产生模型费用，也不能证明 Windows 11 消费者桌面环境。
 

@@ -16,7 +16,7 @@
 
 - [Issue #18](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/18) 修复真实用户进入灰度前的数据安全与可解释性阻塞：统一私有 Run 写入、旧状态有界权限修复、符号链接 fail closed，以及默认收起的存储披露；
 - 本增量不改变 Research 的显式资料合同，不恢复工作区扫描，也不自动迁移/删除旧数据；
-- PR #19 的 macOS、Windows 全量和 Windows 安装/原地升级门禁通过；固定 Tag 的 stable 安装、`v0.12.5 -> v0.12.6`、资产和线上更新源仍以 Release 读回为准；
+- Tag `v0.12.6` 固定到合并提交 `7b78db16d6d73543dc93f69cfce123c2f044cf0a`；Release workflow `32024271769` 已通过 stable 安装、`v0.12.5 -> v0.12.6`、profile 保留、五项资产 SHA-256 和公开更新源 HTTP 200 回读；
 - [Issue #17](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/17) 保留为后续 Storage Contract V2：集中私有 Run store、用户可见结果边界、生命周期、导出和可逆迁移。它必须由真实用户/场景需求拉动，不能借安全补丁扩张成新文件管理产品。
 
 ### v0.12.5 · Public Bug Reporting + Product Truth — public unsigned Engineering Alpha

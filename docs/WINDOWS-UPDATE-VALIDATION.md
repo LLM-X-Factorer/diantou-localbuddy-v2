@@ -8,14 +8,22 @@
 
 实现提交 `29dc11c7dbdcd9f5147d19003f7030ba42b71417` 经 [PR #19](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/pull/19) 合入 `70cbfda4dbba4bd15257bc02805fee4d0e69a197`。PR CI [`32023121563`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32023121563) 的 macOS、Windows 全量与 Windows 安装/原地升级作业全部通过；本机 220 项合同、App/ZIP/DMG、隔离无凭据首启、DMG/签名/Fuse/Browser 和存储说明读回通过。
 
-### v0.12.6 Release 待回读
+### v0.12.6 Release 读回
 
-- annotated Tag、固定 Release 提交与 workflow/job ID；
-- stable 安装版合成灰度与 `v0.12.5 -> v0.12.6` 的 `profilePreserved=true`；
-- Setup、ZIP、full nupkg、`RELEASES` 和 SHA 清单的字节数与哈希；
-- 无鉴权 updater endpoint 返回的精确 `v0.12.6` Setup URL。
+- annotated Tag `v0.12.6`（Tag object `3132f6964f99d083fdd413dc22a16a4fde4818b2`）解引用到合并提交 `7b78db16d6d73543dc93f69cfce123c2f044cf0a`；Release 于 2026-08-17 发布，非 draft、非 prerelease；
+- 合并后的 `main` CI [`32024257394`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32024257394) 全绿：macOS/Windows 220 项合同通过，Windows 干净安装与 `v0.12.5 -> 0.12.6-canary.63` 原地升级作业通过；
+- 固定 Tag 的 Release workflow [`32024271769`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32024271769) 全绿：Windows 作业 `95370231836` 通过生产依赖审计、220 项合同、stable 安装版合成灰度、`v0.12.5 -> v0.12.6` 原地升级和 `profilePreserved=true`；公开更新源作业 `95371604983` 返回 HTTP 200；
+- 五项 Release 资产已下载到新的临时目录，清单中的四项分发文件全部通过 `shasum -a 256 -c SHA256SUMS-windows.txt`；清单自身和五个 GitHub asset digest 也与本机计算一致：
 
-以上四项在 Tag Gate 完成前保持开放，不用 PR/本机证据预填为已通过。
+| 资产 | Bytes | SHA-256 |
+|---|---:|---|
+| `LocalBuddy-0.12.6-Setup.exe` | 266,494,976 | `f183ce697d47c5096d9f54374a7dc6c76b060a655883c70fc464c8c8772cffd4` |
+| `LocalBuddy-win32-x64-0.12.6.zip` | 274,433,943 | `baba176cd32813f26197ace091a1eb0ab4a877d1a6f2f9c80af6363012041c23` |
+| `LocalBuddy-0.12.6-full.nupkg` | 265,772,193 | `ce89dbd5ecc0d51213513f550998ffc2e4c0bdde0d5639188a300a2d8b8251a1` |
+| `RELEASES` | 82 | `646cd1b3e7f738cd170cafb0ad55d964114883d31f2765cc6d96c2f7a09cf07e` |
+| `SHA256SUMS-windows.txt` | 362 | `462ff1f7d289e1f0c56ac7fdc92fd69b60f0f8d87860020d784eb54b02d4c514` |
+
+无鉴权请求 `https://update.electronjs.org/LLM-X-Factorer/diantou-localbuddy-v2/win32-x64/0.12.5` 返回 HTTP 200、名称 `LocalBuddy v0.12.6` 和精确的 `LocalBuddy-0.12.6-Setup.exe` Release URL。这证明托管服务发现、正式资产发布和 Windows Server 2025 安装升级合同成立；它仍不替代 Windows 11 真实应用内检查、下载、忙碌重启阻断、安装和 profile 读回。
 
 ## 0.12.5 Public Bug Reporting + Product Truth
 
@@ -79,12 +87,12 @@ PR #6 首轮 Windows 全量测试暴露一条只接受 LF 的源码合同；Wind
 
 | 层级 | 状态 | 证据边界 |
 |---|---|---|
-| TypeScript/静态合同 | 通过 | `pnpm check` 共 214 项：212 passed、2 项 Windows-only 在 macOS 跳过、0 failed；新增公开报告白名单、脱敏、签名、去重、URL、预览同意和 Issue Form 合同 |
-| macOS 本机开发构建 | 通过 | `pnpm build` 与真实 Electron 开发窗口通过；公开报告警告、脱敏预览、稳定签名、默认未同意和禁用按钮均已读回。macOS 不能运行 Windows Squirrel |
-| Windows Server 2025 原生 CI | 通过 | CI `32016667219`：macOS/Windows 214 项合同、`0.12.5-canary.57` Setup/ZIP、干净安装首启、`v0.12.4 -> 0.12.5-canary.57` 原地升级和 `profilePreserved=true` 全部通过 |
-| Windows Tag Release | 通过 | workflow `32017121369` 的 Windows 作业通过生产依赖审计、214 项合同、stable 灰度、`v0.12.4 -> v0.12.5` 升级、五项资产发布和回下载 SHA-256 核验 |
+| TypeScript/静态合同 | 通过 | `pnpm check` 共 220 项：218 passed、2 项 Windows-only 在 macOS 跳过、0 failed；新增私有写入、符号链接拒绝、权限修复、工作区风险识别与存储披露合同 |
+| macOS 本机开发构建 | 通过 | `pnpm build`、App/ZIP/DMG、隔离无凭据首启、DMG/签名/Fuse/Browser 和存储说明展开读回通过。macOS 不能运行 Windows Squirrel |
+| Windows Server 2025 原生 CI | 通过 | CI `32024257394`：macOS/Windows 220 项合同、干净安装和 `v0.12.5 -> 0.12.6-canary.63` 原地升级作业全部通过 |
+| Windows Tag Release | 通过 | workflow `32024271769` 的 Windows 作业通过生产依赖审计、220 项合同、stable 灰度、`v0.12.5 -> v0.12.6` 升级、`profilePreserved=true`、五项资产发布和 SHA-256 核验 |
 | Windows 11 真机 | 未验收 | Canary 同步、稳定安装升级、Credential Manager、SmartScreen/UAC、真实 Provider |
-| 生产更新源 | `v0.12.5` 可发现，真机 OTA 未验收 | 从 `0.12.4` 请求 endpoint 返回 HTTP 200、`LocalBuddy v0.12.5` 和精确 Setup URL；尚无 Windows 11 的检查、下载、重启和 profile 保留证据 |
+| 生产更新源 | `v0.12.6` 可发现，真机 OTA 未验收 | 从 `0.12.5` 请求 endpoint 返回 HTTP 200、`LocalBuddy v0.12.6` 和精确 Setup URL；尚无 Windows 11 的检查、下载、重启和 profile 保留证据 |
 
 生产依赖审计未发现已知漏洞。完整开发依赖审计仍命中 Electron Forge 打包链中的 `extract-zip <= 2.0.1` symlink path traversal 公告；上游没有已修复版本。当前继续只在干净受控 Runner 打包，并保留该已知 Engineering Alpha 风险，不做静默 ignore。
 

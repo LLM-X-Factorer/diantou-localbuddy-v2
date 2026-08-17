@@ -25,11 +25,13 @@
 
 - 新增 [`docs/STORAGE-AND-PRIVACY.md`](docs/STORAGE-AND-PRIVACY.md)，记录三个操作系统上的 Run、Artifact、偏好、协调状态与系统凭据位置，以及明文 checkpoint/browser cookie、同步目录和当前无自动迁移/删除的限制。
 
-### Pre-release evidence
+### Evidence
 
 - 实现提交 `29dc11c7dbdcd9f5147d19003f7030ba42b71417` 经 [PR #19](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/pull/19) 合入 `70cbfda4dbba4bd15257bc02805fee4d0e69a197`；PR CI `32023121563` 的 macOS、Windows 全量和 Windows 安装/原地升级作业通过；
 - macOS 本机 `pnpm check` 为 220 项：218 passed、2 项 Windows-only 跳过、0 failed；源码构建、ad-hoc App/ZIP/DMG、DMG 完整性、14 个相对 symlink、Fuse、内置 Browser、隔离无凭据首启和存储说明展开读回通过；
-- 正式 Tag、Windows stable 安装版灰度、`v0.12.5 -> v0.12.6` 原地升级、资产回下载与公开 updater endpoint 回读仍以 Release Gate 的固定 Tag 结果为准，不能由 PR 或本机包替代。
+- annotated Tag `v0.12.6` 解引用到合并提交 `7b78db16d6d73543dc93f69cfce123c2f044cf0a`；非 draft、非 prerelease Release 已发布五项 Windows 资产；
+- 固定 Tag 的 Release workflow [`32024271769`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32024271769) 全绿：Windows 作业通过生产依赖审计、220 项合同、stable 安装版合成灰度、`v0.12.5 -> v0.12.6` 原地升级和 `profilePreserved=true`，独立公开更新源作业返回 HTTP 200；
+- 五项资产已重新下载到新临时目录并匹配 SHA-256 清单及 GitHub digest；从 `0.12.5` 请求无鉴权 updater endpoint 返回 `LocalBuddy v0.12.6` 和精确 Setup URL。Windows 11 真人 OTA、真实 Provider 和代码签名仍未验收。
 
 ## 0.12.5 — 2026-08-17
 

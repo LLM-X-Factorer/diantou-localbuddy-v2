@@ -4,7 +4,7 @@
 
 ## Platform and distribution
 
-- Windows `v0.12.6` Setup/ZIP/full nupkg/RELEASES 由 Tag workflow 执行原生打包、安装版合成灰度、`v0.12.5 -> v0.12.6` 原地升级、profile 保留和回下载 SHA-256 校验。该门禁使用 Windows Server 2025 管理员 Runner 和确定性 Mock Provider，仍不覆盖终端用户设备上的 SmartScreen、标准用户/UAC、真实 Provider 与真实网络；
+- Windows `v0.12.6` Setup/ZIP/full nupkg/RELEASES 已由 Tag workflow 完成原生打包、安装版合成灰度、`v0.12.5 -> v0.12.6` 原地升级、profile 保留和回下载 SHA-256 校验。该门禁使用 Windows Server 2025 管理员 Runner 和确定性 Mock Provider，仍不覆盖终端用户设备上的 SmartScreen、标准用户/UAC、真实 Provider 与真实网络；
 - Windows 没有受支持的本地进程隔离宿主，检查命令和本地进程型扩展 fail closed；
 - Linux `0.11.x` DEB 历史上已由 `ubuntu-24.04` Runner 原生构建；当前 Linux 只保留每周/手动维护，不进入 PR 或 Release 门禁，真实图形桌面与 Secret Service 验收暂不优先；
 - macOS 包是 ad-hoc 签名，未启用生产 Hardened Runtime，未 notarize；
