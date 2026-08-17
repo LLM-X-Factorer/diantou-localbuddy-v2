@@ -140,6 +140,8 @@ test("tag releases publish Windows only after installed-app synthetic gray passe
   const onlineSmoke = await readFile(resolve(repository, ".github", "workflows", "windows-online-update-smoke.yml"), "utf8");
   assert.match(onlineSmoke, /workflow_dispatch:/);
   assert.match(onlineSmoke, /windows-2025/);
+  assert.match(onlineSmoke, /gh release list/);
+  assert.doesNotMatch(onlineSmoke, /gh api "repos\/\$env:GITHUB_REPOSITORY\/releases/);
   assert.match(onlineSmoke, /releases\/latest\/download/);
   assert.match(onlineSmoke, /verify-windows-installer-upgrade\.ps1/);
   const publishScript = await readFile(resolve(repository, "scripts", "publish-windows-release.mjs"), "utf8");
