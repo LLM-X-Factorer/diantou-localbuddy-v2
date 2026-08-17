@@ -1,6 +1,6 @@
 # M13 Public Bug Reporting
 
-> 状态：`v0.12.5 released; one-consent v2 candidate tracked by Issue #23`，2026-08-17。已发布反馈链仍有效；真实用户指出三段必填叙述造成不必要摩擦，v2 候选改为自动安全 Trace 和一次明确同意。Windows 11 真人与代码签名仍开放。
+> 状态：`v0.12.5 initial flow; one-consent v2 released in v0.12.7`，2026-08-17。真实用户指出三段必填叙述造成不必要摩擦；v2 已改为自动安全 Trace 和一次明确同意。Windows 11 真人与代码签名仍开放。
 
 ## 为什么现在做
 

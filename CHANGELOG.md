@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+## 0.12.7 — 2026-08-17
+
+公开但未签名的 Real-user Update + One-consent Reporting Engineering Alpha。本版本直接修复唯一当前用户在 `v0.12.4` 更新和问题反馈中遇到的摩擦：更新过程不再像静默卡死，公开问题报告不再要求用户重复填写系统已经掌握的信息。
+
 ### Changed
 
 - 问题报告不再要求用户重复填写现象、预期和复现步骤：点击“报告问题”后，LocalBuddy 直接从所选 Run 的受控投影生成公开安全问题摘要、环境和 Trace；用户检查预览后以一个明确按钮同意打开 GitHub，应用仍不保存 Token、不自动发布，也不读取 Prompt、正文、路径或原始错误。
@@ -11,6 +15,13 @@
 ### Fixed
 
 - Windows 更新从“发现更新”到“下载完成”期间显示诚实的后台下载动画和已等待时间，并提供固定官方下载页兜底；Electron/Squirrel 当前不提供字节进度，因此界面不伪造百分比，也不重复触发下载。
+
+### Pre-release evidence
+
+- 实现提交 `def45c18d72eb1ec697b039a14db6c36b0d3aeb9` 经 [PR #24](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/pull/24) 合入 `a165750571594fd2247b2db857217fb5c2a7bded`；Issues #22/#23 已关闭；
+- macOS 本机 `pnpm check` 共 219 项：217 passed、2 项 Windows-only 跳过、0 failed；`pnpm build`、生产依赖审计和一次不含真实用户数据的 Electron 问题报告 UI smoke 通过，预览无绝对工作区路径且只剩一个公开同意动作；`v0.12.7` App/ZIP/DMG、DMG 完整性、ad-hoc 签名、14 个相对 symlink、Fuse、内置 Browser 和隔离无凭据首启通过；
+- 合并后的 `main` CI [`32036190030`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32036190030) 全绿；Windows Server 2025 构建并安装 `0.12.7-canary.67`，从 `v0.12.6` 原地升级后读回 `profilePreserved=true`；
+- 唯一当前用户明确批准在单用户 Engineering Alpha 阶段直接发布，不再等待额外真实用户。正式 Tag、stable 安装版合成灰度、五项资产和公开 updater endpoint 仍必须由固定 Tag 的 Release workflow 验证；Windows 11 真人 OTA、代码签名和真实网络仍未验收。
 
 ## 0.12.6 — 2026-08-17
 

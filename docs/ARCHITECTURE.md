@@ -1,6 +1,6 @@
 # LocalBuddy V2 Architecture
 
-> **状态基线**：2026-08-17，`v0.12.6 / Private Run Storage + Product Truth` 是当前公开但未签名的 Engineering Alpha Release，并继续包含 M11.1 Goal Contract + Plan Review、M12.1-M12.4、公开问题报告与更新桥接。各历史 Validation 保留对应阶段当时的证据边界。
+> **状态基线**：2026-08-17，`v0.12.7 / Real-user Update + One-consent Reporting` 是当前公开但未签名的 Engineering Alpha Release，并继续包含 M11.1 Goal Contract + Plan Review、M12.1-M12.4、私有 Run 存储、公开问题报告与更新桥接。各历史 Validation 保留对应阶段当时的证据边界。
 
 ## 1. 产品判断
 
@@ -255,7 +255,8 @@ Main 只在 packaged Windows 配置 updater：stable 构建根据固定公开仓
 23. **M12.2 Artifact Thread History + Verified Text Diff（已发布）**：Main 只从 `.localbuddy/runs` 审计历史汇总同 Thread 的根版本、revision、失败/replay 与分支尝试，并逐 Artifact 复核 Registry/bytes/SHA-256；文本 diff 在 Core 内受 bytes、行数、LCS cells 和渲染行数限制，父合同缺失或漂移时 fail closed。Renderer 只消费结构化历史/diff，不读取文件系统。
 24. **M12.3 Bounded DOCX Artifact（已发布）**：Integrator 只调用 `write_docx_artifact` 提交有界 Markdown，Core 将其解析为受限段落/项目符号/表格结构，确定性编译 OOXML、回读规范文本并以原子写入登记 Artifact。DOCX 读取限制 ZIP 条目、压缩/展开大小和文本量，拒绝宏、外部关系、嵌入对象及复杂富内容；Desktop 只接收经 SHA-256 复核后的结构预览和 DOCX 直接父版本正文/表格 diff。
 25. **M12.4 Independent DOCX Reviewer + Retained Trace（已发布）**：DOCX 候选完成本地编译/回读后、原子写入前，先确定性检查父正文、段落、章节和表格保留，再由无工具的 `artifact-reviewer` 比较完整 Goal Contract、Worker 依赖结果、已验证父稿和候选正文；`revise` 复用三次 Artifact Gate 预算，finding 只进私有 checkpoint，事件只保留 verdict/计数/哈希。Benchmark trace 可脱敏导出到一次性 workspace 之外且拒绝覆盖。
-26. **v0.12.5 Public Bug Reporting（已发布，v2 候选改进交互）**：失败 Run 的公开报告由独立纯函数模块只从结构化允许字段生成并签名；Main 负责只读去重查询、本地保存和受限 GitHub URL，Renderer 自动展示预览，并以一个明确按钮取得公开同意。应用不接收重复叙述、不自动上传原始诊断或私有运行内容，最终公开提交仍由用户在浏览器完成。
+26. **v0.12.5 Public Bug Reporting（v0.12.7 已发布 v2 交互）**：失败 Run 的公开报告由独立纯函数模块只从结构化允许字段生成并签名；Main 负责只读去重查询、本地保存和受限 GitHub URL，Renderer 自动展示预览，并以一个明确按钮取得公开同意。应用不接收重复叙述、不自动上传原始诊断或私有运行内容，最终公开提交仍由用户在浏览器完成。
 27. **v0.12.6 Private Run Storage（已发布）**：Run Request、事件、checkpoint、Artifact、Browser state、Integration 和 revision source 统一使用私有原子/追加写；macOS/Linux 使用 `0700`/`0600`，Windows 明确继承父目录 ACL；旧 Run 只在工作区锁内有界加固，托管符号链接 fail closed。Desktop 默认收起显示确切路径，并对已知云同步/网络目录告警。
+28. **v0.12.7 Real-user Feedback UX（已发布）**：Windows 原生 updater 只暴露阶段而不暴露字节进度，Renderer 因此显示真实的后台活动、已等待时间和固定官方下载页，不伪造百分比；问题报告从结构化 Run 投影自动生成安全 Trace，单一同意动作只打开固定 GitHub 表单，最终提交仍由用户完成。
 
 M11 已完成最小 Goal/Plan 控制面，M12.1-M12.4 已建立显式 Artifact 修订链、历史列表、直接父版本差异、受限 DOCX 纵向链路及独立 DOCX Reviewer；通用多轮工作线程、计划编辑、Goal revision 2+、跨 Artifact/人工 Reviewer、Project/Workspace 首页、PDF/XLSX/PPTX 和复杂 Word 保真编辑仍未完成，不能写成已支持能力。

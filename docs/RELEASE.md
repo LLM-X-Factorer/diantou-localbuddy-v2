@@ -1,6 +1,6 @@
 # LocalBuddy V2 Release Runbook
 
-> 当前公开但未签名的 Release：`v0.12.6 / Private Run Storage + Product Truth Engineering Alpha`，并继续包含 M11.1 Goal Contract + Plan Review、M12.1-M12.4、公开问题报告与更新桥接。Git push、Tag 和 Release 都是外部状态变更，必须获得用户明确授权。
+> 当前公开但未签名的 Release：`v0.12.7 / Real-user Update + One-consent Reporting Engineering Alpha`，并继续包含 M11.1 Goal Contract + Plan Review、M12.1-M12.4、私有 Run 存储、公开问题报告与更新桥接。本次 Git push、Tag 和 Release 已由唯一当前用户明确授权。
 
 ## 1. 发布真源
 
@@ -97,4 +97,4 @@ Linux 不再进入 Tag Release。`.github/workflows/linux-maintenance.yml` 只�
 - 集成代码回滚使用普通 revert commit，不 amend 已推送提交；
 - Release 事实变化后同步 Changelog、Known Limitations 和 Validation。
 
-`v0.12.4` 的桥接发布、`v0.12.5` 与 `v0.12.6` 的原地升级、回下载和公开 endpoint 证据见 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md)；`v0.12.1` 的 Goal Contract Release 见 [`M11.1-VALIDATION.md`](M11.1-VALIDATION.md)。旧 Release 不回写、不替换；Linux 资产不进入 Windows-first Tag Release。
+`v0.12.4` 的桥接发布、`v0.12.5-v0.12.7` 的原地升级、回下载和公开 endpoint 证据见 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md)；`v0.12.1` 的 Goal Contract Release 见 [`M11.1-VALIDATION.md`](M11.1-VALIDATION.md)。旧 Release 不回写、不替换；Linux 资产不进入 Windows-first Tag Release。

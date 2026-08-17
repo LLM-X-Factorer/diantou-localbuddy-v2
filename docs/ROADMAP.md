@@ -1,22 +1,23 @@
 # LocalBuddy V2 Roadmap
 
-> **状态真源**：2026-08-17。仓库已按 Apache License 2.0 公开；当前 Release 为公开但未签名的 `v0.12.6 / Private Run Storage + Product Truth` Engineering Alpha，包含 M12.1-M12.4、stable Windows 公共 GitHub feed、用户主动公开安全问题报告和私有 Run 存储加固。当前开发阶段仍是 `M13 Product Truth Sprint`：默认冻结通用功能扩张，以 Research Desk 的重复真实任务、非作者用户和目标应用证据决定 `advance/pause/stop`。代码签名和 Windows 11 真人 OTA 仍开放。
+> **状态真源**：2026-08-17。仓库已按 Apache License 2.0 公开；当前 Release 为公开但未签名的 `v0.12.7 / Real-user Update + One-consent Reporting` Engineering Alpha，包含 M12.1-M12.4、stable Windows 公共 GitHub feed、私有 Run 存储、可见更新等待状态和自动公开安全 Trace。当前开发阶段仍是 `M13 Product Truth Sprint`：默认冻结通用功能扩张，以 Research Desk 的重复真实任务、非作者用户和目标应用证据决定 `advance/pause/stop`。代码签名和 Windows 11 真人 OTA 仍开放。
 
 ## 当前里程碑
 
 ### M13 · Product Truth Sprint — active
 
-- `v0.12.6` 作为固定产品事实基线，不边验证边增加通用功能；
+- `v0.12.7` 作为固定产品事实基线，不边验证边增加通用功能；
 - Research Desk 使用同一合同三跑、两个不同主题和至少一次非作者独立运行；
 - Teaching Studio 只做 Owner/真实教学单元发现、现有能力模拟和教师口头走查；Builder Lab 只跑 WB-05 泛化检查；
 - 只修安全/数据完整性问题、真实任务阻塞、两个场景共同需要的 Core 合同，以及证据/grader 真源问题；
 - 验收合同与退出裁决见 [`M13-PRODUCT-TRUTH-SPRINT.md`](M13-PRODUCT-TRUTH-SPRINT.md)。
 
-### v0.12.7 candidate · Real-user Update + Report UX — in progress
+### v0.12.7 · Real-user Update + One-consent Reporting — public unsigned Engineering Alpha
 
-- [Issue #22](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/22) 来自真实 `v0.12.4` 更新体验：原生 updater 没有字节进度，静态“正在获取”像卡死。候选版展示已等待时间、动态活动状态和固定官方下载兜底，不伪造百分比；
+- [Issue #22](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/22) 来自真实 `v0.12.4` 更新体验：原生 updater 没有字节进度，静态“正在获取”像卡死。发布版展示已等待时间、动态活动状态和固定官方下载兜底，不伪造百分比；
 - [Issue #23](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/23) 删除公开问题报告的三段必填叙述、手工生成和额外复选框；LocalBuddy 自动生成安全摘要/Trace，用户检查后以一个明确按钮同意打开 GitHub；
-- 这两项是已发生的真实用户阻塞修复，不恢复通用功能扩张。当前仍是候选代码，不写成已发布能力；真正字节进度属于另行评审的 updater transport 变化。
+- [PR #24](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/pull/24) 已合入 `a165750571594fd2247b2db857217fb5c2a7bded`；`main` CI `32036190030` 把 `v0.12.6` 原地升级到 `0.12.7-canary.67` 并读回 `profilePreserved=true`；
+- 这两项是已发生的真实用户阻塞修复，不恢复通用功能扩张。唯一当前用户明确批准直接发布；真正字节进度仍属于另行评审的 updater transport 变化，Windows 11 真人 OTA 继续保留为未验收。
 
 ### v0.12.6 · Private Run Storage + Product Truth — public unsigned Engineering Alpha
 
