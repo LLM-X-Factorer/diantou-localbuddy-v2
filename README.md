@@ -4,7 +4,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 
 这不是 Craft Agents 的分支，也不包含腾讯 WorkBuddy 的私有实现。仓库只参考公开产品行为、通用 Agent 架构模式，以及我们自行定义的验收契约。
 
-> **产品判断（2026-08-18）**：仓库已按 Apache License 2.0 公开；[`v0.12.8 / First-party Windows Update Feed`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.8) 是当前发布目标。Windows Server 2025 已通过第一方 GitHub Release feed 的真实 Squirrel 公网升级；`v0.12.7` 及更早版本仍需手动覆盖安装 `v0.12.8` 一次。固定 Tag 资产、发布后在线升级和真实 Windows 11 应用内重启仍分别验收。当前仍在 M13 Product Truth Sprint，不恢复通用功能扩张。
+> **产品判断（2026-08-18）**：仓库已按 Apache License 2.0 公开；[`v0.12.8 / First-party Windows Update Feed`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.8) 是当前公开但未签名的 Engineering Alpha Release。Windows Server 2025 已通过正式资产发布、0.12.7 → 0.12.8 原位升级和第一方 GitHub Release feed 公网真升级；`v0.12.7` 及更早版本仍需手动覆盖安装 `v0.12.8` 一次。真实 Windows 11 应用内重启和代码签名仍未验收。当前回到 M13 Product Truth Sprint，不恢复通用功能扩张。
 
 ## 一页状态
 
@@ -19,7 +19,7 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 | 恢复 | Research/Coding 同 Run checkpoint resume；失败 Run 可恢复未完成 Task 链，并保留 replay 兜底 |
 | Artifact | 文本与受限 DOCX；已登记版本可预览、打开、继续修订并与直接父版本比较；DOCX 发布前经独立 Reviewer，当前只覆盖段落、项目符号和表格 |
 | 扩展 | 本地/签名 Skill、MCP stdio/HTTP/OAuth、受限 Playwright Browser |
-| 分发 | Windows `v0.12.8` 使用第一方 GitHub Release feed；托管 Windows 公网升级已通过，旧版本需最后一次手动覆盖；固定 Tag 资产、签名与 Windows 11 真人 OTA 仍按独立门禁回读 |
+| 分发 | Windows `v0.12.8` 五项资产和第一方公网升级已通过独立回读；旧版本需最后一次手动覆盖；签名与 Windows 11 真人 OTA 仍未验收 |
 | 当前阶段 | M13 Product Truth Sprint；固定 `v0.12.8`，默认不扩功能，只修真实任务证明的阻塞并作 `advance/pause/stop` 裁决 |
 | 当前主动暂缓 | Developer ID、生产 Hardened Runtime、notarization、公开 Gatekeeper |
 
@@ -267,7 +267,7 @@ pnpm make:win
 
 它们应分别在 Linux/Windows Runner 上执行；仓库不会把交叉编译配置冒充成目标平台运行验收。
 
-推送 `v*` Tag 会在 `windows-2025` Runner 上执行生产依赖审计、完整测试、Squirrel Setup/ZIP 构建、上一稳定版原地升级和安装版合成灰度，并为 Setup、便携 ZIP、`RELEASES`、full `.nupkg` 生成 LF 格式的 `SHA256SUMS-windows.txt`。同一 Windows 作业确认 Tag 与 `package.json` 完全一致并复核清单后直接发布 Release 资产；独立作业再从第一方公网 feed 完成上一稳定版到目标版的真升级。预发布 Tag 自动标记 prerelease，Linux 不进入 Tag Release。当前发布目标为 [`v0.12.8`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.8)，证据见 [`docs/WINDOWS-UPDATE-VALIDATION.md`](docs/WINDOWS-UPDATE-VALIDATION.md)。
+推送 `v*` Tag 会在 `windows-2025` Runner 上执行生产依赖审计、完整测试、Squirrel Setup/ZIP 构建、上一稳定版原地升级和安装版合成灰度，并为 Setup、便携 ZIP、`RELEASES`、full `.nupkg` 生成 LF 格式的 `SHA256SUMS-windows.txt`。同一 Windows 作业确认 Tag 与 `package.json` 完全一致并复核清单后直接发布 Release 资产；独立作业再从第一方公网 feed 完成上一稳定版到目标版的真升级。预发布 Tag 自动标记 prerelease，Linux 不进入 Tag Release。当前公开 Release 为 [`v0.12.8`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.8)，证据见 [`docs/WINDOWS-UPDATE-VALIDATION.md`](docs/WINDOWS-UPDATE-VALIDATION.md)。
 
 ## Headless 真实运行
 

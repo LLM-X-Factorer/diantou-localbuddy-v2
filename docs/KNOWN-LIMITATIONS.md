@@ -1,10 +1,10 @@
 # LocalBuddy V2 Known Limitations
 
-> 当前发布目标是公开但未签名的 `v0.12.8 / First-party Windows Update Feed` Engineering Alpha，包含 M12.1-M12.4、第一方公开 GitHub stable feed、私有 Run 存储、可见更新等待状态和自动公开安全 Trace。`v0.12.3` 只有失败 Tag，没有 Release 或资产。当前灰度与发布优先 Windows，macOS 保留本机回归，Linux 降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
+> 当前分发基线是公开但未签名的 `v0.12.8 / First-party Windows Update Feed` Engineering Alpha，包含 M12.1-M12.4、第一方公开 GitHub stable feed、私有 Run 存储、可见更新等待状态和自动公开安全 Trace。`v0.12.3` 只有失败 Tag，没有 Release 或资产。当前灰度与发布优先 Windows，macOS 保留本机回归，Linux 降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
 
 ## Platform and distribution
 
-- `v0.12.8` Tag workflow 必须完成原生打包、安装版合成灰度、`v0.12.7 -> v0.12.8` 本地升级、profile 保留、五项资产和第一方公网升级。发布前手动 workflow 已证明当前 Squirrel 可经公开 `releases/latest/download` 下载 265,770,685-byte full nupkg 并升级，但不能替代固定 Tag 或 Windows 11；
+- `v0.12.8` Tag workflow 已完成原生打包、安装版合成灰度、`v0.12.7 -> v0.12.8` 本地升级、profile 保留、五项资产和第一方公网升级；独立回下载 SHA-256 与 GitHub digest 一致。该门禁使用 Windows Server 2025 管理员 Runner，不能替代 Windows 11；
 - `v0.12.4-v0.12.7` 内置的第三方公共更新服务在 `v0.12.7` 发布后连续十分钟返回 HTTP 404。旧版本无法由服务器改址，现有用户需要不卸载地手动覆盖安装 `v0.12.8` 一次；只有后续 stable 发布后，才能在真机验证 `v0.12.8` 自身发现和安装更新；
 - 原生 Electron/Squirrel updater 不提供字节级下载事件；`v0.12.8` 只显示真实阶段、已等待时间和不确定进度动画，并提供固定官方下载页兜底，不宣称百分比、速度或剩余时间；
 - Windows 没有受支持的本地进程隔离宿主，检查命令和本地进程型扩展 fail closed；

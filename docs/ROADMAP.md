@@ -1,6 +1,6 @@
 # LocalBuddy V2 Roadmap
 
-> **状态真源**：2026-08-18。仓库已按 Apache License 2.0 公开；当前发布目标为公开但未签名的 `v0.12.8 / First-party Windows Update Feed` Engineering Alpha。第一方公网 Squirrel 升级已在托管 Windows Runner 通过；固定 Tag 和 Windows 11 真人仍独立验收。该交付阻塞收口后回到 `M13 Product Truth Sprint`，不借机恢复通用功能扩张。
+> **状态真源**：2026-08-18。仓库已按 Apache License 2.0 公开；当前 Release 为公开但未签名的 `v0.12.8 / First-party Windows Update Feed` Engineering Alpha。固定 Tag、五项资产、第一方公网 Squirrel 升级和独立哈希回读已通过；Windows 11 真人与代码签名仍独立验收。当前回到 `M13 Product Truth Sprint`，不借机恢复通用功能扩张。
 
 ## 当前里程碑
 
@@ -12,12 +12,12 @@
 - 只修安全/数据完整性问题、真实任务阻塞、两个场景共同需要的 Core 合同，以及证据/grader 真源问题；
 - 验收合同与退出裁决见 [`M13-PRODUCT-TRUTH-SPRINT.md`](M13-PRODUCT-TRUTH-SPRINT.md)。
 
-### v0.12.8 · First-party Windows Update Feed — release target
+### v0.12.8 · First-party Windows Update Feed — public unsigned Engineering Alpha
 
 - [Issue #26](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/26) 把 stable Windows x64 从第三方更新发现服务迁到仓库自己的公开 GitHub Release 静态 feed；旧版本需要最后一次手动覆盖安装，其他 channel/架构继续 fail closed；
 - [PR #27](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/pull/27) 至 [PR #32](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/pull/32) 已合入第一方 feed、有界 GitHub 重试、阶段诊断、日志锁规避和进程树有界终止；
 - `main` CI `32119783829` 把 `v0.12.7` 原位升级到 `0.12.8-canary.82` 并读回 `profilePreserved=true`；手动公网 workflow `32120336697` 从第一方 feed 下载 265,770,685-byte full nupkg，完成 `v0.12.6 -> v0.12.7`、目标 UI 和 profile 读回；
-- `v0.12.8` Tag 仍需完成 stable 灰度、`v0.12.7 -> v0.12.8`、五项资产/哈希和发布后第一方公网升级。完成后关闭 Issue #26 并回到 M13；Windows 11 和代码签名不随 Issue #26 伪关闭。
+- annotated Tag `v0.12.8` 固定到 `5353684e12afb091a267f1658cae8d4b0531ac6c`；workflow `32122329408` 通过 stable 灰度、`v0.12.7 -> v0.12.8` 本地/公网升级和五项资产发布，独立回下载匹配清单与 GitHub digest；Issue #26 已关闭并回到 M13；Windows 11 和代码签名不随 Issue #26 伪关闭。
 
 ### v0.12.7 · Real-user Update + One-consent Reporting — public unsigned Engineering Alpha
 

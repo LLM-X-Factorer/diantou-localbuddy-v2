@@ -22,7 +22,8 @@
 - 封版分支本机 `pnpm check` 共 219 项：217 passed、2 项 Windows-only 跳过、0 failed；`pnpm build` 与生产依赖高危审计通过。`v0.12.8` macOS arm64 App/ZIP/DMG 通过 DMG 完整性、ad-hoc 签名、14 个相对 symlink、Fuse、内置 Browser 和隔离无凭据首启；完整开发依赖审计仍只命中已记录且无上游修复版本的 Electron Forge `extract-zip` 打包期告警；
 - 合并提交 `33ba3aad46ff9c9ea8bce91692aea1fcd932321e` 的 [`main` CI `32119783829`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32119783829) 全绿：macOS/Windows 合同通过，Windows Server 2025 干净安装通过，并把 `v0.12.7` 原地升级到 `0.12.8-canary.82`，摘要记录 `profilePreserved=true`；
 - 手动公网门禁 [`32120336697`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32120336697) 在 Windows Server 2025 安装 `v0.12.6`，从无鉴权 `releases/latest/download` 获取 265,770,685-byte full nupkg 并升级到 `v0.12.7`；检查、下载、安装分别用时 2.559 秒、9.49 秒、17.05 秒，目标 UI 与 profile 标记读回通过；
-- 以上证明第一方公网 feed 和有界诊断合同成立。`v0.12.8` Tag、五项正式资产、`v0.12.7 -> v0.12.8` 发布后在线升级与独立回下载哈希仍由固定 Tag workflow 完成；真实 Windows 11 应用内检查/重启和代码签名继续是独立门禁。
+- annotated Tag `v0.12.8`（Tag object `2c9c40ad731049cf6edaa61f63f8d59b065d4805`）解引用到合并提交 `5353684e12afb091a267f1658cae8d4b0531ac6c`；Release workflow [`32122329408`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32122329408) 全绿：Windows 发布作业通过生产依赖审计、219 项合同、安装版合成灰度、`v0.12.7 -> v0.12.8` 本地升级和五项资产发布；独立公网作业再经第一方 feed 完成同一版本升级，检查、下载、安装分别为 1.302 秒、4.787 秒、18.812 秒，目标 UI 与 profile 保留通过；
+- 五项正式资产已重新下载到新临时目录；清单中的 Setup、ZIP、full nupkg 和 `RELEASES` 全部通过 SHA-256，清单自身与五个 GitHub digest 也一致。真实 Windows 11 应用内检查/重启和代码签名继续是独立门禁。
 
 ## 0.12.7 — 2026-08-17
 
