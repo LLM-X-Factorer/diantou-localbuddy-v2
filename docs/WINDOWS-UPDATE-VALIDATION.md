@@ -1,6 +1,28 @@
 # Windows Update Validation
 
-> 当前已发布版本：公开但未签名的 `v0.12.7 / Real-user Update + One-consent Reporting` Engineering Alpha。正式 Windows 包、原地升级和 Release 资产有效，但第三方线上更新发现门禁失败；现有版本不能宣称 OTA 可用。下一补丁候选改用第一方 GitHub Release 静态 feed，必须先通过 Windows Squirrel 真升级再发布。
+> 当前发布目标：公开但未签名的 `v0.12.8 / First-party Windows Update Feed` Engineering Alpha。第一方 GitHub Release 静态 feed 已通过 Windows Squirrel 公网真升级；固定 Tag 资产和 `v0.12.7 -> v0.12.8` 发布后门禁仍须单独回读。真实 Windows 11 应用内升级和代码签名仍未验收。
+
+## 0.12.8 First-party Windows Update Feed
+
+本版本回应 `v0.12.7` 发布后的真实交付失败：第三方更新发现服务连续十分钟返回 HTTP 404，仓库无法控制其可用性或修复节奏。stable、packaged、Windows x64 构建改用 `https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/latest/download`；Canary、beta、开发构建、非 Windows 和非 x64 继续 fail closed，不把测试 feed 泄漏到普通构建。
+
+[PR #27](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/pull/27) 至 [PR #32](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/pull/32) 依次完成第一方 feed、稳定 Release 解析、GitHub 操作重试、在线阶段诊断、输出文件锁规避和 Squirrel 进程树有界终止。最后一次修复合入 `33ba3aad46ff9c9ea8bce91692aea1fcd932321e`；本机 `pnpm check` 为 219 项：217 passed、2 项 Windows-only 跳过、0 failed。
+
+### 发布前公网证据
+
+- [`main` CI `32119783829`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32119783829) 全绿：Windows PowerShell 原生解析、macOS/Windows 合同、Windows 干净安装和 `v0.12.7 -> 0.12.8-canary.82` 本地原位升级通过；升级阶段用时 19.181 秒，目标目录 `app-0.12.8-canary82`，`profilePreserved=true`；
+- 首次公网诊断 run `32051795583` 在检查更新阶段没有写入任何目标包字节；120 秒阶段超时触发后，旧清理逻辑又阻塞到 45 分钟外层门禁取消。该失败保留为原始证据，不改写成“包太大”；
+- 修复后的手动公网 workflow [`32120336697`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32120336697) 在 Windows Server 2025 安装 `LocalBuddy-0.12.6-Setup.exe`，经第一方公开 feed 升级到 `app-0.12.7`。检查、下载、安装分别为 2.559 秒、9.49 秒、17.05 秒；包状态记录 `LocalBuddy-0.12.7-full.nupkg` 265,770,685 bytes、`RELEASES` 82 bytes，目标 UI 与非敏感 profile 标记均通过；
+- 成功说明 GitHub 静态 feed 可被当前 Squirrel 使用；前一次挂起说明旧 WebClient/网络仍可能偶发阻塞，因此阶段超时、进程树终止和脱敏证据上传是生产门禁的一部分，不能因一次成功删除。
+
+### 发布后仍需回读
+
+- `v0.12.8` annotated Tag 与目标提交；
+- Windows 发布作业的生产依赖审计、219 项合同、安装版合成灰度、`v0.12.7 -> v0.12.8` 本地升级、五项资产与 SHA-256；
+- 独立 `online-update-smoke` 从 `v0.12.7` 经第一方公网 feed 升级到 `v0.12.8`；
+- 新临时目录中的五项 Release 资产字节数、清单和 GitHub digest。
+
+`v0.12.4-v0.12.7` 已发布包仍写死第三方 feed，因此现有用户需要不卸载地手动覆盖安装 `v0.12.8` 一次。只有再发布一个后续 stable，并在真实 Windows 11 从 `v0.12.8` 完成应用内发现、下载、忙碌 Run 阻断、重启和 profile/版本读回，才可以把“以后无需回仓库下载”写成真机事实。
 
 ## 0.12.7 Real-user Update + One-consent Reporting
 
@@ -100,7 +122,7 @@ PR #6 首轮 Windows 全量测试暴露一条只接受 LF 的源码合同；Wind
 - `main` 成功构建上传按 Git SHA 可追踪的 Windows Canary Setup/ZIP 和独立 Squirrel feed artifact；
 - Windows 快速同步脚本使用已认证 GitHub CLI，只接受成功 workflow，可固定 Run ID，并把便携包按 SHA 并存；
 - 包内 `build-metadata.json` 与 Electron `app.getVersion()` 必须一致，UI 展示 channel、version 和 short SHA；
-- Windows 安装版 updater 在下一 stable 正式包内使用固定第一方 GitHub Release feed，其余 channel 默认关闭；验收可显式提供受限 feed；
+- Windows 安装版 updater 从 `v0.12.8` stable 正式包起使用固定第一方 GitHub Release feed，其余 channel 默认关闭；验收可显式提供受限 feed；
 - 更新下载完成后，活动 Run、启动中的 Run 或正在执行的 Integration 都会阻止退出安装；
 - Windows CI 与 Tag Release 均定义上一稳定 Setup 到当前目标版本的原地升级、默认 profile 标记保留和新 UI 启动检查；
 - Release 资产合同扩展为 Setup、便携 ZIP、`RELEASES`、full `.nupkg` 和 LF SHA-256 清单。
@@ -111,10 +133,10 @@ PR #6 首轮 Windows 全量测试暴露一条只接受 LF 的源码合同；Wind
 |---|---|---|
 | TypeScript/静态合同 | 通过 | `pnpm check` 共 219 项：217 passed、2 项 Windows-only 在 macOS 跳过、0 failed；自动安全 Trace、单一同意动作、更新等待状态和固定下载兜底合同通过 |
 | macOS 本机开发构建 | 通过 | `pnpm build`、合成 Electron 问题报告 UI smoke、App/ZIP/DMG、DMG 完整性、ad-hoc 签名、14 个相对 symlink、Fuse、内置 Browser 和隔离无凭据首启通过。macOS 不能运行 Windows Squirrel |
-| Windows Server 2025 原生 CI | 通过 | CI `32038546919`：macOS/Windows 合同、干净安装和 `v0.12.6 -> 0.12.7-canary.69` 原地升级作业全部通过，`profilePreserved=true` |
-| Windows Tag Release | 部分通过 | `32038914446` 的 Windows 发布作业通过并创建五项资产；第三方线上更新作业失败，不能把整体写成全绿 |
+| Windows Server 2025 原生 CI | 通过 | CI `32119783829`：macOS/Windows 合同、PowerShell 解析、干净安装和 `v0.12.7 -> 0.12.8-canary.82` 原地升级作业全部通过，`profilePreserved=true` |
+| Windows Tag Release | 待 `v0.12.8` 固定 Tag | 必须通过 stable 灰度、本地升级、五项资产发布和独立第一方公网升级；不能用发布前手动 workflow 代替 |
 | Windows 11 真机 | 未验收 | Canary 同步、稳定安装升级、Credential Manager、SmartScreen/UAC、真实 Provider |
-| 生产更新源 | `v0.12.7` 第三方 feed 失败；第一方候选待 Windows 验证 | 下一补丁必须用上一稳定 Setup 经 `releases/latest/download` 完成真实 Squirrel 下载、安装、UI 与 profile 读回；Windows 11 应用内检查/重启仍未验收 |
+| 生产更新源 | 第一方公网 Squirrel 直连通过 | workflow `32120336697` 完成 265,770,685-byte 包下载、安装、UI 与 profile 读回；`v0.12.8` 发布后门禁及 Windows 11 应用内检查/重启仍独立验收 |
 
 生产依赖审计未发现已知漏洞。完整开发依赖审计仍命中 Electron Forge 打包链中的 `extract-zip <= 2.0.1` symlink path traversal 公告；上游没有已修复版本。当前继续只在干净受控 Runner 打包，并保留该已知 Engineering Alpha 风险，不做静默 ignore。
 
@@ -159,8 +181,8 @@ PR #6 首轮 Windows 全量测试暴露一条只接受 LF 的源码合同；Wind
 
 ## Windows 11 手工验收清单
 
-1. 手动覆盖安装带第一方 feed 的下一补丁，不卸载 `v0.12.7`，确认旧 profile 标记保留；
-2. 发布再下一个稳定补丁后，在应用内手动检查，确认第一方 feed 能发现并下载它，并观察后台活动、已等待时间和官方下载兜底；
+1. 手动覆盖安装带第一方 feed 的 `v0.12.8`，不卸载 `v0.12.7`，确认旧 profile 标记保留；
+2. 发布 `v0.12.9` 或更高稳定补丁后，在应用内手动检查，确认第一方 feed 能发现并下载它，并观察后台活动、已等待时间和官方下载兜底；
 3. 在一个 Run 运行时准备重启安装，确认应用拒绝退出；结束 Run 后再次确认并完成升级；
 4. 重启后读回目标版本、最近工作区、运行历史、profile 标记和 Credential Manager 状态；
 5. 完成真实 Research Run、两个活动 Run、取消、checkpoint resume、Artifact 打开和本地诊断；打开公开问题报告，确认自动 Trace、单一同意动作和系统浏览器预填表单；

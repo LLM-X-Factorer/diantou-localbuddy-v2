@@ -1,16 +1,23 @@
 # LocalBuddy V2 Roadmap
 
-> **状态真源**：2026-08-17。仓库已按 Apache License 2.0 公开；当前 Release 为公开但未签名的 `v0.12.7 / Real-user Update + One-consent Reporting` Engineering Alpha。该版本安装包与本地原地升级有效，但第三方 OTA 发现门禁失败；当前仅追加一个安全/交付阻塞修复，把下一补丁切到第一方 GitHub Release feed，验证后回到 `M13 Product Truth Sprint`，不借机恢复通用功能扩张。
+> **状态真源**：2026-08-18。仓库已按 Apache License 2.0 公开；当前发布目标为公开但未签名的 `v0.12.8 / First-party Windows Update Feed` Engineering Alpha。第一方公网 Squirrel 升级已在托管 Windows Runner 通过；固定 Tag 和 Windows 11 真人仍独立验收。该交付阻塞收口后回到 `M13 Product Truth Sprint`，不借机恢复通用功能扩张。
 
 ## 当前里程碑
 
 ### M13 · Product Truth Sprint — active
 
-- `v0.12.7` 作为固定产品事实基线，不边验证边增加通用功能；
+- `v0.12.8` 作为固定产品事实基线，不边验证边增加通用功能；
 - Research Desk 使用同一合同三跑、两个不同主题和至少一次非作者独立运行；
 - Teaching Studio 只做 Owner/真实教学单元发现、现有能力模拟和教师口头走查；Builder Lab 只跑 WB-05 泛化检查；
 - 只修安全/数据完整性问题、真实任务阻塞、两个场景共同需要的 Core 合同，以及证据/grader 真源问题；
 - 验收合同与退出裁决见 [`M13-PRODUCT-TRUTH-SPRINT.md`](M13-PRODUCT-TRUTH-SPRINT.md)。
+
+### v0.12.8 · First-party Windows Update Feed — release target
+
+- [Issue #26](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/26) 把 stable Windows x64 从第三方更新发现服务迁到仓库自己的公开 GitHub Release 静态 feed；旧版本需要最后一次手动覆盖安装，其他 channel/架构继续 fail closed；
+- [PR #27](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/pull/27) 至 [PR #32](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/pull/32) 已合入第一方 feed、有界 GitHub 重试、阶段诊断、日志锁规避和进程树有界终止；
+- `main` CI `32119783829` 把 `v0.12.7` 原位升级到 `0.12.8-canary.82` 并读回 `profilePreserved=true`；手动公网 workflow `32120336697` 从第一方 feed 下载 265,770,685-byte full nupkg，完成 `v0.12.6 -> v0.12.7`、目标 UI 和 profile 读回；
+- `v0.12.8` Tag 仍需完成 stable 灰度、`v0.12.7 -> v0.12.8`、五项资产/哈希和发布后第一方公网升级。完成后关闭 Issue #26 并回到 M13；Windows 11 和代码签名不随 Issue #26 伪关闭。
 
 ### v0.12.7 · Real-user Update + One-consent Reporting — public unsigned Engineering Alpha
 
@@ -18,7 +25,7 @@
 - [Issue #23](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/23) 删除公开问题报告的三段必填叙述、手工生成和额外复选框；LocalBuddy 自动生成安全摘要/Trace，用户检查后以一个明确按钮同意打开 GitHub；
 - [PR #24](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/pull/24) 已合入 `a165750571594fd2247b2db857217fb5c2a7bded`；`main` CI `32036190030` 把 `v0.12.6` 原地升级到 `0.12.7-canary.67` 并读回 `profilePreserved=true`；
 - Tag `v0.12.7` 固定到 `f1b02ccb11b3a24e00ef91102a3a11d18e7a8405`；Release workflow `32038914446` 的 Windows 发布作业通过，但第三方 updater 作业连续十分钟 HTTP 404 后失败。下一补丁改用第一方静态 feed，并以真实 Windows Squirrel 在线升级作为发布门禁；
-- [Issue #26](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/26) 跟踪第一方 feed、手动 Windows 复验、下一补丁 Tag 门禁和资产读回；完成后回到 M13 场景验证，不扩成新的更新平台；
+- [Issue #26](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/26) 跟踪第一方 feed、手动 Windows 复验、`v0.12.8` Tag 门禁和资产读回；完成后回到 M13 场景验证，不扩成新的更新平台；
 - 这两项是已发生的真实用户阻塞修复，不恢复通用功能扩张。真正字节进度仍属于另行评审的 transport 变化，Windows 11 真人 OTA 继续保留为未验收。
 
 ### v0.12.6 · Private Run Storage + Product Truth — public unsigned Engineering Alpha

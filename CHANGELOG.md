@@ -4,14 +4,25 @@
 
 ## Unreleased
 
+暂无。
+
+## 0.12.8 — 2026-08-18
+
+公开但未签名的 First-party Windows Update Feed Engineering Alpha。本版本只修复已发生的 Windows 交付阻塞：把稳定版从不可控的第三方更新发现服务迁到仓库自己的 GitHub Release 静态 Squirrel feed，并让偶发网络挂起在有界时间内留下可审计证据。
+
 ### Fixed
 
 - [Issue #26](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/26) 将 stable Windows 更新源改为仓库自己控制的 GitHub Release 静态 Squirrel feed；不再把版本发现完全依赖于 `update.electronjs.org`。当前只发布 Windows x64，因此非 x64 架构继续 fail closed；Canary、beta、开发包和非 Windows 构建仍不接稳定更新源。
 - 发布后门禁不再只请求第三方 JSON：Windows Runner 会真实安装上一稳定版，通过 `releases/latest/download` 获取 `RELEASES` 和 full nupkg，完成原地升级、目标 UI 读回和 profile 标记保留。另有手动工作流可对已经发布的稳定版本重复同一链路。
+- GitHub Release 解析、下载和发布加入五次有界重试；在线升级诊断拆分为检查、下载和安装三个阶段，超时后终止整个 Squirrel 进程树，最多等待十秒，不再让诊断脚本自身无限卡住。
 
-### Evidence pending
+### Evidence
 
-- `v0.12.7` 发布时，正式安装包、合成任务、`v0.12.6 -> v0.12.7` 原地升级和五项 Release 资产通过；第三方公共更新服务连续十分钟返回 HTTP 404，且同一时段 Electron Fiddle 控制请求也返回同类 404。新的第一方 feed 必须先通过真实 Windows `Update.exe` 验证，再发布新的补丁版本。
+- [PR #27](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/pull/27) 至 [PR #32](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/pull/32) 依次完成第一方 feed、稳定 Release 解析、有界 GitHub 重试、阶段诊断、日志锁规避和进程树有界终止；
+- 封版分支本机 `pnpm check` 共 219 项：217 passed、2 项 Windows-only 跳过、0 failed；`pnpm build` 与生产依赖高危审计通过。`v0.12.8` macOS arm64 App/ZIP/DMG 通过 DMG 完整性、ad-hoc 签名、14 个相对 symlink、Fuse、内置 Browser 和隔离无凭据首启；完整开发依赖审计仍只命中已记录且无上游修复版本的 Electron Forge `extract-zip` 打包期告警；
+- 合并提交 `33ba3aad46ff9c9ea8bce91692aea1fcd932321e` 的 [`main` CI `32119783829`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32119783829) 全绿：macOS/Windows 合同通过，Windows Server 2025 干净安装通过，并把 `v0.12.7` 原地升级到 `0.12.8-canary.82`，摘要记录 `profilePreserved=true`；
+- 手动公网门禁 [`32120336697`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32120336697) 在 Windows Server 2025 安装 `v0.12.6`，从无鉴权 `releases/latest/download` 获取 265,770,685-byte full nupkg 并升级到 `v0.12.7`；检查、下载、安装分别用时 2.559 秒、9.49 秒、17.05 秒，目标 UI 与 profile 标记读回通过；
+- 以上证明第一方公网 feed 和有界诊断合同成立。`v0.12.8` Tag、五项正式资产、`v0.12.7 -> v0.12.8` 发布后在线升级与独立回下载哈希仍由固定 Tag workflow 完成；真实 Windows 11 应用内检查/重启和代码签名继续是独立门禁。
 
 ## 0.12.7 — 2026-08-17
 

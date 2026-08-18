@@ -1,6 +1,6 @@
 # LocalBuddy V2 Dogfood Plan
 
-> 状态：`active`。固定产品事实基线为公开但未签名的 `v0.12.7 / Real-user Update + One-consent Reporting` Engineering Alpha；当前仍在 [`M13 Product Truth Sprint`](M13-PRODUCT-TRUTH-SPRINT.md)。M12.1-M12.4、私有 Run 存储、可见更新等待状态和自动公开安全 Trace 已经完成；`v0.12.7` 第三方 OTA 发现失败，下一补丁正切换第一方 feed。真实 Provider 重复运行、非作者用户、连续使用、Windows 11 真人 OTA 仍是独立门禁。
+> 状态：`active`。固定产品事实基线为公开但未签名的 `v0.12.8 / First-party Windows Update Feed` Engineering Alpha；当前仍在 [`M13 Product Truth Sprint`](M13-PRODUCT-TRUTH-SPRINT.md)。M12.1-M12.4、私有 Run 存储、可见更新等待状态、自动公开安全 Trace 和第一方公网 feed 已经完成；真实 Provider 重复运行、非作者用户、连续使用、Windows 11 真人 OTA 仍是独立门禁。
 
 ## 目标
 
@@ -34,7 +34,7 @@
 
 历史合成灰度提交 `d686cd6` 的 [`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610) 已完成完整故障矩阵和 5 次额外重启，脱敏摘要 9 项检查全部通过；配套 [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 的 Windows 合同、macOS 回归和 Setup 无凭据首启也全部通过。
 
-当前固定 Release 为 `v0.12.7`。`main` CI [`32038546919`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32038546919) 通过 macOS/Windows 合同、Windows 干净安装和 `v0.12.6 -> 0.12.7-canary.69`；Release workflow [`32038914446`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32038914446) 的 Windows 作业通过 stable 灰度、`v0.12.6 -> v0.12.7`、profile 保留和五项资产，但第三方线上更新作业连续十分钟 HTTP 404 后失败。下一补丁只有在第一方 GitHub Release feed 的 Windows `Update.exe` 真升级通过后才发布。
+当前固定目标为 `v0.12.8`。`main` CI [`32119783829`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32119783829) 通过 macOS/Windows 合同、Windows 干净安装和 `v0.12.7 -> 0.12.8-canary.82`，`profilePreserved=true`。手动公网 workflow [`32120336697`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32120336697) 通过第一方 feed 完成 `v0.12.6 -> v0.12.7` 的检查、full nupkg 下载、安装、目标 UI 和 profile 读回。固定 Tag 仍需重复 `v0.12.7 -> v0.12.8` 并发布/回读五项资产。
 
 该阶段不使用真实 Provider Key，不产生模型费用，也不能证明 Windows 11 消费者桌面环境。
 
@@ -42,8 +42,8 @@
 
 设备到位后按顺序执行：
 
-1. 从 `v0.12.7` 手动覆盖安装带第一方 feed 的下一补丁，并保留一个非敏感 profile 标记；
-2. 待再下一个 stable 发布后，在应用内发现、下载并原地升级，不先卸载旧版；
+1. 从 `v0.12.7` 手动覆盖安装 `v0.12.8`，并保留一个非敏感 profile 标记；
+2. 待 `v0.12.9` 或更高 stable 发布后，在应用内发现、下载并原地升级，不先卸载旧版；
 3. Windows Credential Manager 写入并读取 DeepSeek/OpenAI 凭证；
 4. 真实 Research Run、两个活动 Run、取消和 checkpoint resume；
 5. Artifact 打开和诊断导出；
@@ -88,7 +88,7 @@ Research Desk 进入 closed pilot 前至少满足：
 - Coding 未经批准不修改主工作区，批准后的 diff/commit 可核对；
 - 中断、取消、恢复和 replay 的结果符合各自语义；
 - 所有失败都有明确状态和可导出的脱敏诊断，不伪装成成功；
-- 同一 `v0.12.7` 合同完成三次逐次披露的真实 Provider 运行，并记录中位表现；
+- 同一 `v0.12.8` 合同完成三次逐次披露的真实 Provider 运行，并记录中位表现；
 - 两个不同主题完成可打开、可核查、可修订的 Artifact，排除半导体 Prompt 特调；
 - 至少一位非作者用户独立完成一次，并记录作者介入和再次使用意愿；
 - 真实任务数据足以作出 `advance/pause/stop`，并判断下一阶段优先解决交互、资料摄取、Windows 执行宿主或 Provider 可靠性中的哪一项。
