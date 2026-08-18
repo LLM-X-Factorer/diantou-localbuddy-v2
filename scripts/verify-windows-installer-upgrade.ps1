@@ -151,6 +151,32 @@ function Save-SquirrelProcessOutput {
   }
 }
 
+function Stop-SquirrelProcessTree {
+  param(
+    [System.Diagnostics.Process] $Process,
+    [string] $Reason
+  )
+
+  $Process.Refresh()
+  if ($Process.HasExited) { return $true }
+
+  Write-Warning "Stopping Squirrel process tree after $Reason."
+  try {
+    & taskkill.exe /PID $Process.Id /T /F 2>&1 | Out-Null
+  } catch {
+    Write-Warning "Could not request Squirrel process-tree termination: $($_.Exception.GetType().Name)"
+  }
+
+  for ($attempt = 1; $attempt -le 20; $attempt += 1) {
+    Start-Sleep -Milliseconds 500
+    $Process.Refresh()
+    if ($Process.HasExited) { return $true }
+  }
+
+  Write-Warning "Squirrel process tree did not exit within 10 seconds."
+  return $false
+}
+
 function Invoke-SquirrelPhase {
   param(
     [string] $Phase,
@@ -182,18 +208,23 @@ function Invoke-SquirrelPhase {
         throw "Squirrel $Phase exceeded the ${TimeoutSeconds}s diagnostic timeout"
       }
     }
-    $phaseProcess.WaitForExit()
+    $phaseProcess.Refresh()
     $phaseExitCode = $phaseProcess.ExitCode
   } finally {
+    $processExited = $phaseProcess.HasExited
     if (-not $phaseProcess.HasExited) {
-      Stop-Process -Id $phaseProcess.Id -Force -ErrorAction SilentlyContinue
-      $phaseProcess.WaitForExit()
+      $processExited = Stop-SquirrelProcessTree -Process $phaseProcess -Reason "$Phase timeout or failure"
     }
-    if ($null -eq $phaseExitCode) { $phaseExitCode = $phaseProcess.ExitCode }
     Save-SquirrelDiagnostics
-    Save-SquirrelProcessOutput -Phase $Phase -RawStandardOutput $rawStandardOutput -RawStandardError $rawStandardError
-    $phaseProcess.Dispose()
-    $script:activeSquirrelProcess = $null
+    if ($processExited) {
+      $phaseProcess.Refresh()
+      if ($null -eq $phaseExitCode) { $phaseExitCode = $phaseProcess.ExitCode }
+      Save-SquirrelProcessOutput -Phase $Phase -RawStandardOutput $rawStandardOutput -RawStandardError $rawStandardError
+      $phaseProcess.Dispose()
+      $script:activeSquirrelProcess = $null
+    } else {
+      Write-Warning "Skipping Squirrel $Phase output capture because the process tree is still running."
+    }
   }
 
   $elapsed = [Math]::Round(([DateTime]::UtcNow - $startedAt).TotalSeconds, 3)
@@ -265,8 +296,11 @@ try {
   $summaryJson
 } finally {
   if ($null -ne $activeSquirrelProcess -and -not $activeSquirrelProcess.HasExited) {
-    Stop-Process -Id $activeSquirrelProcess.Id -Force -ErrorAction SilentlyContinue
-    $activeSquirrelProcess.WaitForExit()
+    $treeStopped = Stop-SquirrelProcessTree -Process $activeSquirrelProcess -Reason "top-level cleanup"
+    if ($treeStopped) {
+      $activeSquirrelProcess.Dispose()
+      $script:activeSquirrelProcess = $null
+    }
   }
   Save-SquirrelDiagnostics
   if (Test-Path -LiteralPath $rawDiagnosticsRoot -PathType Container) {

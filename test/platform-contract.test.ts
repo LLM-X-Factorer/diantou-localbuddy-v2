@@ -79,6 +79,9 @@ test("declares Windows-first CI plus low-frequency Linux maintenance boundaries"
   assert.match(upgradeVerification, /Squirrel \$Phase exceeded the \$\{TimeoutSeconds\}s diagnostic timeout/);
   assert.match(upgradeVerification, /squirrel-package-state\.json/);
   assert.match(upgradeVerification, /ConvertTo-SanitizedDiagnosticText/);
+  assert.match(upgradeVerification, /taskkill\.exe \/PID \$Process\.Id \/T \/F/);
+  assert.match(upgradeVerification, /Start-Sleep -Milliseconds 500/);
+  assert.doesNotMatch(upgradeVerification, /\.WaitForExit\(\)/);
   const githubCliRetry = await readFile(resolve(repository, "scripts", "invoke-github-cli-with-retry.ps1"), "utf8");
   assert.match(githubCliRetry, /MaximumAttempts = 5/);
   assert.match(githubCliRetry, /Start-Sleep -Seconds \$delaySeconds/);
