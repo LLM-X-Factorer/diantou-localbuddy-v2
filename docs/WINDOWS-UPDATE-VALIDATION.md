@@ -1,6 +1,6 @@
 # Windows Update Validation
 
-> 当前发布目标：公开但未签名的 `v0.12.8 / First-party Windows Update Feed` Engineering Alpha。第一方 GitHub Release 静态 feed 已通过 Windows Squirrel 公网真升级；固定 Tag 资产和 `v0.12.7 -> v0.12.8` 发布后门禁仍须单独回读。真实 Windows 11 应用内升级和代码签名仍未验收。
+> 当前已发布版本：公开但未签名的 `v0.12.8 / First-party Windows Update Feed` Engineering Alpha。固定 Tag、五项资产、`v0.12.7 -> v0.12.8` 本地/第一方公网升级和独立 SHA-256 回读已通过。真实 Windows 11 应用内升级和代码签名仍未验收。
 
 ## 0.12.8 First-party Windows Update Feed
 
@@ -15,12 +15,21 @@
 - 修复后的手动公网 workflow [`32120336697`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32120336697) 在 Windows Server 2025 安装 `LocalBuddy-0.12.6-Setup.exe`，经第一方公开 feed 升级到 `app-0.12.7`。检查、下载、安装分别为 2.559 秒、9.49 秒、17.05 秒；包状态记录 `LocalBuddy-0.12.7-full.nupkg` 265,770,685 bytes、`RELEASES` 82 bytes，目标 UI 与非敏感 profile 标记均通过；
 - 成功说明 GitHub 静态 feed 可被当前 Squirrel 使用；前一次挂起说明旧 WebClient/网络仍可能偶发阻塞，因此阶段超时、进程树终止和脱敏证据上传是生产门禁的一部分，不能因一次成功删除。
 
-### 发布后仍需回读
+### v0.12.8 Release 读回
 
-- `v0.12.8` annotated Tag 与目标提交；
-- Windows 发布作业的生产依赖审计、219 项合同、安装版合成灰度、`v0.12.7 -> v0.12.8` 本地升级、五项资产与 SHA-256；
-- 独立 `online-update-smoke` 从 `v0.12.7` 经第一方公网 feed 升级到 `v0.12.8`；
-- 新临时目录中的五项 Release 资产字节数、清单和 GitHub digest。
+- annotated Tag `v0.12.8`（Tag object `2c9c40ad731049cf6edaa61f63f8d59b065d4805`）解引用到合并提交 `5353684e12afb091a267f1658cae8d4b0531ac6c`；Release 非 draft、非 prerelease，于 2026-08-18 公开；
+- Release workflow [`32122329408`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32122329408) 全绿。Windows 发布作业 `95665271355` 通过生产依赖审计、219 项合同、stable 安装版合成灰度、`v0.12.7 -> v0.12.8` 本地升级、`profilePreserved=true` 和五项资产发布；本地 update 阶段用时 23.417 秒；
+- 独立 `online-update-smoke` 作业 `95668249249` 安装 `v0.12.7`，经第一方 `releases/latest/download` 下载 265,770,518-byte full nupkg 并升级到 `app-0.12.8`；检查、下载、安装分别用时 1.302 秒、4.787 秒、18.812 秒，UI 从 `STABLE v0.12.7 · f1b02ccb` 变为 `STABLE v0.12.8 · 5353684e`，profile 标记保留；
+- 安装版合成灰度的 clean/isolated first launch、系统安全存储、模型探测、Research Run、Plan Review、取消、双 Run、checkpoint 恢复、重启历史和凭据脱敏共十二项检查全部通过；
+- 五项 Release 资产已下载到新的临时目录；清单中的四项分发文件全部通过 `shasum -a 256 -c SHA256SUMS-windows.txt`，清单自身与五个 GitHub asset digest 也和本机计算一致：
+
+| 资产 | Bytes | SHA-256 |
+|---|---:|---|
+| `LocalBuddy-0.12.8-Setup.exe` | 266,493,440 | `9d56ef9745263e1d9b13775a7057e903a872e0eb609a0ce332e2c0762516c593` |
+| `LocalBuddy-win32-x64-0.12.8.zip` | 274,433,865 | `448df9e8c286cbded141cdca6b4f66fc7d23ab0a2101ef1062e6a953c7dadcc3` |
+| `LocalBuddy-0.12.8-full.nupkg` | 265,770,518 | `080eaa4b06419b2ce7550c8e21c5e77667bf89e2b57905d67679bda114f94dd3` |
+| `RELEASES` | 82 | `15572cfa8a7948ca00d751c1f2e2f1f9f7d399743c054567d6043e2242237c4e` |
+| `SHA256SUMS-windows.txt` | 362 | `e7c0c8c206246f1d843d5b00afdd5d1d167aed7c07a0e4e4cd6a4f9367c864b7` |
 
 `v0.12.4-v0.12.7` 已发布包仍写死第三方 feed，因此现有用户需要不卸载地手动覆盖安装 `v0.12.8` 一次。只有再发布一个后续 stable，并在真实 Windows 11 从 `v0.12.8` 完成应用内发现、下载、忙碌 Run 阻断、重启和 profile/版本读回，才可以把“以后无需回仓库下载”写成真机事实。
 
@@ -134,7 +143,7 @@ PR #6 首轮 Windows 全量测试暴露一条只接受 LF 的源码合同；Wind
 | TypeScript/静态合同 | 通过 | `pnpm check` 共 219 项：217 passed、2 项 Windows-only 在 macOS 跳过、0 failed；自动安全 Trace、单一同意动作、更新等待状态和固定下载兜底合同通过 |
 | macOS 本机开发构建 | 通过 | `pnpm build`、合成 Electron 问题报告 UI smoke、App/ZIP/DMG、DMG 完整性、ad-hoc 签名、14 个相对 symlink、Fuse、内置 Browser 和隔离无凭据首启通过。macOS 不能运行 Windows Squirrel |
 | Windows Server 2025 原生 CI | 通过 | CI `32119783829`：macOS/Windows 合同、PowerShell 解析、干净安装和 `v0.12.7 -> 0.12.8-canary.82` 原地升级作业全部通过，`profilePreserved=true` |
-| Windows Tag Release | 待 `v0.12.8` 固定 Tag | 必须通过 stable 灰度、本地升级、五项资产发布和独立第一方公网升级；不能用发布前手动 workflow 代替 |
+| Windows Tag Release | 通过 | `32122329408`：stable 灰度、本地升级、五项资产发布和独立第一方公网升级全绿；五项资产独立回下载匹配清单/GitHub digest |
 | Windows 11 真机 | 未验收 | Canary 同步、稳定安装升级、Credential Manager、SmartScreen/UAC、真实 Provider |
 | 生产更新源 | 第一方公网 Squirrel 直连通过 | workflow `32120336697` 完成 265,770,685-byte 包下载、安装、UI 与 profile 读回；`v0.12.8` 发布后门禁及 Windows 11 应用内检查/重启仍独立验收 |
 

@@ -1,6 +1,6 @@
 # LocalBuddy V2 Architecture
 
-> **状态基线**：2026-08-18，`v0.12.8 / First-party Windows Update Feed` 是当前发布目标，公开但未签名，并继续包含 M11.1 Goal Contract + Plan Review、M12.1-M12.4、私有 Run 存储、公开问题报告与更新桥接。各历史 Validation 保留对应阶段当时的证据边界。
+> **状态基线**：2026-08-18，`v0.12.8 / First-party Windows Update Feed` 是当前公开但未签名的 Engineering Alpha Release，并继续包含 M11.1 Goal Contract + Plan Review、M12.1-M12.4、私有 Run 存储、公开问题报告与更新桥接。各历史 Validation 保留对应阶段当时的证据边界。
 
 ## 1. 产品判断
 
@@ -258,6 +258,6 @@ Main 只在 packaged Windows x64 配置 updater：stable 构建固定使用仓�
 26. **v0.12.5 Public Bug Reporting（v0.12.7 已发布 v2 交互）**：失败 Run 的公开报告由独立纯函数模块只从结构化允许字段生成并签名；Main 负责只读去重查询、本地保存和受限 GitHub URL，Renderer 自动展示预览，并以一个明确按钮取得公开同意。应用不接收重复叙述、不自动上传原始诊断或私有运行内容，最终公开提交仍由用户在浏览器完成。
 27. **v0.12.6 Private Run Storage（已发布）**：Run Request、事件、checkpoint、Artifact、Browser state、Integration 和 revision source 统一使用私有原子/追加写；macOS/Linux 使用 `0700`/`0600`，Windows 明确继承父目录 ACL；旧 Run 只在工作区锁内有界加固，托管符号链接 fail closed。Desktop 默认收起显示确切路径，并对已知云同步/网络目录告警。
 28. **v0.12.7 Real-user Feedback UX（已发布）**：Windows 原生 updater 只暴露阶段而不暴露字节进度，Renderer 因此显示真实的后台活动、已等待时间和固定官方下载页，不伪造百分比；问题报告从结构化 Run 投影自动生成安全 Trace，单一同意动作只打开固定 GitHub 表单，最终提交仍由用户完成。
-29. **v0.12.8 First-party Windows Update Feed（发布目标）**：packaged stable Windows x64 使用仓库公开 GitHub Release 的静态 Squirrel feed；其他 channel/架构 fail closed。发布和手动门禁安装上一稳定版，依次执行检查、下载和安装，读回目标 UI/profile；每阶段有独立超时，超时后有界终止整个更新进程树并上传脱敏诊断。
+29. **v0.12.8 First-party Windows Update Feed（已发布）**：packaged stable Windows x64 使用仓库公开 GitHub Release 的静态 Squirrel feed；其他 channel/架构 fail closed。发布和手动门禁安装上一稳定版，依次执行检查、下载和安装，读回目标 UI/profile；每阶段有独立超时，超时后有界终止整个更新进程树并上传脱敏诊断。
 
 M11 已完成最小 Goal/Plan 控制面，M12.1-M12.4 已建立显式 Artifact 修订链、历史列表、直接父版本差异、受限 DOCX 纵向链路及独立 DOCX Reviewer；通用多轮工作线程、计划编辑、Goal revision 2+、跨 Artifact/人工 Reviewer、Project/Workspace 首页、PDF/XLSX/PPTX 和复杂 Word 保真编辑仍未完成，不能写成已支持能力。

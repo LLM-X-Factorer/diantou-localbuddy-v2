@@ -1,6 +1,6 @@
 # Windows 开发更新与安装升级
 
-> 状态：当前发布目标是公开但未签名的 `v0.12.8` Engineering Alpha。它把 stable Windows x64 切到仓库自己的 GitHub Release 静态 feed；Windows Server 2025 已完成第一方公网 Squirrel 真升级。`v0.12.7` 及更早版本仍需手动覆盖安装 `v0.12.8` 一次；固定 Tag 资产、发布后升级和 Windows 11 应用内重启继续分别验收。
+> 状态：当前已发布基线是公开但未签名的 `v0.12.8` Engineering Alpha。它把 stable Windows x64 切到仓库自己的 GitHub Release 静态 feed；Windows Server 2025 已完成正式资产、`v0.12.7 -> v0.12.8` 和第一方公网 Squirrel 真升级。`v0.12.7` 及更早版本仍需手动覆盖安装 `v0.12.8` 一次；Windows 11 应用内重启继续独立验收。
 
 ## 一句话方案
 

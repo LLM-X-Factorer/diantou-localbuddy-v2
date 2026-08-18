@@ -34,7 +34,7 @@
 
 历史合成灰度提交 `d686cd6` 的 [`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610) 已完成完整故障矩阵和 5 次额外重启，脱敏摘要 9 项检查全部通过；配套 [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 的 Windows 合同、macOS 回归和 Setup 无凭据首启也全部通过。
 
-当前固定目标为 `v0.12.8`。`main` CI [`32119783829`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32119783829) 通过 macOS/Windows 合同、Windows 干净安装和 `v0.12.7 -> 0.12.8-canary.82`，`profilePreserved=true`。手动公网 workflow [`32120336697`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32120336697) 通过第一方 feed 完成 `v0.12.6 -> v0.12.7` 的检查、full nupkg 下载、安装、目标 UI 和 profile 读回。固定 Tag 仍需重复 `v0.12.7 -> v0.12.8` 并发布/回读五项资产。
+当前固定 Release 为 `v0.12.8`。`main` CI [`32121808822`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32121808822) 通过 macOS/Windows 合同、Windows 干净安装和 `v0.12.7 -> 0.12.8-canary`，`profilePreserved=true`。固定 Tag workflow [`32122329408`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32122329408) 全绿：stable 安装版灰度、`v0.12.7 -> v0.12.8` 本地升级、五项资产发布和第一方公网升级均通过；公网检查、下载、安装分别为 1.302 秒、4.787 秒、18.812 秒。五项资产已独立回下载并匹配清单/GitHub digest。
 
 该阶段不使用真实 Provider Key，不产生模型费用，也不能证明 Windows 11 消费者桌面环境。
 

@@ -1,6 +1,6 @@
 # LocalBuddy V2 Release Runbook
 
-> 当前发布目标：`v0.12.8 / First-party Windows Update Feed Engineering Alpha`，并继续包含 M11.1 Goal Contract + Plan Review、M12.1-M12.4、私有 Run 存储、公开问题报告与更新桥接。本次 Git push、Tag 和 Release 已由唯一当前用户明确授权。
+> 当前公开但未签名的 Release：`v0.12.8 / First-party Windows Update Feed Engineering Alpha`，并继续包含 M11.1 Goal Contract + Plan Review、M12.1-M12.4、私有 Run 存储、公开问题报告与更新桥接。本次 Git push、Tag 和 Release 已由唯一当前用户明确授权并完成。
 
 ## 1. 发布真源
 
