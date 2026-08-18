@@ -1,6 +1,6 @@
 # LocalBuddy V2 Release Runbook
 
-> 当前公开但未签名的 Release：`v0.12.7 / Real-user Update + One-consent Reporting Engineering Alpha`，并继续包含 M11.1 Goal Contract + Plan Review、M12.1-M12.4、私有 Run 存储、公开问题报告与更新桥接。本次 Git push、Tag 和 Release 已由唯一当前用户明确授权。
+> 当前发布目标：`v0.12.8 / First-party Windows Update Feed Engineering Alpha`，并继续包含 M11.1 Goal Contract + Plan Review、M12.1-M12.4、私有 Run 存储、公开问题报告与更新桥接。本次 Git push、Tag 和 Release 已由唯一当前用户明确授权。
 
 ## 1. 发布真源
 
@@ -65,7 +65,7 @@ git push origin vX.Y.Z
 6. 同一 Windows 作业复核 Tag/包版本和 Windows SHA-256 后直接创建或更新 GitHub Release，不通过临时 Actions Artifact 中转正式二进制；
 7. `vX.Y.Z-rc.N` 等带预发布后缀的 Tag 自动标记为 prerelease。
 
-下一补丁起，稳定 Windows x64 包会把 `https://github.com/<owner>/<repo>/releases/latest/download` 作为内置只读 feed。公开 Tag Release 的独立 `online-update-smoke` 作业会在 Windows Runner 安装上一稳定版，通过公网 `RELEASES` 和 full nupkg 完成原地升级，再读回目标 UI 与 profile 标记；Setup、ZIP、full nupkg、`RELEASES` 和清单仍由 Windows 发布作业分别复核。不能把带鉴权的 Release API、单次 curl 或本地 feed 冒充普通用户可用的更新链路。
+从 `v0.12.8` 起，稳定 Windows x64 包把 `https://github.com/<owner>/<repo>/releases/latest/download` 作为内置只读 feed。公开 Tag Release 的独立 `online-update-smoke` 作业会在 Windows Runner 安装上一稳定版，通过公网 `RELEASES` 和 full nupkg 完成原地升级，再读回目标 UI 与 profile 标记；Setup、ZIP、full nupkg、`RELEASES` 和清单仍由 Windows 发布作业分别复核。不能把带鉴权的 Release API、单次 curl 或本地 feed 冒充普通用户可用的更新链路。
 
 `v0.12.2` 没有内置 feed，因此首次启用在线更新必须发布一个需要手动原地安装的桥接版本。桥接后的下一稳定版才是线上 OTA 真正验收目标；只验证 endpoint 或 CI 本地 feed 不等于用户升级成功。
 
@@ -91,10 +91,10 @@ Linux 不再进入 Tag Release。`.github/workflows/linux-maintenance.yml` 只�
 
 ## 5. 回滚与修复
 
-- 平台无关的 Ed25519 更新协议仍只 staging；下一补丁起的 stable Windows x64 包内置第一方 GitHub Release feed，其余 channel 默认关闭，当前没有强制更新；
+- 平台无关的 Ed25519 更新协议仍只 staging；`v0.12.8` 起的 stable Windows x64 包内置第一方 GitHub Release feed，其余 channel 默认关闭，当前没有强制更新；
 - 发现错误资产时停止传播，保留证据并判断是否属于未交付的发布恢复；
 - 已交付版本使用新的 patch 版本修复，不重写 Git 历史；
 - 集成代码回滚使用普通 revert commit，不 amend 已推送提交；
 - Release 事实变化后同步 Changelog、Known Limitations 和 Validation。
 
-`v0.12.4` 的桥接发布、`v0.12.5-v0.12.7` 的本地原地升级、Release 资产和第三方 endpoint 成功/失败证据见 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md)；旧 Release 不回写、不替换，第一方 feed 修复使用新的 patch 版本；Linux 资产不进入 Windows-first Tag Release。
+`v0.12.4` 的桥接发布、`v0.12.5-v0.12.8` 的本地原地升级、Release 资产、第三方 endpoint 失败和第一方公网 feed 证据见 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md)；旧 Release 不回写、不替换；Linux 资产不进入 Windows-first Tag Release。

@@ -1,6 +1,6 @@
 # Windows 开发更新与安装升级
 
-> 状态：当前已发布基线是公开但未签名的 `v0.12.7` Engineering Alpha。该版本的正式 Windows 包、原地升级和五项资产通过，但它依赖的第三方公共更新服务在发布后连续十分钟返回 HTTP 404。下一补丁候选改用仓库自己控制的 GitHub Release 静态 feed；完成 Windows 真升级并发布前，现有用户仍应手动覆盖安装，不要把第三方 endpoint 或 CI 本地升级冒充已可用 OTA。
+> 状态：当前发布目标是公开但未签名的 `v0.12.8` Engineering Alpha。它把 stable Windows x64 切到仓库自己的 GitHub Release 静态 feed；Windows Server 2025 已完成第一方公网 Squirrel 真升级。`v0.12.7` 及更早版本仍需手动覆盖安装 `v0.12.8` 一次；固定 Tag 资产、发布后升级和 Windows 11 应用内重启继续分别验收。
 
 ## 一句话方案
 
@@ -72,7 +72,7 @@ Canary 的 UI 会显示 `channel + version + short SHA`，用于确认“我实�
 
 ## 稳定版在线更新
 
-下一补丁的 packaged、stable、Windows x64 构建会由 Main 固定使用以下第一方只读地址：
+从 `v0.12.8` 起，packaged、stable、Windows x64 构建由 Main 固定使用以下第一方只读地址：
 
 ```text
 https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/latest/download
@@ -80,7 +80,7 @@ https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/latest/download
 
 Squirrel 直接读取该地址下的 `RELEASES`，再下载清单指定的 full nupkg；两者都来自同一个经过 Tag、版本和 SHA-256 门禁的公开 Release，不再经过第三方版本发现缓存。Renderer 仍不能修改更新源。Canary、beta、开发包和非 Windows 包默认不接稳定 feed；当前只发布 Windows x64，其他架构 fail closed。`LOCALBUDDY_UPDATE_FEED_URL` 只保留给打包验收时的显式 HTTPS/loopback 夹具，不作为用户配置或私有仓库鉴权方案。
 
-`v0.12.4-v0.12.7` 已发布包仍写死第三方 feed，无法由仓库在服务器侧改址。唯一当前用户需要对带第一方 feed 的下一补丁做一次手动原地安装；不需要先卸载。之后每个 Tag workflow 都必须在 Windows Runner 上从上一稳定版通过同一公网 feed 真升级，并且只有真实 Windows 11 完成线上检查、下载、重启、版本读回和 profile 保留后，才可以宣称普通用户无需回仓库下载。
+`v0.12.4-v0.12.7` 已发布包仍写死第三方 feed，无法由仓库在服务器侧改址。唯一当前用户需要对 `v0.12.8` 做一次手动原地安装；不需要先卸载。之后每个 Tag workflow 都必须在 Windows Runner 上从上一稳定版通过同一公网 feed 真升级，并且只有真实 Windows 11 从 `v0.12.8` 升级到后续 stable、完成线上检查、下载、重启、版本读回和 profile 保留后，才可以宣称普通用户无需回仓库下载。
 
 ## 应用内更新的安全规则
 
@@ -96,7 +96,7 @@ Windows 安装包已经接入 Electron/Squirrel 更新控制器。`0.12.4` 起�
 - Renderer 不能设置 feed，也不能绕过 Main 的空闲检查；
 - 当前没有静默安装、强制更新或自动回滚。
 
-Release workflow 从 `0.12.2` 起发布 Setup、便携 ZIP、`RELEASES`、full NuGet package 和 SHA-256 清单。验收通过的 Windows 作业直接把长期分发资产上传到 GitHub Release，不经临时 Artifact 中转；脱敏截图/摘要仍是尽力保存的短期证据。下一补丁起，独立线上门禁会安装上一稳定版，直接让 Squirrel `Update.exe` 从 GitHub `releases/latest/download` 下载并安装目标 full nupkg，再读回目标 UI 和 profile 标记。另有手动 workflow 可重复检查当前已发布的 stable。代码签名和真实 Windows 11 OTA 仍是独立门禁，不能因为托管 Runner 成功就写成“生产自动更新已验收”。
+Release workflow 从 `0.12.2` 起发布 Setup、便携 ZIP、`RELEASES`、full NuGet package 和 SHA-256 清单。验收通过的 Windows 作业直接把长期分发资产上传到 GitHub Release，不经临时 Artifact 中转；脱敏截图/摘要仍是尽力保存的短期证据。从 `v0.12.8` 起，独立线上门禁安装上一稳定版，直接让 Squirrel `Update.exe` 从 GitHub `releases/latest/download` 下载并安装目标 full nupkg，再读回目标 UI 和 profile 标记。另有手动 workflow 可重复检查当前已发布的 stable。代码签名和真实 Windows 11 OTA 仍是独立门禁，不能因为托管 Runner 成功就写成“生产自动更新已验收”。
 
 ## 验收记录
 

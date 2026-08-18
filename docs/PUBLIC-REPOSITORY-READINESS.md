@@ -1,6 +1,6 @@
 # Public Repository Readiness
 
-Publication audit completed: 2026-08-15. Release truth refreshed: 2026-08-17.
+Publication audit completed: 2026-08-15. Release truth refreshed: 2026-08-18.
 
 ## Decision boundary
 
@@ -22,7 +22,7 @@ These are not credentials, but they became public with the existing repository:
 
 - existing commits use the author identity already recorded in Git history;
 - historical validation documents contain a small number of macOS home-directory paths and GitHub-hosted Windows Runner paths;
-- public Issues and PRs, Actions history, historical Releases `v0.9.0` through `v0.12.2`, the failed `v0.12.3` Tag, bridge Release `v0.12.4` and current Releases through `v0.12.6` are visible;
+- public Issues and PRs, Actions history, historical Releases `v0.9.0` through `v0.12.2`, the failed `v0.12.3` Tag, bridge Release `v0.12.4` and current Releases through `v0.12.7` are visible;
 - old Release assets are unsigned Engineering Alpha binaries and may trigger Windows SmartScreen.
 
 The publication did not rewrite Git history or move historical Tags merely to hide low-sensitivity path metadata. Any future history rewrite would invalidate existing commit and Release evidence and requires a separate explicit decision.
@@ -37,6 +37,9 @@ The publication did not rewrite Git history or move historical Tags merely to hi
 - [x] Publish `v0.12.4` as the bridge Release and read back its immutable Tag, five assets, checksums and public update endpoint;
 - [x] Publish `v0.12.5`, verify `v0.12.4 -> v0.12.5` on Windows Server 2025, read back five assets/checksums and confirm the unauthenticated public updater response;
 - [x] Publish `v0.12.6`, verify `v0.12.5 -> v0.12.6` with profile preservation, independently download/check five assets and confirm the unauthenticated public updater response;
+- [x] Publish `v0.12.7`; retain the third-party updater HTTP 404 failure instead of moving the Tag or replacing assets;
+- [x] Verify the first-party GitHub Release feed with Windows Squirrel `Update.exe`, full nupkg download, target UI and profile preservation before tagging `v0.12.8`;
+- [ ] Publish `v0.12.8`, verify `v0.12.7 -> v0.12.8` through the first-party feed and independently read back five assets/checksums;
 - [ ] Complete a real Windows 11 online upgrade from the bridge version to a later stable version;
 - [ ] Add trusted Windows code signing before describing installation as suitable for ordinary public users.
 
@@ -45,12 +48,14 @@ The publication did not rewrite Git history or move historical Tags merely to hi
 `v0.12.3` stopped in the Windows test gate before packaging, so its immutable Tag is retained as failure evidence and no Release/assets exist. The bridge shipped as public unsigned Engineering Alpha `v0.12.4`.
 
 1. Existing `v0.12.2` users perform one final manual in-place install of the `v0.12.4` bridge Release; uninstall is not required.
-2. Builds through `v0.12.7` derive their feed from `update.electronjs.org`. That service returned HTTP 404 throughout the `v0.12.7` post-release gate, so the next patch switches packaged stable Windows x64 builds to `https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/latest/download`.
+2. Builds through `v0.12.7` derive their feed from `update.electronjs.org`. That service returned HTTP 404 throughout the `v0.12.7` post-release gate; `v0.12.8` switches packaged stable Windows x64 builds to `https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/latest/download`.
 3. Each stable Tag from `v0.12.5` publishes Setup, ZIP, `RELEASES`, full nupkg and checksums.
 4. The post-release workflow installs the prior stable Setup on Windows and uses Squirrel `Update.exe` against the first-party GitHub Release feed. It must install the new version, launch its UI and preserve a non-sensitive profile marker. The Release publisher separately requires Setup, ZIP, `RELEASES`, full nupkg and checksums.
 5. A real Windows 11 device checks, downloads, waits for Run/Integration idle, restarts, installs and reads back the new version while preserving a non-sensitive profile marker.
 
 Until step 5 is complete, LocalBuddy may say that the public updater is implemented or that the endpoint is reachable; it must not say that no-reinstall online updates are production-verified.
+
+Manual workflow `32120336697` completed the first-party hosted gate before the `v0.12.8` Tag: Windows Server 2025 installed `v0.12.6`, fetched `RELEASES` plus the 265,770,685-byte `v0.12.7` full nupkg from the public static feed, upgraded, launched the target UI and preserved the profile marker. Check, download and install took 2.559, 9.49 and 17.05 seconds. This proves the unauthenticated feed contract, but it does not replace the `v0.12.8` fixed-Tag gate or Windows 11 step 5.
 
 The `v0.12.4` Windows release job passed and the five assets were downloaded into a fresh directory and matched their SHA-256 manifest. Its separate online smoke kept the overall workflow red because the old validator searched the service JSON for a full nupkg filename and stopped after five minutes. The unauthenticated endpoint returned HTTP 200 with the exact `v0.12.4` Setup URL 42 seconds later. That failed audit is retained.
 

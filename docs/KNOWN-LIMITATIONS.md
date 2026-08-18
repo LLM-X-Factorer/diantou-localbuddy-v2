@@ -1,22 +1,22 @@
 # LocalBuddy V2 Known Limitations
 
-> 分发基线是公开但未签名的 `v0.12.7 / Real-user Update + One-consent Reporting` Engineering Alpha Release，包含 M12.1-M12.4、公开 GitHub stable feed、私有 Run 存储、可见更新等待状态和自动公开安全 Trace。`v0.12.3` 只有失败 Tag，没有 Release 或资产。当前灰度与发布优先 Windows，macOS 保留本机回归，Linux 降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
+> 当前发布目标是公开但未签名的 `v0.12.8 / First-party Windows Update Feed` Engineering Alpha，包含 M12.1-M12.4、第一方公开 GitHub stable feed、私有 Run 存储、可见更新等待状态和自动公开安全 Trace。`v0.12.3` 只有失败 Tag，没有 Release 或资产。当前灰度与发布优先 Windows，macOS 保留本机回归，Linux 降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
 
 ## Platform and distribution
 
-- Windows `v0.12.7` Setup/ZIP/full nupkg/RELEASES 由 Tag workflow 完成原生打包、安装版合成灰度、`v0.12.6 -> v0.12.7` 原地升级、profile 保留和回下载 SHA-256 校验。该门禁使用 Windows Server 2025 管理员 Runner 和确定性 Mock Provider，仍不覆盖终端用户设备上的 SmartScreen、标准用户/UAC、真实 Provider 与真实网络；
-- `v0.12.7` 内置的第三方公共更新服务在发布后连续十分钟返回 HTTP 404，因此该版本只能手动覆盖安装，不能宣称应用内 OTA 可用。下一补丁的候选代码改用 GitHub Release 第一方静态 Squirrel feed；在 Windows `Update.exe` 真升级和新版本发布完成前仍是未交付修复；
-- 原生 Electron/Squirrel updater 不提供字节级下载事件；v0.12.7 候选只显示真实阶段、已等待时间和不确定进度动画，并提供固定官方下载页兜底，不宣称百分比、速度或剩余时间；
+- `v0.12.8` Tag workflow 必须完成原生打包、安装版合成灰度、`v0.12.7 -> v0.12.8` 本地升级、profile 保留、五项资产和第一方公网升级。发布前手动 workflow 已证明当前 Squirrel 可经公开 `releases/latest/download` 下载 265,770,685-byte full nupkg 并升级，但不能替代固定 Tag 或 Windows 11；
+- `v0.12.4-v0.12.7` 内置的第三方公共更新服务在 `v0.12.7` 发布后连续十分钟返回 HTTP 404。旧版本无法由服务器改址，现有用户需要不卸载地手动覆盖安装 `v0.12.8` 一次；只有后续 stable 发布后，才能在真机验证 `v0.12.8` 自身发现和安装更新；
+- 原生 Electron/Squirrel updater 不提供字节级下载事件；`v0.12.8` 只显示真实阶段、已等待时间和不确定进度动画，并提供固定官方下载页兜底，不宣称百分比、速度或剩余时间；
 - Windows 没有受支持的本地进程隔离宿主，检查命令和本地进程型扩展 fail closed；
 - Linux `0.11.x` DEB 历史上已由 `ubuntu-24.04` Runner 原生构建；当前 Linux 只保留每周/手动维护，不进入 PR 或 Release 门禁，真实图形桌面与 Secret Service 验收暂不优先；
 - macOS 包是 ad-hoc 签名，未启用生产 Hardened Runtime，未 notarize；
 - Windows 包未做代码签名，可能出现 SmartScreen 提示；
 - Tag workflow 只发布 Windows x64 Setup/ZIP；Linux 与 macOS 不自动进入 GitHub Release。Windows Release 前运行安装版合成灰度；
 - `windows-2025` 是 Windows Server 2025 管理员 Runner，不能覆盖 Windows 11 的 SmartScreen、Defender、标准用户/UAC、DPI、输入法、睡眠或企业代理；
-- 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。`0.12.7` Tag 前已再次复查并继续在干净 Runner 上隔离打包；公开 Engineering Alpha 跟踪稳定上游迁移；
+- 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。`0.12.8` Tag 前继续在干净 Runner 上复查和隔离打包；公开 Engineering Alpha 跟踪稳定上游迁移；
 - 平台无关的 Ed25519 更新协议仍只下载、验签并 staging；`v0.12.4` stable Windows Squirrel updater 已内置公开 feed，但仍没有静默安装、强制更新或自动回滚；
 - `pnpm windows:canary` 只隔离 Electron user-data 和构建目录，不隔离系统 Credential Manager 或工作区 `.localbuddy/`；Canary 与稳定版不应同时写同一测试工作区；
-- `v0.12.2` 没有内置线上 feed；`v0.12.4-v0.12.7` 仍依赖当前不稳定的第三方 feed。已有用户需要手动原地安装下一补丁以切换到第一方 feed；不需要先卸载，托管发布门禁和 Windows 11 真人 OTA 仍分别验收；
+- `v0.12.2` 没有内置线上 feed；`v0.12.4-v0.12.7` 依赖不稳定的第三方 feed。已有用户需要手动原地安装 `v0.12.8` 以切换到第一方 feed；不需要先卸载，托管发布门禁和 Windows 11 真人 OTA 仍分别验收；
 
 ## Storage and privacy
 
