@@ -1,7 +1,7 @@
 # M13 Product Truth Sprint
 
-> 状态：`active`，2026-08-18。
-> 固定基线：公开但未签名的 `v0.12.8 / First-party Windows Update Feed` Engineering Alpha。
+> 状态：`active`，2026-08-19。
+> 固定基线：公开但未签名的 `v0.13.0 / User-first Workflows` Engineering Alpha 候选；固定 Tag 通过前当前公开 Release 仍是 `v0.12.8`。
 > 决策目标：判断 Research Desk 应该 `advance`、`pause` 还是 `stop`；本里程碑不是新一轮功能开发。
 
 ## 1. 第一性问题
@@ -34,7 +34,7 @@ PPTX、XLSX、RAG、Memory、自动化、远程助理、Marketplace、Hosted Cre
 - 一位非作者试用者，以不含个人信息的 `participant-*` 标识记录；
 - 一份人类可读的 `research-desk-v1` Scenario Product Contract；机器可读持久化仍由 Issue #4 管理；
 - 固定的 Goal、Source、Artifact、Review、停止条件和硬失败；
-- Provider、模型和 `v0.12.8` 安装包身份；
+- Provider、模型和 `v0.13.0` 安装包身份；
 - 经过正反例校准的人工 scorecard 与确定性 grader。
 
 未命名真实试用者前，可以准备合同和合成夹具，但不能把作者自测写成非作者验收。
@@ -99,8 +99,8 @@ PPTX、XLSX、RAG、Memory、自动化、远程助理、Marketplace、Hosted Cre
 
 Issue #7 并行管理，不用托管 Runner 代替真机：
 
-1. Windows 11 从 `v0.12.7` 手动原地安装 `v0.12.8`，不卸载旧版，并确认 profile 保留；
-2. 后续 stable 发布后，在 Windows 11 从 `v0.12.8` 完成应用内检查、下载、忙碌 Run 阻断、重启安装和 profile/版本读回；
+1. Windows 11 保留一个已安装且含非敏感 profile 标记的 `v0.12.8`；
+2. `v0.13.0` stable 发布后，在 Windows 11 从 `v0.12.8` 完成应用内检查、下载、忙碌 Run 阻断、重启安装和 profile/版本读回；
 3. 在面向普通公众分发前选择可信代码签名方案。
 
 Windows 11 门禁没有完成时，只能称公开 Engineering Alpha 和更新桥接版。
@@ -139,8 +139,10 @@ Windows 11 门禁没有完成时，只能称公开 Engineering Alpha 和更新�
 
 截图和结构化摘要位于 Git 忽略的 `.localbuddy/first-use-validation/2026-08-19/`。SNT-01 记录位于同样被忽略的 `.localbuddy/synthetic-novice/2026-08-19/SNT-01/`。无仓库上下文的合成新手会话随后独立完成了“示例会议记录 → 审核计划 → `会议纪要.docx` → Pages 打开”的安装版路径；它发现的“模型已连接仍提示连接”和“系统打开后无反馈”已分别由 #37、#38 跟踪并在修复后的真实 Electron 界面复测通过。DOCX 的标题、关键结论、行动项表格和待确认事项在 Pages 中可见且可编辑。
 
-这些证据只证明真实 Electron 界面、确定性 loopback 运行时和安全存储替身合同；没有使用真实 DeepSeek/OpenAI 凭据。合成新手会话也不是真实外部用户，不得写成 `RD-NONAUTHOR`，不改变公开 `v0.12.8` Release，不足以宣布 M13 `advance`。
+这些证据只证明真实 Electron 界面、确定性 loopback 运行时和安全存储替身合同；没有使用真实 DeepSeek/OpenAI 凭据。合成新手会话也不是真实外部用户，不得写成 `RD-NONAUTHOR`。它们进入 `v0.13.0` 候选，但不足以宣布 M13 `advance`。
 
 同日继续按 [`AGENT-PRODUCT-PRINCIPLES.md`](AGENT-PRODUCT-PRINCIPLES.md) 的 LocalBuddy 产品核心重构完整工作台：默认页面不再以 Agent 图、模型指标和原始事件为中心，而是从同一份持久审计事件投影出“当前进展 → 用户可理解步骤 → 已验证结果 → 下一步”。完整事件、模型/工具耗时和并行关系保留在“查看详细过程”的脱敏时间线中；新任务页只要求用户描述结果，任务要求、模型服务、确认方式、任务类型和并发均按需展开。历史 Run 不再持续占用一个新任务编辑器。
 
 作者使用隔离 `userData` 和隔离工作区，在真实 Electron 窗口中检查了新任务默认收起态、完成态、脱敏并行时间线和经 Registry/SHA-256 校验后的结果预览。时间线和结果内容来自明确标注的确定性验收夹具，因此证明的是界面投影、文件校验和交互路径，不是真实 Provider 运行证据，也不改变上述 M13 状态。
+
+`v0.13.0` 是新的固定候选，而不是对 `v0.12.8` Truth Sprint 的事后补丁。旧版真实运行保留原版本事实；RD-FIXED × 3、RD-TOPIC-B/C、RD-NONAUTHOR、成本与中位表现全部在 `v0.13.0` 上重新计数。发布成功只解除分发身份门，不替代这些产品门。

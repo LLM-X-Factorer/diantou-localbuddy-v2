@@ -1,6 +1,15 @@
 # Windows Update Validation
 
-> 当前已发布版本：公开但未签名的 `v0.12.8 / First-party Windows Update Feed` Engineering Alpha。固定 Tag、五项资产、`v0.12.7 -> v0.12.8` 本地/第一方公网升级和独立 SHA-256 回读已通过。真实 Windows 11 应用内升级和代码签名仍未验收。
+> 当前发布目标：公开但未签名的 `v0.13.0 / User-first Workflows` Engineering Alpha；当前已发布版本仍是 `v0.12.8 / First-party Windows Update Feed`。候选固定 Tag、五项资产、`v0.12.8 -> v0.13.0` 本地/第一方公网升级和独立 SHA-256 回读仍待完成。真实 Windows 11 应用内升级和代码签名仍未验收。
+
+## 0.13.0 User-first Workflows 发布候选
+
+- 实现提交 `788c48b95b346f262a7e986c4ec75c775d139d9f` 的 [`main` CI `32225426992`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32225426992) 全绿：macOS 回归、Windows 全量合同、Windows 干净安装和从 `v0.12.8` 到 Canary 的原位升级通过；
+- 本机 `pnpm check` 为 226 项：224 passed、2 项 Windows-only 跳过、0 failed；`0.13.0` macOS arm64 App/ZIP/DMG、ad-hoc 签名、DMG 完整性、隔离无凭据首启、“方法与连接”目录、合成新手会议纪要任务和 Pages 打开通过；
+- `pnpm audit --prod --audit-level high` 返回无已知漏洞；完整开发依赖审计仍只命中 Electron Forge 打包链中的 `extract-zip 2.0.1` 公告 `GHSA-jmr9-qjv8-65gv`，上游报告无可用修复版本。该依赖不进入用户运行时，只在受控 Runner 中承担打包风险；
+- 上述证据早于 `0.13.0` 版本提交，证明实现候选与升级骨架，不替代固定版本 `main` CI、Tag Release 或 stable 资产；
+- 发布门禁必须在 `v0.13.0` Tag 上重复生产依赖审计、完整合同、stable 安装版合成灰度、`v0.12.8 -> v0.13.0` 本地原位升级、五项资产发布，以及独立第一方公网 feed 真升级；
+- 发布后还要在新临时目录回下载五项资产，逐项核对清单、字节数、本机 SHA-256 和 GitHub digest。完成前本节保持候选状态。
 
 ## 0.12.8 First-party Windows Update Feed
 

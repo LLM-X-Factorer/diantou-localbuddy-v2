@@ -6,6 +6,37 @@
 
 暂无。
 
+## 0.13.0 — 2026-08-19
+
+公开但未签名的 User-first Workflows Engineering Alpha 发布候选。本版本不宣布 M13 产品成立，而是把首次使用、运行状态和本地扩展从面向 Agent 开发者的控制面收口成普通用户可以理解、可以检查的工作路径，并修复大工作区恢复时不必要的全目录快照。
+
+### Added
+
+- 首次使用只推荐一个熟悉、低风险的真实 Job：把一份完全虚构或用户明确选择的会议记录整理成可编辑的 `会议纪要.docx`。准备示例不调用模型；确认计划前不读取资料；原文件不会被修改；缺失信息必须标记为“待确认”。
+- 完整工作台从持久审计事件投影出“当前进展、用户可理解步骤、已验证结果和下一步”；模型调用、工具事件、耗时及并行关系保留在默认收起的详细时间线中，不再让 Agent 图和 Token 指标抢占主路径。
+- 本地 Skill 和 MCP 以“方法与连接”目录呈现，只发现 `.localbuddy/skills` 与 `.localbuddy/mcp.json` 中的受限元数据。发现不等于启用，用户必须明确选择；副作用调用仍逐次审批，不自动连接、下载或安装扩展。
+
+### Changed
+
+- 新任务默认只要求用户描述希望得到的结果；资料、限制和验收按需填写，Provider、信任档、任务类型、并发和扩展能力进入高级设置或就近解释。
+- 计划审核、等待、运行、需要操作、成功和失败状态改用日常语言说明“现在做什么、是否需要用户操作、结果在哪里、失败后下一步是什么”。结果可预览、用系统默认应用打开或继续修改；打开期间和交给系统应用后都有可见反馈。
+- `README`、Quickstart、Roadmap、Known Limitations、Dogfood 和 M13 固定到同一 `v0.13.0` 候选口径；旧版本发布证据保留，不因候选发布回写历史。
+
+### Fixed
+
+- 同 Run checkpoint 恢复不再构造整个工作区快照；只复核实际读取证据。即使 Run 目录中存在一千个以上无关文件，也不会因安全 checkpoint 条目上限阻断恢复。
+- 工作区就绪检查不再枚举或计算无关文件大小；运行位置和本次资料继续分离，LocalBuddy 不会因为选择了一个目录就自动扫描其中所有文件。
+- 模型已经就绪时，第一次任务不再重复要求“连接模型”；系统打开结果后不再没有反馈。
+
+### Candidate evidence
+
+- 实现提交 `788c48b95b346f262a7e986c4ec75c775d139d9f` 已推送 `main`；本机 `pnpm check` 共 226 项：224 passed、2 项 Windows-only 跳过、0 failed；
+- `pnpm audit --prod --audit-level high` 返回无已知漏洞；完整开发依赖审计仍只命中 Electron Forge 打包链中的 `extract-zip 2.0.1` 公告 `GHSA-jmr9-qjv8-65gv`，上游报告无可用修复版本。该依赖不进入用户运行时，发布只在受控 Runner 中打包，不通过忽略规则伪装为全绿；
+- `0.13.0` macOS arm64 App、ZIP 和 DMG 已实际生成；ad-hoc 签名、DMG 完整性、隔离无凭据首启和真实 Electron 首次任务界面通过，方法与连接目录在隔离工作区中通过且没有尝试真实 MCP 连接；
+- [`main` CI `32225426992`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32225426992) 全绿：macOS 回归、Windows 全量检查、Windows 干净安装和从 `v0.12.8` 到 Canary 的原位升级均通过；
+- DOCX 完整任务使用 loopback 确定性 Provider，并在 Pages 中实际打开标题、关键结论、行动项表格和待确认事项。这是 synthetic novice regression，不是真实 DeepSeek/OpenAI 或 `RD-NONAUTHOR` 证据；
+- 固定 Tag、stable 安装版灰度、`v0.12.8 -> v0.13.0` 本地/公网升级、五项正式资产和独立回下载仍属于发布门禁，未完成前不得写成已发布。
+
 ## 0.12.8 — 2026-08-18
 
 公开但未签名的 First-party Windows Update Feed Engineering Alpha。本版本只修复已发生的 Windows 交付阻塞：把稳定版从不可控的第三方更新发现服务迁到仓库自己的 GitHub Release 静态 Squirrel feed，并让偶发网络挂起在有界时间内留下可审计证据。
