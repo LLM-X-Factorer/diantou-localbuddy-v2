@@ -194,13 +194,15 @@ async function configureProvider(page) {
   const dialog = page.locator(".provider-settings-dialog");
   await dialog.locator(".provider-choice-grid button").filter({ hasText: "OpenAI" }).click();
   if (credentialMode === "environment") {
-    await waitForText(dialog.locator(".provider-credential-summary"), /已连接/);
+    await waitForText(dialog.locator(".provider-credential-summary strong"), /OpenAI · 已连接/);
+    await waitForProviderVerificationReady(dialog);
     return;
   }
   await dialog.locator('input[type="password"]').fill(FIXTURE_KEY);
   await dialog.getByRole("button", { name: "安全保存到本机" }).click();
   await waitForText(dialog.locator(".provider-settings-status"), /安全保存到本机/);
-  await waitForText(dialog.locator(".provider-credential-summary"), /已连接/);
+  await waitForText(dialog.locator(".provider-credential-summary strong"), /OpenAI · 已连接/);
+  await waitForProviderVerificationReady(dialog);
 }
 
 async function verifyFaultMatrix(page) {
@@ -213,13 +215,16 @@ async function verifyFaultMatrix(page) {
   ];
   for (const [path, expected] of cases) {
     await setProviderBaseUrlInOpenDialog(page, `${mockProvider.baseUrl}/${path}`);
+    await waitForProviderVerificationReady(page.locator(".provider-settings-dialog"));
     await page.locator(".verify-provider-button").click();
     await waitForText(page.locator(".provider-settings-error"), expected, 15_000);
+    await waitForProviderVerificationReady(page.locator(".provider-settings-dialog"));
   }
 }
 
 async function verifyProvider(page, baseUrl) {
   await setProviderBaseUrlInOpenDialog(page, baseUrl);
+  await waitForProviderVerificationReady(page.locator(".provider-settings-dialog"));
   await page.locator(".verify-provider-button").click();
   await waitForText(page.locator(".provider-settings-status"), /连接验证通过/);
   await page.locator(".provider-settings-dialog").getByRole("button", { name: "完成" }).click();
@@ -341,10 +346,20 @@ async function assertPersistedState(page, succeededRunId) {
   await page.locator(".provider-entry").click();
   await page.locator(".provider-choice-grid button").filter({ hasText: "OpenAI" }).click();
   await waitForText(
-    page.locator(".provider-credential-summary"),
-    /已连接/,
+    page.locator(".provider-credential-summary strong"),
+    /OpenAI · 已连接/,
   );
+  await waitForProviderVerificationReady(page.locator(".provider-settings-dialog"));
   await page.locator(".provider-settings-dialog").getByRole("button", { name: "完成" }).click();
+}
+
+async function waitForProviderVerificationReady(dialog) {
+  await poll(
+    () => dialog.locator(".verify-provider-button").isEnabled(),
+    (enabled) => enabled,
+    10_000,
+    "Provider credential was not available for verification",
+  );
 }
 
 async function assertRunFilesAreCredentialSafe(runId) {

@@ -1,6 +1,6 @@
 # LocalBuddy V2 Known Limitations
 
-> 当前发布候选是公开但未签名的 `v0.13.0 / User-first Workflows` Engineering Alpha；`v0.12.8 / First-party Windows Update Feed` 仍是当前公开 Release。候选新增用户优先首次任务、工作状态投影和“方法与连接”目录，但没有改变真实 Provider、非作者用户、Windows 11、代码签名和 Office 格式真值边界。当前灰度与发布优先 Windows，macOS 保留本机回归，Linux 降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
+> 当前发布候选是公开但未签名的 `v0.13.1 / User-first Workflows` Engineering Alpha；`v0.12.8 / First-party Windows Update Feed` 仍是当前公开 Release。`v0.13.0` 标签在安装版验收脚本发现歧义后停止，没有 Release 或正式资产。候选新增用户优先首次任务、工作状态投影和“方法与连接”目录，但没有改变真实 Provider、非作者用户、Windows 11、代码签名和 Office 格式真值边界。当前灰度与发布优先 Windows，macOS 保留本机回归，Linux 降为维护。未列为已验收的事项，不得通过宣传性措辞推导为已支持。
 
 ## Platform and distribution
 
@@ -13,7 +13,7 @@
 - Windows 包未做代码签名，可能出现 SmartScreen 提示；
 - Tag workflow 只发布 Windows x64 Setup/ZIP；Linux 与 macOS 不自动进入 GitHub Release。Windows Release 前运行安装版合成灰度；
 - `windows-2025` 是 Windows Server 2025 管理员 Runner，不能覆盖 Windows 11 的 SmartScreen、Defender、标准用户/UAC、DPI、输入法、睡眠或企业代理；
-- 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。`0.13.0` Tag 前继续在干净 Runner 上复查和隔离打包；公开 Engineering Alpha 跟踪稳定上游迁移；
+- 运行时/生产依赖高危审计当前通过；开发期 Electron Forge 打包链仍被 `extract-zip <= 2.0.1` 的上游 symlink path traversal 公告命中，公告尚无修复版本。`0.13.1` Tag 前继续在干净 Runner 上复查和隔离打包；公开 Engineering Alpha 跟踪稳定上游迁移；
 - 平台无关的 Ed25519 更新协议仍只下载、验签并 staging；`v0.12.4` stable Windows Squirrel updater 已内置公开 feed，但仍没有静默安装、强制更新或自动回滚；
 - `pnpm windows:canary` 只隔离 Electron user-data 和构建目录，不隔离系统 Credential Manager 或工作区 `.localbuddy/`；Canary 与稳定版不应同时写同一测试工作区；
 - `v0.12.2` 没有内置线上 feed；`v0.12.4-v0.12.7` 依赖不稳定的第三方 feed。已有用户需要手动原地安装 `v0.12.8` 以切换到第一方 feed；不需要先卸载，托管发布门禁和 Windows 11 真人 OTA 仍分别验收；
@@ -30,7 +30,7 @@
 
 ## Product experience
 
-- `v0.13.0` 首次任务只证明“单份 TXT/Markdown/DOCX 会议记录 → 受限可编辑 DOCX 纪要”这一纵向路径；合成新手和 loopback Provider 不能替代真实非技术用户或真实 DeepSeek/OpenAI。它不代表任意 Word、Excel、PPT 办公工作已经支持；
+- `v0.13.1` 首次任务只证明“单份 TXT/Markdown/DOCX 会议记录 → 受限可编辑 DOCX 纪要”这一纵向路径；合成新手和 loopback Provider 不能替代真实非技术用户或真实 DeepSeek/OpenAI。它不代表任意 Word、Excel、PPT 办公工作已经支持；
 - “方法与连接”只读取工作区中两个固定位置的元数据，不自动安装、下载、连接或运行 Skill/MCP。真实第三方 MCP、OAuth 账户、远程 Marketplace 和普通用户如何获得扩展仍未完成产品验收；
 
 - 公开问题报告不是后台遥测或自动上传：用户必须查看自动生成的安全预览，以“同意并在 GitHub 继续提交”明确确认，再在浏览器中登录 GitHub 并最终提交；不愿公开时可保存本地 Markdown；

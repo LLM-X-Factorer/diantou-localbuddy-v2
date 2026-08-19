@@ -1,6 +1,6 @@
 # LocalBuddy V2 Dogfood Plan
 
-> 状态：`active`，当前仍在 [`M13 Product Truth Sprint`](M13-PRODUCT-TRUTH-SPRINT.md)。下一轮固定产品事实基线是公开但未签名的 `v0.13.0 / User-first Workflows` Engineering Alpha 候选；当前公开 Release 仍为 `v0.12.8`。真实 Provider、非作者用户、连续使用和 Windows 11 真人 OTA 证据在 `v0.13.0` 上重新计数，不继承旧版结果冒充候选验收。
+> 状态：`active`，当前仍在 [`M13 Product Truth Sprint`](M13-PRODUCT-TRUTH-SPRINT.md)。下一轮固定产品事实基线是公开但未签名的 `v0.13.1 / User-first Workflows` Engineering Alpha 候选；当前公开 Release 仍为 `v0.12.8`。`v0.13.0` 标签门禁失败且未发布。真实 Provider、非作者用户、连续使用和 Windows 11 真人 OTA 证据在 `v0.13.1` 上重新计数，不继承旧版结果冒充候选验收。
 
 ## 目标
 
@@ -36,7 +36,7 @@
 
 当前固定 Release 为 `v0.12.8`。`main` CI [`32121808822`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32121808822) 通过 macOS/Windows 合同、Windows 干净安装和 `v0.12.7 -> 0.12.8-canary`，`profilePreserved=true`。固定 Tag workflow [`32122329408`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32122329408) 全绿：stable 安装版灰度、`v0.12.7 -> v0.12.8` 本地升级、五项资产发布和第一方公网升级均通过；公网检查、下载、安装分别为 1.302 秒、4.787 秒、18.812 秒。五项资产已独立回下载并匹配清单/GitHub digest。
 
-`v0.13.0` 候选实现提交 `788c48b` 的 [`main` CI `32225426992`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32225426992) 已通过 macOS 回归、Windows 全量检查、干净安装和从 `v0.12.8` 到 Canary 的原位升级。固定版本提交、Tag Release、公网 `v0.12.8 -> v0.13.0` 和资产回读仍待完成。
+`v0.13.1` 候选实现提交 `788c48b` 的 [`main` CI `32225426992`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32225426992) 已通过 macOS 回归、Windows 全量检查、干净安装和从 `v0.12.8` 到 Canary 的原位升级。`v0.13.0` [Release Gate `32229083025`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32229083025) 在安装版验收脚本将帮助文案误判为连接状态后停止，没有发布资产；补丁候选改为检查精确状态和按钮可用性。固定版本提交、Tag Release、公网 `v0.12.8 -> v0.13.1` 和资产回读仍待完成。
 
 该阶段不使用真实 Provider Key，不产生模型费用，也不能证明 Windows 11 消费者桌面环境。
 
@@ -45,7 +45,7 @@
 设备到位后按顺序执行：
 
 1. 从 `v0.12.7` 手动覆盖安装 `v0.12.8`，并保留一个非敏感 profile 标记；
-2. `v0.13.0` stable 发布后，在应用内从 `v0.12.8` 发现、下载并原地升级，不先卸载旧版；
+2. `v0.13.1` stable 发布后，在应用内从 `v0.12.8` 发现、下载并原地升级，不先卸载旧版；
 3. Windows Credential Manager 写入并读取 DeepSeek/OpenAI 凭证；
 4. 真实 Research Run、两个活动 Run、取消和 checkpoint resume；
 5. Artifact 打开和诊断导出；
@@ -90,7 +90,7 @@ Research Desk 进入 closed pilot 前至少满足：
 - Coding 未经批准不修改主工作区，批准后的 diff/commit 可核对；
 - 中断、取消、恢复和 replay 的结果符合各自语义；
 - 所有失败都有明确状态和可导出的脱敏诊断，不伪装成成功；
-- 同一 `v0.13.0` 合同完成三次逐次披露的真实 Provider 运行，并记录中位表现；
+- 同一 `v0.13.1` 合同完成三次逐次披露的真实 Provider 运行，并记录中位表现；
 - 两个不同主题完成可打开、可核查、可修订的 Artifact，排除半导体 Prompt 特调；
 - 至少一位非作者用户独立完成一次，并记录作者介入和再次使用意愿；
 - 真实任务数据足以作出 `advance/pause/stop`，并判断下一阶段优先解决交互、资料摄取、Windows 执行宿主或 Provider 可靠性中的哪一项。

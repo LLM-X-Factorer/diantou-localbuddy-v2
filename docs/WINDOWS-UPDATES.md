@@ -1,6 +1,6 @@
 # Windows 开发更新与安装升级
 
-> 状态：`v0.13.0` 是当前发布候选，`v0.12.8` 仍是公开但未签名的稳定 Engineering Alpha。`v0.12.8` 已把 stable Windows x64 切到仓库自己的 GitHub Release 静态 feed；候选必须重新完成 `v0.12.8 -> v0.13.0` 本地/公网 Squirrel 真升级。Windows 11 应用内检查、下载、重启与 profile 读回继续独立验收。
+> 状态：`v0.13.1` 是当前发布候选，`v0.12.8` 仍是公开但未签名的稳定 Engineering Alpha；`v0.13.0` 标签门禁失败且未发布。`v0.12.8` 已把 stable Windows x64 切到仓库自己的 GitHub Release 静态 feed；候选必须重新完成 `v0.12.8 -> v0.13.1` 本地/公网 Squirrel 真升级。Windows 11 应用内检查、下载、重启与 profile 读回继续独立验收。
 
 ## 一句话方案
 

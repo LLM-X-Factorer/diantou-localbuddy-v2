@@ -1,6 +1,6 @@
 # LocalBuddy V2 Release Runbook
 
-> 当前发布目标：`v0.13.0 / User-first Workflows Engineering Alpha`；当前公开但未签名的 Release 仍为 `v0.12.8 / First-party Windows Update Feed`。本次版本文档、Git push、annotated Tag 和 Windows-first Release 已由唯一当前用户明确授权；只有门禁与发布后回读完成后才能把目标写成已发布。
+> 当前发布目标：`v0.13.1 / User-first Workflows Engineering Alpha`；当前公开但未签名的 Release 仍为 `v0.12.8 / First-party Windows Update Feed`。`v0.13.0` 注解标签的门禁失败且未发布，不移动或重用。本次版本文档、Git push、annotated Tag 和 Windows-first Release 已由唯一当前用户明确授权；只有门禁与发布后回读完成后才能把目标写成已发布。
 
 ## 1. 发布真源
 
@@ -97,4 +97,4 @@ Linux 不再进入 Tag Release。`.github/workflows/linux-maintenance.yml` 只�
 - 集成代码回滚使用普通 revert commit，不 amend 已推送提交；
 - Release 事实变化后同步 Changelog、Known Limitations 和 Validation。
 
-`v0.12.4` 的桥接发布、`v0.12.5-v0.13.0` 的本地原地升级、Release 资产、第三方 endpoint 失败和第一方公网 feed 证据见 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md)；旧 Release 不回写、不替换；Linux 资产不进入 Windows-first Tag Release。
+`v0.12.4` 的桥接发布、`v0.12.5-v0.13.1` 的本地原地升级、Release 资产、第三方 endpoint 失败和第一方公网 feed 证据见 [`WINDOWS-UPDATE-VALIDATION.md`](WINDOWS-UPDATE-VALIDATION.md)；旧 Release 不回写、不替换；Linux 资产不进入 Windows-first Tag Release。

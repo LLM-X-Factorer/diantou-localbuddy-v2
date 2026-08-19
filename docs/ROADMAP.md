@@ -1,25 +1,26 @@
 # LocalBuddy V2 Roadmap
 
-> **状态真源**：2026-08-19。仓库已按 Apache License 2.0 公开；`v0.13.0 / User-first Workflows` 是当前发布候选，`v0.12.8 / First-party Windows Update Feed` 仍是当前公开但未签名的 Engineering Alpha Release。候选 Tag、五项资产和 `v0.12.8 -> v0.13.0` 第一方公网升级仍须发布门禁回读；Windows 11 真人、真实 Provider、真实非作者用户和代码签名继续独立验收。
+> **状态真源**：2026-08-19。仓库已按 Apache License 2.0 公开；`v0.13.1 / User-first Workflows` 是当前发布候选，`v0.12.8 / First-party Windows Update Feed` 仍是当前公开但未签名的 Engineering Alpha Release。`v0.13.0` 标签门禁失败且未发布。候选五项资产和 `v0.12.8 -> v0.13.1` 第一方公网升级仍须发布门禁回读；Windows 11 真人、真实 Provider、真实非作者用户和代码签名继续独立验收。
 
 ## 当前里程碑
 
 ### M13 · Product Truth Sprint — active
 
-- `v0.13.0` 候选作为下一轮固定产品事实基线；旧版运行只保留历史证据，不与候选混算；
+- `v0.13.1` 候选作为下一轮固定产品事实基线；旧版运行只保留历史证据，不与候选混算；
 - Research Desk 使用同一合同三跑、两个不同主题和至少一次非作者独立运行；
 - Teaching Studio 只做 Owner/真实教学单元发现、现有能力模拟和教师口头走查；Builder Lab 只跑 WB-05 泛化检查；
 - 只修安全/数据完整性问题、真实任务阻塞、两个场景共同需要的 Core 合同，以及证据/grader 真源问题；
 - 验收合同与退出裁决见 [`M13-PRODUCT-TRUTH-SPRINT.md`](M13-PRODUCT-TRUTH-SPRINT.md)。
 
-### v0.13.0 · User-first Workflows — release target
+### v0.13.1 · User-first Workflows — release target
 
 - 实现提交 `788c48b95b346f262a7e986c4ec75c775d139d9f` 把首次任务改为“明确选择一份会议记录 → 审核计划 → 可编辑 `会议纪要.docx` → 系统应用打开”，并让完整工作台优先呈现当前进展、用户步骤、已验证结果和下一步；技术时间线保留但默认收起；
 - “方法与连接”只发现 `.localbuddy/skills` 与 `.localbuddy/mcp.json` 中的受限元数据，必须由用户明确选择；发现不等于安装、连接或副作用授权，真实第三方 MCP/Marketplace 仍未验收；
 - checkpoint 恢复只复核实际读取证据，不再构造整个工作区快照；工作区就绪检查不枚举或测量无关文件，修复 `workspace snapshot exceeded the safe checkpoint entry limit`；
-- 本机 226 项合同通过，`0.13.0` macOS arm64 App/ZIP/DMG、ad-hoc 签名、DMG 完整性、隔离无凭据首启、方法与连接目录、合成新手完整 DOCX 路径和 Pages 打开通过；生产依赖无已知高危漏洞，开发打包链仍保留无上游修复的 `extract-zip` 公告并明确隔离；[`main` CI `32225426992`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32225426992) 的 macOS、Windows 全量、干净安装和原位升级全绿；
+- 本机 226 项合同通过；`0.13.1` macOS arm64 App/ZIP/DMG、ad-hoc 签名、DMG 完整性、隔离无凭据首启和方法与连接目录已在补丁候选上重新通过，合成新手完整 DOCX 路径和 Pages 打开沿用同一产品实现证据；生产依赖无已知高危漏洞，开发打包链仍保留无上游修复的 `extract-zip` 公告并明确隔离；[`main` CI `32225426992`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32225426992) 的 macOS、Windows 全量、干净安装和原位升级全绿；
+- `v0.13.0` [Release Gate `32229083025`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32229083025) 在安装版故障矩阵中发现验收脚本把帮助文案误当成连接状态后停止，没有发布 Release 或正式资产；补丁候选改为精确状态和按钮可用性检查，失败标签不移动、不重用；
 - Issues [#35](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/35)、[#37](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/37)、[#38](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/38) 已关闭；[#36](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/36) 继续约束 Word/XLSX/PPTX 能力真值；
-- 候选仍需版本提交的 `main` CI、annotated Tag、stable 安装版灰度、`v0.12.8 -> v0.13.0` 本地/公网升级、五项资产发布和独立回下载；完成前不写成公开 Release，完成后也不等于 M13 `advance`。
+- 候选仍需版本提交的 `main` CI、annotated Tag、stable 安装版灰度、`v0.12.8 -> v0.13.1` 本地/公网升级、五项资产发布和独立回下载；完成前不写成公开 Release，完成后也不等于 M13 `advance`。
 
 ### v0.12.8 · First-party Windows Update Feed — public unsigned Engineering Alpha
 

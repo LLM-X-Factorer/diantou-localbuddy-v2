@@ -119,6 +119,12 @@ test("declares Windows-first CI plus low-frequency Linux maintenance boundaries"
   assert.match(windowsGray, /workflow_dispatch:/);
   assert.doesNotMatch(windowsGray, /secrets\./);
 
+  const installedGray = await readFile(resolve(repository, "scripts", "verify-windows-installed-gray.mjs"), "utf8");
+  assert.match(installedGray, /provider-credential-summary strong/);
+  assert.match(installedGray, /OpenAI · 已连接/);
+  assert.match(installedGray, /waitForProviderVerificationReady/);
+  assert.match(installedGray, /Provider credential was not available for verification/);
+
   const linuxMaintenance = await readFile(resolve(repository, ".github", "workflows", "linux-maintenance.yml"), "utf8");
   assert.match(linuxMaintenance, /ubuntu-24\.04/);
   assert.match(linuxMaintenance, /make:linux/);
