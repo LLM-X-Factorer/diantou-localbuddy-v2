@@ -1,13 +1,13 @@
 # LocalBuddy V2 Internal Quickstart
 
-> 适用版本：`v0.13.1 / User-first Workflows` 发布候选。固定 Tag 通过前，当前公开但未签名的 Engineering Alpha 仍是 `v0.12.8 / First-party Windows Update Feed`；`v0.13.0` 标签未通过门禁，没有可下载 Release。当前灰度与发布优先 Windows；macOS 保留回归，Linux 降为维护。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
+> 适用版本：公开但未签名的 `v0.13.1 / User-first Workflows` Engineering Alpha。`v0.13.0` 标签未通过门禁，没有可下载 Release。当前灰度与发布优先 Windows；macOS 保留回归，Linux 降为维护。开始前先阅读 [`KNOWN-LIMITATIONS.md`](KNOWN-LIMITATIONS.md)。
 
 ## 1. 选择可用入口
 
 | 平台 | 当前可用入口 | 已证明范围 |
 |---|---|---|
 | macOS arm64 | 从仓库执行 `pnpm desktop`，或使用本机生成的 ad-hoc ZIP/DMG | 本机 Renderer、Fuse、ASAR、内置浏览器和包完整性烟测 |
-| Windows x64 | 候选发布后使用公开 [`v0.13.1` Release](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.13.1) 的 Setup/ZIP；发布前继续使用 [`v0.12.8`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.12.8) | `v0.12.8` 五项资产和第一方公网升级已通过；`v0.13.1` 必须重新完成 Tag、安装、原位升级和公网 feed 门禁；Windows 11、SmartScreen/UAC 与代码签名仍未验收 |
+| Windows x64 | 使用公开 [`v0.13.1` Release](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.13.1) 的 Setup/ZIP；已有 `v0.12.8` 安装可在应用内检查更新 | 五项资产、stable 安装版灰度、`v0.12.8 -> v0.13.1` 本地/第一方公网升级和独立回下载已通过；Windows 11、SmartScreen/UAC 与代码签名仍未验收 |
 | Linux x64 | 当前不提供新 Release | 每周/手动构建维护；真实图形桌面验收暂不优先 |
 
 Windows 包未签名。只有明确获准参与内部测试时才下载；不要把 SmartScreen 提示解释为已完成发布信誉或代码签名。

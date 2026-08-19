@@ -1,17 +1,29 @@
 # Windows Update Validation
 
-> 当前发布目标：公开但未签名的 `v0.13.1 / User-first Workflows` Engineering Alpha；当前已发布版本仍是 `v0.12.8 / First-party Windows Update Feed`。`v0.13.0` 标签门禁失败且未发布。候选固定 Tag、五项资产、`v0.12.8 -> v0.13.1` 本地/第一方公网升级和独立 SHA-256 回读仍待完成。真实 Windows 11 应用内升级和代码签名仍未验收。
+> 当前公开版本：未签名的 `v0.13.1 / User-first Workflows` Engineering Alpha。`v0.13.0` 标签门禁失败且未发布。`v0.13.1` 固定 Tag、五项资产、`v0.12.8 -> v0.13.1` 本地/第一方公网升级和独立 SHA-256 回读已完成。真实 Windows 11 应用内升级和代码签名仍未验收。
 
-## 0.13.1 User-first Workflows 发布候选
+## 0.13.1 User-first Workflows Release 读回
 
-- 实现提交 `788c48b95b346f262a7e986c4ec75c775d139d9f` 的 [`main` CI `32225426992`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32225426992) 全绿：macOS 回归、Windows 全量合同、Windows 干净安装和从 `v0.12.8` 到 Canary 的原位升级通过；
-- 本机 `pnpm check` 为 226 项：224 passed、2 项 Windows-only 跳过、0 failed；`0.13.1` macOS arm64 App/ZIP/DMG、ad-hoc 签名、DMG 完整性、隔离无凭据首启和“方法与连接”目录已在补丁候选上重新通过；合成新手会议纪要任务和 Pages 打开沿用同一产品实现证据；
+- annotated Tag `v0.13.1`（Tag object `79af93e6c8e44f9246a089e4bdcc1b9d4b487135`）解引用到 `7beb57a27ee5d3d35acc505beb05032f836f7135`；Release 非 draft、非 prerelease，于 2026-08-19 公开；
+- 本机 `pnpm check` 为 226 项：224 passed、2 项 Windows-only 跳过、0 failed；精确提交 `7beb57a2` 的 macOS arm64 App/ZIP/DMG、ad-hoc 签名、DMG 完整性、Fuse、内置 Browser 和隔离无凭据首启通过；
 - `pnpm audit --prod --audit-level high` 返回无已知漏洞；完整开发依赖审计仍只命中 Electron Forge 打包链中的 `extract-zip 2.0.1` 公告 `GHSA-jmr9-qjv8-65gv`，上游报告无可用修复版本。该依赖不进入用户运行时，只在受控 Runner 中承担打包风险；
 - `v0.13.0` 注解标签的 [Release Gate `32229083025`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32229083025) 已通过生产依赖审计、完整合同和 stable 包构建，但安装版故障矩阵因模糊文本匹配提前进入禁用按钮而停止；升级、资产收集、Release 发布和公网更新均未执行。`v0.13.0` 标签保留且不移动，不计作公开 Release；
 - 补丁提交 `8c4b8c0` 的原生 Windows 灰度 [`32230476312`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32230476312) 使用精确断言继续定位到产品竞态：用户已选择 OpenAI 后，迟到的 bootstrap 仍会把 Provider 改回 DeepSeek。该轮同样在发布前停止；
-- `v0.13.1` 后续补丁让明确的用户选择优先于迟到初始化，并将凭据验收改为精确的 `OpenAI · 已连接`，在每次故障探测前后等待验证按钮可用；它修复首次设置可靠性，不扩大产品能力；
-- 发布门禁必须在 `v0.13.1` Tag 上重复生产依赖审计、完整合同、stable 安装版合成灰度、`v0.12.8 -> v0.13.1` 本地原位升级、五项资产发布，以及独立第一方公网 feed 真升级；
-- 发布后还要在新临时目录回下载五项资产，逐项核对清单、字节数、本机 SHA-256 和 GitHub digest。完成前本节保持候选状态。
+- 最终补丁让明确的用户选择优先于迟到初始化，适配折叠后的任务要求/高级设置，并恢复活动任务页面的“开始新任务”和并发上限说明；独立 Windows 安装版灰度 [`32234140804`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32234140804) 的系统安全存储、故障矩阵、模型探测、计划审批、成功任务、双 Run、取消、checkpoint 恢复、三次重启和凭据脱敏全部通过；
+- [`main` CI `32234126907`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32234126907) 全绿：macOS 回归、Windows 全量合同、Windows 干净安装和 `v0.12.8 -> Canary` 原位升级通过；
+- [Release Gate `32234622835`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32234622835) 全绿。Windows 发布作业 `96011733205` 用固定 Tag stable 字节重复生产审计、226 项合同、安装版灰度和 `v0.12.8 -> v0.13.1` 本地升级；本地 update 用时 18.175 秒，目标目录 `app-0.13.1`，`profilePreserved=true`；
+- 独立 `online-update-smoke` 作业 `96013415218` 安装 `v0.12.8`，经公开第一方 `releases/latest/download` 下载 265,785,326-byte full nupkg 并升级到 `app-0.13.1`；检查、下载、安装分别用时 1.204 秒、6.978 秒、14.709 秒，`profilePreserved=true`；
+- 五项资产已下载到新的临时目录；清单内四项文件通过 `shasum -a 256 -c SHA256SUMS-windows.txt`，清单自身和全部 GitHub asset digest 也与本机计算一致：
+
+| 资产 | Bytes | SHA-256 |
+|---|---:|---|
+| `LocalBuddy-0.13.1-Setup.exe` | 266,508,800 | `aefed625d1751a606107858a0a88ac78362feeba11e11cdf842449ea58ce3f5b` |
+| `LocalBuddy-win32-x64-0.13.1.zip` | 274,450,561 | `2df563e9a7e1244daa97b6d591dae45e673b8e9e4ffa1d4d2e7f99409b07ec32` |
+| `LocalBuddy-0.13.1-full.nupkg` | 265,785,326 | `cdc0e238f83c2120b6bff64e24a5b2be48c03d9579006e6ff03a2c42defd8b38` |
+| `RELEASES` | 82 | `cf9e547f7426d61fef486375345c6845f14ad0dbe07913088542d3f623a873ec` |
+| `SHA256SUMS-windows.txt` | 362 | `aa17b970fcec899da7624e8e58c8af97df1d714f915165abd8e4390867ff5657` |
+
+真实 Windows 11、SmartScreen/UAC、应用内忙碌 Run 阻断、真实 Provider 和代码签名仍是外部门禁，不能由 Windows Server 2025 Runner 替代。
 
 ## 0.12.8 First-party Windows Update Feed
 

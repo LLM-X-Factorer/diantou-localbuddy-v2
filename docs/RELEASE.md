@@ -1,6 +1,6 @@
 # LocalBuddy V2 Release Runbook
 
-> 当前发布目标：`v0.13.1 / User-first Workflows Engineering Alpha`；当前公开但未签名的 Release 仍为 `v0.12.8 / First-party Windows Update Feed`。`v0.13.0` 注解标签的门禁失败且未发布，不移动或重用。本次版本文档、Git push、annotated Tag 和 Windows-first Release 已由唯一当前用户明确授权；只有门禁与发布后回读完成后才能把目标写成已发布。
+> 当前公开但未签名的 Release：`v0.13.1 / User-first Workflows Engineering Alpha`。`v0.13.0` 注解标签的门禁失败且未发布，不移动或重用。`v0.13.1` 的 Tag、Windows-first Release、第一方公网升级和发布后独立回读已经完成；Windows 11 真人和代码签名仍独立开放。
 
 ## 1. 发布真源
 

@@ -1,6 +1,6 @@
 # Windows 开发更新与安装升级
 
-> 状态：`v0.13.1` 是当前发布候选，`v0.12.8` 仍是公开但未签名的稳定 Engineering Alpha；`v0.13.0` 标签门禁失败且未发布。`v0.12.8` 已把 stable Windows x64 切到仓库自己的 GitHub Release 静态 feed；候选必须重新完成 `v0.12.8 -> v0.13.1` 本地/公网 Squirrel 真升级。Windows 11 应用内检查、下载、重启与 profile 读回继续独立验收。
+> 状态：`v0.13.1` 是当前公开但未签名的稳定 Engineering Alpha；`v0.13.0` 标签门禁失败且未发布。`v0.13.1` 已经从仓库自己的 GitHub Release 静态 feed 完成 `v0.12.8 -> v0.13.1` 本地/公网 Squirrel 真升级。Windows 11 应用内检查、下载、重启与 profile 读回继续独立验收。
 
 ## 一句话方案
 
@@ -17,7 +17,7 @@ pnpm windows:canary
 | 通道 | 解决的问题 | 做法 | 不能证明 |
 |---|---|---|---|
 | Canary 快速同步 | 今天的代码在 Windows 上能不能快速打开和试用 | 下载 CI 便携 ZIP，按 SHA 并存，使用独立 user-data | Setup 安装、卸载和原地升级 |
-| 安装/升级门禁 | 新用户安装和老用户升级会不会坏 | CI 先做干净安装，再做 `上一稳定版 -> 当前候选版` 原地升级并检查用户数据 | Windows 11、SmartScreen、UAC 和真实网络 |
+| 安装/升级门禁 | 新用户安装和老用户升级会不会坏 | CI 先做干净安装，再做 `上一稳定版 -> 目标版` 原地升级并检查用户数据 | Windows 11、SmartScreen、UAC 和真实网络 |
 | 稳定版应用内更新 | 已安装用户能否在应用内检查并安全重启升级 | 第一方 GitHub Release 静态 Squirrel feed + 手动检查 + 下载完成后人工确认重启 | 未签名包的 SmartScreen 信誉，也不能替代 Windows 11 真人验收 |
 
 如果每次只重装，我们只能证明“新装还能开”，反而会漏掉用户真正关心的旧数据、旧配置和升级路径。反过来，只跑 Canary 也会漏掉安装器问题。
@@ -65,8 +65,8 @@ Canary 的 UI 会显示 `channel + version + short SHA`，用于确认“我实�
 
 `main` 的 Windows 安装作业会执行两条独立链路：
 
-1. 安装当前候选 Setup，在没有 Provider 凭证的隔离 user-data 中启动并读取 UI；
-2. 下载最新稳定 Release 的 Setup，安装并使用默认用户数据目录启动；写入非敏感测试标记；再用当前候选的本地 Squirrel feed 原地升级，确认新版本 UI 启动且标记仍存在。
+1. 安装目标版本 Setup，在没有 Provider 凭证的隔离 user-data 中启动并读取 UI；
+2. 下载上一稳定 Release 的 Setup，安装并使用默认用户数据目录启动；写入非敏感测试标记；再用目标版本的本地 Squirrel feed 原地升级，确认新版本 UI 启动且标记仍存在。
 
 第二条链路只在一次性托管 Runner 上运行，脚本会拒绝覆盖已有 LocalBuddy 安装或用户目录，并只清理本次测试创建的路径。Tag Release 也必须重复 `上一稳定版 -> 目标稳定版` 的升级验证。
 

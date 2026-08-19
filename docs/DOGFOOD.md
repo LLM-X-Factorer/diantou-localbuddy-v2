@@ -1,6 +1,6 @@
 # LocalBuddy V2 Dogfood Plan
 
-> 状态：`active`，当前仍在 [`M13 Product Truth Sprint`](M13-PRODUCT-TRUTH-SPRINT.md)。下一轮固定产品事实基线是公开但未签名的 `v0.13.1 / User-first Workflows` Engineering Alpha 候选；当前公开 Release 仍为 `v0.12.8`。`v0.13.0` 标签门禁失败且未发布。真实 Provider、非作者用户、连续使用和 Windows 11 真人 OTA 证据在 `v0.13.1` 上重新计数，不继承旧版结果冒充候选验收。
+> 状态：`active`，当前仍在 [`M13 Product Truth Sprint`](M13-PRODUCT-TRUTH-SPRINT.md)。下一轮固定产品事实基线是公开但未签名的 `v0.13.1 / User-first Workflows` Engineering Alpha Release；`v0.13.0` 标签门禁失败且未发布。真实 Provider、非作者用户、连续使用和 Windows 11 真人 OTA 证据在 `v0.13.1` 上重新计数，不继承旧版结果冒充当前验收。
 
 ## 目标
 
@@ -34,9 +34,9 @@
 
 历史合成灰度提交 `d686cd6` 的 [`windows-synthetic-gray` run `31670064610`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064610) 已完成完整故障矩阵和 5 次额外重启，脱敏摘要 9 项检查全部通过；配套 [`ci` run `31670064596`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/31670064596) 的 Windows 合同、macOS 回归和 Setup 无凭据首启也全部通过。
 
-当前固定 Release 为 `v0.12.8`。`main` CI [`32121808822`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32121808822) 通过 macOS/Windows 合同、Windows 干净安装和 `v0.12.7 -> 0.12.8-canary`，`profilePreserved=true`。固定 Tag workflow [`32122329408`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32122329408) 全绿：stable 安装版灰度、`v0.12.7 -> v0.12.8` 本地升级、五项资产发布和第一方公网升级均通过；公网检查、下载、安装分别为 1.302 秒、4.787 秒、18.812 秒。五项资产已独立回下载并匹配清单/GitHub digest。
+当前固定 Release 为 `v0.13.1`。最终提交 `7beb57a2` 的 [`main` CI `32234126907`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32234126907) 已通过 macOS 回归、Windows 全量检查、干净安装和从 `v0.12.8` 到 Canary 的原位升级；独立 Windows 灰度 [`32234140804`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32234140804) 的故障矩阵、系统安全存储、成功任务、双 Run、取消、恢复、重启和凭据脱敏全部通过。
 
-`v0.13.1` 候选实现提交 `788c48b` 的 [`main` CI `32225426992`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32225426992) 已通过 macOS 回归、Windows 全量检查、干净安装和从 `v0.12.8` 到 Canary 的原位升级。`v0.13.0` [Release Gate `32229083025`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32229083025) 先暴露模糊状态断言，原生 Windows 灰度 `32230476312` 再确认用户选择 OpenAI 后会被迟到初始化改回 DeepSeek；两次都没有发布资产。补丁候选让用户选择优先，并检查精确连接状态与按钮可用性。固定版本提交、Tag Release、公网 `v0.12.8 -> v0.13.1` 和资产回读仍待完成。
+`v0.13.0` [Release Gate `32229083025`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32229083025) 先暴露模糊状态断言，原生 Windows 灰度 `32230476312` 再确认用户选择 OpenAI 后会被迟到初始化改回 DeepSeek；两次都没有发布资产。最终补丁修复竞态、适配用户优先的折叠 UI，并恢复活动任务页面的并发入口。[`v0.13.1` Release Gate `32234622835`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32234622835) 已通过固定 stable 包灰度、`v0.12.8 -> v0.13.1` 本地/公网升级、profile 保留和五项资产发布；资产已独立回下载并匹配清单、字节数和 GitHub digest。
 
 该阶段不使用真实 Provider Key，不产生模型费用，也不能证明 Windows 11 消费者桌面环境。
 
@@ -44,8 +44,8 @@
 
 设备到位后按顺序执行：
 
-1. 从 `v0.12.7` 手动覆盖安装 `v0.12.8`，并保留一个非敏感 profile 标记；
-2. `v0.13.1` stable 发布后，在应用内从 `v0.12.8` 发现、下载并原地升级，不先卸载旧版；
+1. 保留一个已安装的 `v0.12.8` 和非敏感 profile 标记；更旧版本先手动原地覆盖到 `v0.12.8`，不卸载；
+2. 在真实 Windows 11 应用内从 `v0.12.8` 发现、下载并原地升级到 `v0.13.1`；
 3. Windows Credential Manager 写入并读取 DeepSeek/OpenAI 凭证；
 4. 真实 Research Run、两个活动 Run、取消和 checkpoint resume；
 5. Artifact 打开和诊断导出；

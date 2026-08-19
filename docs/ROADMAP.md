@@ -1,26 +1,27 @@
 # LocalBuddy V2 Roadmap
 
-> **状态真源**：2026-08-19。仓库已按 Apache License 2.0 公开；`v0.13.1 / User-first Workflows` 是当前发布候选，`v0.12.8 / First-party Windows Update Feed` 仍是当前公开但未签名的 Engineering Alpha Release。`v0.13.0` 标签门禁失败且未发布。候选五项资产和 `v0.12.8 -> v0.13.1` 第一方公网升级仍须发布门禁回读；Windows 11 真人、真实 Provider、真实非作者用户和代码签名继续独立验收。
+> **状态真源**：2026-08-19。仓库已按 Apache License 2.0 公开；`v0.13.1 / User-first Workflows` 是当前公开但未签名的 Engineering Alpha Release。`v0.13.0` 标签门禁失败且未发布。`v0.13.1` 五项资产、stable 灰度、`v0.12.8 -> v0.13.1` 本地/第一方公网升级和独立回下载已通过；Windows 11 真人、真实 Provider、真实非作者用户和代码签名继续独立验收。
 
 ## 当前里程碑
 
 ### M13 · Product Truth Sprint — active
 
-- `v0.13.1` 候选作为下一轮固定产品事实基线；旧版运行只保留历史证据，不与候选混算；
+- `v0.13.1` Release 作为下一轮固定产品事实基线；旧版运行只保留历史证据，不与当前版本混算；
 - Research Desk 使用同一合同三跑、两个不同主题和至少一次非作者独立运行；
 - Teaching Studio 只做 Owner/真实教学单元发现、现有能力模拟和教师口头走查；Builder Lab 只跑 WB-05 泛化检查；
+- [Issue #39](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/39) 从点头真实内部工作建立 Agent 化漏斗：先盘点、分诊和影子运行，只有通过门槛的需求才拉动新能力；
 - 只修安全/数据完整性问题、真实任务阻塞、两个场景共同需要的 Core 合同，以及证据/grader 真源问题；
 - 验收合同与退出裁决见 [`M13-PRODUCT-TRUTH-SPRINT.md`](M13-PRODUCT-TRUTH-SPRINT.md)。
 
-### v0.13.1 · User-first Workflows — release target
+### v0.13.1 · User-first Workflows — public unsigned Engineering Alpha
 
 - 实现提交 `788c48b95b346f262a7e986c4ec75c775d139d9f` 把首次任务改为“明确选择一份会议记录 → 审核计划 → 可编辑 `会议纪要.docx` → 系统应用打开”，并让完整工作台优先呈现当前进展、用户步骤、已验证结果和下一步；技术时间线保留但默认收起；
 - “方法与连接”只发现 `.localbuddy/skills` 与 `.localbuddy/mcp.json` 中的受限元数据，必须由用户明确选择；发现不等于安装、连接或副作用授权，真实第三方 MCP/Marketplace 仍未验收；
 - checkpoint 恢复只复核实际读取证据，不再构造整个工作区快照；工作区就绪检查不枚举或测量无关文件，修复 `workspace snapshot exceeded the safe checkpoint entry limit`；
-- 本机 226 项合同通过；`0.13.1` macOS arm64 App/ZIP/DMG、ad-hoc 签名、DMG 完整性、隔离无凭据首启和方法与连接目录已在补丁候选上重新通过，合成新手完整 DOCX 路径和 Pages 打开沿用同一产品实现证据；生产依赖无已知高危漏洞，开发打包链仍保留无上游修复的 `extract-zip` 公告并明确隔离；[`main` CI `32225426992`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32225426992) 的 macOS、Windows 全量、干净安装和原位升级全绿；
+- 本机 226 项合同通过；精确提交 `7beb57a2` 的 macOS arm64 App/ZIP/DMG、ad-hoc 签名、DMG 完整性和隔离无凭据首启通过；生产依赖无已知高危漏洞，开发打包链仍保留无上游修复的 `extract-zip` 公告并明确隔离；[`main` CI `32234126907`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32234126907) 与独立 Windows 灰度 [`32234140804`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32234140804) 全绿；
 - `v0.13.0` [Release Gate `32229083025`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32229083025) 先暴露模糊连接状态断言，原生 Windows 灰度 `32230476312` 再确认用户选择 OpenAI 后会被迟到初始化改回 DeepSeek；两次均未发布 Release 或正式资产。补丁候选让用户选择优先，并改用精确状态和按钮可用性检查；失败标签不移动、不重用；
 - Issues [#35](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/35)、[#37](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/37)、[#38](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/38) 已关闭；[#36](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/36) 继续约束 Word/XLSX/PPTX 能力真值；
-- 候选仍需版本提交的 `main` CI、annotated Tag、stable 安装版灰度、`v0.12.8 -> v0.13.1` 本地/公网升级、五项资产发布和独立回下载；完成前不写成公开 Release，完成后也不等于 M13 `advance`。
+- annotated Tag `v0.13.1` 固定到 `7beb57a27ee5d3d35acc505beb05032f836f7135`；[Release Gate `32234622835`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32234622835) 通过 stable 灰度、本地/公网升级和五项资产发布，独立回下载匹配清单、字节数和 GitHub digest。发布解除分发身份门，但不等于 M13 `advance`。
 
 ### v0.12.8 · First-party Windows Update Feed — public unsigned Engineering Alpha
 

@@ -1,6 +1,6 @@
 # LocalBuddy V2 Architecture
 
-> **状态基线**：2026-08-19，`v0.13.1 / User-first Workflows` 是当前发布候选，`v0.12.8 / First-party Windows Update Feed` 仍是当前公开但未签名的 Engineering Alpha Release；`v0.13.0` 标签在门禁失败后未发布。各历史 Validation 保留对应阶段当时的证据边界；候选发布不倒写旧版本能力。
+> **状态基线**：2026-08-19，`v0.13.1 / User-first Workflows` 是当前公开但未签名的 Engineering Alpha Release；`v0.13.0` 标签在门禁失败后未发布。各历史 Validation 保留对应阶段当时的证据边界；新版本发布不倒写旧版本能力。
 
 ## 1. 产品判断
 
@@ -259,6 +259,6 @@ Main 只在 packaged Windows x64 配置 updater：stable 构建固定使用仓�
 27. **v0.12.6 Private Run Storage（已发布）**：Run Request、事件、checkpoint、Artifact、Browser state、Integration 和 revision source 统一使用私有原子/追加写；macOS/Linux 使用 `0700`/`0600`，Windows 明确继承父目录 ACL；旧 Run 只在工作区锁内有界加固，托管符号链接 fail closed。Desktop 默认收起显示确切路径，并对已知云同步/网络目录告警。
 28. **v0.12.7 Real-user Feedback UX（已发布）**：Windows 原生 updater 只暴露阶段而不暴露字节进度，Renderer 因此显示真实的后台活动、已等待时间和固定官方下载页，不伪造百分比；问题报告从结构化 Run 投影自动生成安全 Trace，单一同意动作只打开固定 GitHub 表单，最终提交仍由用户完成。
 29. **v0.12.8 First-party Windows Update Feed（已发布）**：packaged stable Windows x64 使用仓库公开 GitHub Release 的静态 Squirrel feed；其他 channel/架构 fail closed。发布和手动门禁安装上一稳定版，依次执行检查、下载和安装，读回目标 UI/profile；每阶段有独立超时，超时后有界终止整个更新进程树并上传脱敏诊断。
-30. **v0.13.1 User-first Workflows（发布候选）**：Desktop 从同一份持久事件投影出用户可理解的当前进展、步骤、结果和下一步，详细时间线保留模型/工具/并行审计但默认收起；首次任务只读取一份明确选择的会议记录并生成受限 DOCX；Skill/MCP 只以有界元数据目录被发现和显式选择。恢复只复核实际 read evidence，不构造整个工作区快照；发现、选择、执行和副作用批准继续是四个不同状态。
+30. **v0.13.1 User-first Workflows（已发布）**：Desktop 从同一份持久事件投影出用户可理解的当前进展、步骤、结果和下一步，详细时间线保留模型/工具/并行审计但默认收起；首次任务只读取一份明确选择的会议记录并生成受限 DOCX；Skill/MCP 只以有界元数据目录被发现和显式选择。恢复只复核实际 read evidence，不构造整个工作区快照；发现、选择、执行和副作用批准继续是四个不同状态。
 
 M11 已完成最小 Goal/Plan 控制面，M12.1-M12.4 已建立显式 Artifact 修订链、历史列表、直接父版本差异、受限 DOCX 纵向链路及独立 DOCX Reviewer；通用多轮工作线程、计划编辑、Goal revision 2+、跨 Artifact/人工 Reviewer、Project/Workspace 首页、PDF/XLSX/PPTX 和复杂 Word 保真编辑仍未完成，不能写成已支持能力。
