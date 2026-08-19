@@ -11,11 +11,13 @@ LocalBuddy 把本地数据分为三类：工作区 Run 数据、应用偏好、�
 | Run 历史 | `<所选工作区>/.localbuddy/runs/<run-id>/` | Run Request、只追加事件、计划决定、checkpoint、Browser state 和已登记 Artifact。LocalBuddy 不自动迁移或删除旧 Run。 |
 | 最终/内部 Artifact | `<所选工作区>/.localbuddy/runs/<run-id>/artifacts/` | 该 Run 登记的文本、受限 DOCX、patch 和 Integration 预览。用户从 Run 的 Artifact 列表打开经过复核的结果。 |
 | Coding worktree | `<所选工作区>/.localbuddy/worktrees/` | 临时隔离 Git worktree。显式清理只删除符合条件的 worktree，保留 Run 历史和 Artifact。 |
-| 应用偏好 | Electron `app.getPath("userData")` | 最近工作区、指引状态和可选教程工作区。常见默认值是 macOS 的 `~/Library/Application Support/LocalBuddy`、Windows 的 `%APPDATA%\LocalBuddy`、Linux 的 `$XDG_CONFIG_HOME/LocalBuddy` 或 `~/.config/LocalBuddy`。Canary 可使用独立 user-data 目录。 |
+| 应用偏好 | Electron `app.getPath("userData")` | 最近工作区、指引状态和可选教程工作区。LocalBuddy 明确固定应用名与数据目录；默认值是 macOS 的 `~/Library/Application Support/LocalBuddy`、Windows 的 `%APPDATA%\LocalBuddy`、Linux 的 `$XDG_CONFIG_HOME/LocalBuddy` 或 `~/.config/LocalBuddy`。验证构建和 Canary 可使用显式独立的 `--user-data-dir`，此时不会碰默认目录。 |
 | 本机协调状态 | 平台状态目录 | 只保存容量 lease 和 Provider 聚合计数，不保存 Prompt、响应、URL、Artifact 或凭据正文。默认是 macOS `~/Library/Application Support/LocalBuddy/runtime`、Windows `%LOCALAPPDATA%\LocalBuddy\runtime`、Linux `$XDG_STATE_HOME/localbuddy` 或 `~/.local/state/localbuddy`。 |
 | Provider 与 MCP OAuth 凭据 | 操作系统凭据库 | macOS Keychain、Windows Credential Manager 或 Linux Secret Service。凭据不写入 `.localbuddy`、应用偏好、Renderer 状态或事件日志；进程环境变量也不会被复制到本地文件。 |
 
 诊断和公开问题报告是另外的显式导出：用户选择保存位置。公开报告是经过预览的字段白名单摘要，不是 Run 目录副本。
+
+早期开发构建可能曾由 Electron 按 npm package 名创建 `@diantou/localbuddy-v2` 偏好目录。当前版本不会读取、合并或删除该旧目录；这是为了避免在没有迁移合同的情况下猜测用户意图。它也不会被内部版复用。
 
 ## 权限和完整性规则
 
