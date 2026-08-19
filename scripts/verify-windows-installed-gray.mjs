@@ -264,6 +264,7 @@ async function startRunAndWait(page, goal, expectedStatus) {
 async function startRun(page, goal) {
   const priorRuns = await listRuns(page);
   await page.locator(".goal-outcome-field textarea").fill(goal);
+  await ensureGoalContractExpanded(page);
   await page.locator(".goal-contract-grid textarea").nth(1).fill(
     "The deterministic fixture artifact is registered and auditable",
   );
@@ -298,6 +299,14 @@ async function startRun(page, goal) {
     "Composer was not cleared after the Run started",
   );
   return run;
+}
+
+async function ensureGoalContractExpanded(page) {
+  const fields = page.locator("#goal-contract-fields");
+  if (await fields.count() === 0) {
+    await page.getByRole("button", { name: "任务要求（可选）" }).click();
+  }
+  await fields.waitFor({ state: "visible" });
 }
 
 async function startConcurrentRunsAndCancel(page) {
