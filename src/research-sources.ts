@@ -5,7 +5,7 @@ import { basename, isAbsolute, relative, resolve, sep } from "node:path";
 const MAX_RESEARCH_SOURCES = 50;
 const MAX_SEARCH_RESULTS = 50;
 const MAX_SEARCHED_ENTRIES = 10_000;
-const SKIPPED_DIRECTORIES = new Set([".git", ".localbuddy", "node_modules"]);
+const SKIPPED_DIRECTORIES = new Set([".git", ".localbuddy", ".localbuddy-internal", "node_modules"]);
 
 export interface ResearchSource {
   id: string;

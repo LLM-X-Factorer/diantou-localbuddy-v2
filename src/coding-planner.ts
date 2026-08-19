@@ -175,6 +175,8 @@ function normalizeOwnedPath(path: string): string {
     || bare.startsWith(".git/")
     || bare === ".localbuddy"
     || bare.startsWith(".localbuddy/")
+    || bare === ".localbuddy-internal"
+    || bare.startsWith(".localbuddy-internal/")
   ) {
     throw new Error(`Unsafe owned path: ${path}`);
   }

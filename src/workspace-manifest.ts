@@ -2,7 +2,7 @@ import { lstat, readdir } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 
 const MAX_MANIFEST_ENTRIES = 100;
-const SKIPPED_DIRECTORIES = new Set([".git", ".localbuddy", "node_modules"]);
+const SKIPPED_DIRECTORIES = new Set([".git", ".localbuddy", ".localbuddy-internal", "node_modules"]);
 
 // Coding planning receives a small path-name hint. Research does not call this:
 // its local evidence comes only from explicitly selected Run sources.

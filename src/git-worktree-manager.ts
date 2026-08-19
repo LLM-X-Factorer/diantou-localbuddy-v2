@@ -41,7 +41,8 @@ export class GitWorktreeManager {
 
     const status = await git(canonicalRoot, ["status", "--porcelain=v1", "--untracked-files=all"]);
     if (status.trim().length > 0) {
-      if (status.split("\n").filter(Boolean).every((line) => line.includes(".localbuddy/"))) {
+      if (status.split("\n").filter(Boolean).every((line) =>
+        line.includes(".localbuddy/") || line.includes(".localbuddy-internal/"))) {
         throw new Error(
           "coding sandbox requires .localbuddy/ to be ignored by Git before a Run starts",
         );

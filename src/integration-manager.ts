@@ -1203,7 +1203,9 @@ async function unmergedPaths(repoRoot: string): Promise<string[]> {
 async function primaryStatus(repoRoot: string): Promise<string> {
   return (await git(repoRoot, ["status", "--porcelain=v1", "--untracked-files=all"]))
     .split("\n")
-    .filter((line) => line.length > 0 && !line.includes(".localbuddy/"))
+    .filter((line) => line.length > 0
+      && !line.includes(".localbuddy/")
+      && !line.includes(".localbuddy-internal/"))
     .join("\n");
 }
 
@@ -1279,6 +1281,8 @@ function assertSafeChangedPath(path: string): void {
     || path.startsWith(".git/")
     || path === ".localbuddy"
     || path.startsWith(".localbuddy/")
+    || path === ".localbuddy-internal"
+    || path.startsWith(".localbuddy-internal/")
   ) {
     throw new Error(`unsafe integration path: ${path}`);
   }

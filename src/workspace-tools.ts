@@ -44,7 +44,7 @@ const MAX_SOURCE_TEXT_QUERIES = 8;
 const MAX_SOURCE_TEXT_MATCHES = 20;
 const MAX_SOURCE_TEXT_CONTEXT_LINES = 3;
 const MAX_SOURCE_TEXT_EXCERPT_CHARS = 1_200;
-const SKIPPED_DIRECTORIES = new Set([".git", ".localbuddy", "node_modules"]);
+const SKIPPED_DIRECTORIES = new Set([".git", ".localbuddy", ".localbuddy-internal", "node_modules"]);
 
 export interface WorkspaceToolsOptions {
   workspaceRoot?: string;

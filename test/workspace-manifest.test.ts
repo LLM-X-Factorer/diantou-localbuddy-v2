@@ -12,11 +12,13 @@ test("builds only the bounded filename hint used by Coding planning", async (con
   await Promise.all([
     mkdir(join(workspace, ".git")),
     mkdir(join(workspace, ".localbuddy")),
+    mkdir(join(workspace, ".localbuddy-internal")),
     mkdir(join(workspace, "node_modules")),
   ]);
   await Promise.all([
     writeFile(join(workspace, ".git", "ignored"), "git", "utf8"),
     writeFile(join(workspace, ".localbuddy", "ignored"), "runtime", "utf8"),
+    writeFile(join(workspace, ".localbuddy-internal", "ignored-internal"), "runtime", "utf8"),
     writeFile(join(workspace, "node_modules", "ignored"), "dependency", "utf8"),
     ...Array.from({ length: 105 }, (_, index) =>
       writeFile(join(workspace, `file-${String(index).padStart(3, "0")}.txt`), "x", "utf8")),
