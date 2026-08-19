@@ -134,7 +134,7 @@ Core 是公共底座，Scenario Product 是用户购买和复用的工作方式�
 1. 冻结新的通用 Runtime 概念，先执行 Research Desk truth sprint；
 2. 同步完成 Teaching Studio 的教师 Job 发现，但不提前开发 PPTX；
 3. 用 Builder Lab/WB-05 检查共用底座泛化，不创建独立产品面；
-4. 通过 [Issue #39](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/39) 盘点点头内部真实工作，先分诊“不应 Agent 化 / 只需辅助 / 值得试点”，并优先用现有 Release 做影子运行；
+4. 内部 FDE 需求由独立私有下游盘点，先分诊“不应 Agent 化 / 只需辅助 / 值得试点”，并优先用现有 Release 做影子运行；公开仓不保存内部 Workflow Card 或私有证据；
 5. 为通过方向门的场景建立机器可读、可检查的 Scenario Product Contract；
 6. 只有被两个以上场景共同拉动的能力，才升级为 Core 优先级；
 7. 自动化、远程助理、Memory、企业协作和市场分发保持独立决策门，不因外部产品已提供就自动进入路线图。
@@ -149,5 +149,5 @@ Core 是公共底座，Scenario Product 是用户购买和复用的工作方式�
 - Product Portfolio：[Issue #3 · Product Definition v2](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/3)；
 - Product Contract：[Issue #4 · Scenario Product Contract v1](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/4)；
 - Product Evidence：[Issue #5 · Cross-scenario Product Truth Program](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/5)；
-- Internal Workflow Discovery：[Issue #39 · Diantou internal workflow agentization funnel](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/39)；
+- Internal Workflow Discovery：由独立私有下游治理；只有经过脱敏、泛化且有独立证据的通用能力需求才进入本公开仓；
 - Scenario Pilot：在 Portfolio Issue 通过选择后再分别创建，避免提前把候选场景变成功能承诺。

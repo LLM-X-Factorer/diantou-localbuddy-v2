@@ -119,7 +119,7 @@ Windows 11 门禁没有完成时，只能称公开 Engineering Alpha 和更新�
 - Issue #3 命名非作者 Research 用户、Teaching Owner/教学单元，并记录 Research Desk 的 `advance/pause/stop`；
 - Issue #2 只接收被真实失败或两个场景共同拉动的 Core 工作；
 - Issue #7 继续独立记录 Windows 11、真实 OTA 和签名，不阻塞 macOS 上的 Research 产品事实，但阻塞普通 Windows 用户发布声明；
-- Issue #39 从点头内部真实工作建立 Workflow Card、Agent 化分诊和现有版本影子运行；它是发现漏斗，不得绕过本节冻结规则直接创建功能；
+- 点头内部 Workflow Card、Agent 化分诊和影子运行由独立私有下游治理；公开仓只接收经过脱敏、泛化并有独立场景证据的通用平台需求；
 - Roadmap、Dogfood、Issues、Release 和仓库状态不再互相矛盾。
 
 完成这些条件前，不创建“功能齐全”的 M14，也不把公开下载量当成产品采用。

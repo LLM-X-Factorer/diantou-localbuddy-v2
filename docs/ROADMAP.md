@@ -9,7 +9,7 @@
 - `v0.13.1` Release 作为下一轮固定产品事实基线；旧版运行只保留历史证据，不与当前版本混算；
 - Research Desk 使用同一合同三跑、两个不同主题和至少一次非作者独立运行；
 - Teaching Studio 只做 Owner/真实教学单元发现、现有能力模拟和教师口头走查；Builder Lab 只跑 WB-05 泛化检查；
-- [Issue #39](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/39) 从点头真实内部工作建立 Agent 化漏斗：先盘点、分诊和影子运行，只有通过门槛的需求才拉动新能力；
+- 独立私有下游从点头真实内部工作建立 Agent 化漏斗：先盘点、分诊和影子运行；公开平台只接收经过脱敏、泛化和独立证据门的共性需求；
 - 只修安全/数据完整性问题、真实任务阻塞、两个场景共同需要的 Core 合同，以及证据/grader 真源问题；
 - 验收合同与退出裁决见 [`M13-PRODUCT-TRUTH-SPRINT.md`](M13-PRODUCT-TRUTH-SPRINT.md)。
 
