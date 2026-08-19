@@ -103,9 +103,9 @@ try {
     return runs.find((candidate) => candidate.runId === recoveryRun.runId);
   }, (candidate) => candidate?.status === "succeeded", 60_000, "Interrupted Run did not resume from checkpoint");
   await assertRunFilesAreCredentialSafe(recoveredRun.runId);
-  await waitForRendererActiveRuns(activeApp.page, 0);
+  await waitForActiveRuns(activeApp.page, 0);
   await setProviderBaseUrl(activeApp.page, `${mockProvider.baseUrl}/v1`);
-  assert.equal(await activeApp.page.locator('select[aria-label="Provider"]').inputValue(), "openai");
+  await waitForText(activeApp.page.locator(".provider-entry"), /OpenAI · 已连接/);
 
   const cancelledRuns = await startConcurrentRunsAndCancel(activeApp.page);
   assert.ok(mockProvider.state.cancelledRequests >= 2);
@@ -263,12 +263,14 @@ async function startRunAndWait(page, goal, expectedStatus) {
 
 async function startRun(page, goal) {
   const priorRuns = await listRuns(page);
+  await ensureNewTaskComposer(page);
   await page.locator(".goal-outcome-field textarea").fill(goal);
   await ensureGoalContractExpanded(page);
   await page.locator(".goal-contract-grid textarea").nth(1).fill(
     "The deterministic fixture artifact is registered and auditable",
   );
-  await page.getByLabel("Run 并发").selectOption("1");
+  await ensureAdvancedSettingsExpanded(page);
+  await page.getByLabel("同时处理几步").selectOption("1");
   await poll(
     () => page.locator(".start-button").isEnabled(),
     (enabled) => enabled,
@@ -293,12 +295,23 @@ async function startRun(page, goal) {
     return runs.find((candidate) => candidate.runId === run.runId);
   }, (candidate) => candidate?.planReview?.status === "approved", 20_000, "Plan approval was not persisted");
   await poll(
-    () => page.locator(".goal-outcome-field textarea").inputValue(),
+    async () => {
+      const composerGoal = page.locator(".goal-outcome-field textarea");
+      return await composerGoal.count() === 0 ? "" : composerGoal.inputValue();
+    },
     (value) => value.length === 0,
     10_000,
-    "Composer was not cleared after the Run started",
+    "Composer retained the previous goal after the Run started",
   );
   return run;
+}
+
+async function ensureNewTaskComposer(page) {
+  const composerGoal = page.locator(".goal-outcome-field textarea");
+  if (await composerGoal.count() === 0) {
+    await page.locator(".header-new-task").click();
+  }
+  await composerGoal.waitFor({ state: "visible" });
 }
 
 async function ensureGoalContractExpanded(page) {
@@ -309,6 +322,14 @@ async function ensureGoalContractExpanded(page) {
   await fields.waitFor({ state: "visible" });
 }
 
+async function ensureAdvancedSettingsExpanded(page) {
+  const details = page.locator(".composer-advanced-settings");
+  if (!await details.evaluate((element) => element.open)) {
+    await details.locator("summary").click();
+  }
+  await page.getByLabel("同时处理几步").waitFor({ state: "visible" });
+}
+
 async function startConcurrentRunsAndCancel(page) {
   const first = await startRun(page, "WINDOWS_GRAY_CANCEL_ONE");
   await poll(
@@ -317,7 +338,7 @@ async function startConcurrentRunsAndCancel(page) {
     20_000,
     "First concurrent Run did not become active",
   );
-  await waitForRendererActiveRuns(page, 1);
+  await waitForActiveRuns(page, 1);
   const second = await startRun(page, "WINDOWS_GRAY_CANCEL_TWO");
   await poll(
     () => listRuns(page),
@@ -336,11 +357,12 @@ async function startConcurrentRunsAndCancel(page) {
   }, (candidate) => candidate?.status === "cancelled", 30_000, `Run ${runId} was not cancelled`)));
 }
 
-async function waitForRendererActiveRuns(page, expected) {
-  await waitForText(
-    page.locator(".global-capacity"),
-    new RegExp(`活跃\\s+${expected}/2`),
+async function waitForActiveRuns(page, expected) {
+  await poll(
+    () => listRuns(page),
+    (runs) => runs.filter((run) => ["starting", "planning", "awaiting_plan_approval", "running"].includes(run.status)).length === expected,
     10_000,
+    `Active Run count did not reach ${expected}`,
   );
 }
 

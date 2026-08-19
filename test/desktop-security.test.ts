@@ -147,6 +147,11 @@ test("Renderer composer keeps the novice path plain and places runtime controls 
   assert.match(renderer, /你想让 LocalBuddy 完成什么/);
   assert.match(renderer, /任务要求（可选）/);
   assert.match(renderer, /className="composer-advanced-settings"/);
+  assert.match(renderer, /selectedActiveRun \? \(\s*<>\s*<button className="header-new-task"/);
+  assert.match(renderer, /<button className="header-stop-button" onClick=\{cancelRun\}>停止任务<\/button>/);
+  assert.match(renderer, /当前没有任务在进行/);
+  assert.match(renderer, /已有 1 个任务在进行，还可以开始 1 个/);
+  assert.match(renderer, /已有 2 个任务在进行，请先等待或停止一个/);
   assert.match(renderer, /使用哪个模型服务/);
   assert.match(renderer, /重要操作再确认（推荐）/);
   assert.match(renderer, /aria-expanded=\{extensionsOpen\}/);
@@ -165,6 +170,8 @@ test("Renderer composer keeps the novice path plain and places runtime controls 
   assert.match(styles, /\.composer textarea \{[^}]*height: 46px/);
   assert.match(styles, /\.composer-actions \{ display: grid; grid-template-columns: minmax\(0,1fr\) auto/);
   assert.match(styles, /\.composer-options \{ display: flex; flex-wrap: wrap/);
+  assert.match(styles, /\.run-capacity\.blocked/);
+  assert.doesNotMatch(styles, /\.global-capacity/);
   assert.match(styles, /\.composer-advanced-settings > summary/);
   assert.match(styles, /\.extensions-toggle \{[^}]*min-height: 32px/);
   assert.match(styles, /\.capability-picker-dialog \{/);

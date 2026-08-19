@@ -1145,7 +1145,10 @@ export function App() {
           ) : selectedRun && (
             <div className="header-actions">
               {selectedActiveRun ? (
-                <button className="header-stop-button" onClick={cancelRun}>停止任务</button>
+                <>
+                  <button className="header-new-task" onClick={beginNewTask}>开始新任务</button>
+                  <button className="header-stop-button" onClick={cancelRun}>停止任务</button>
+                </>
               ) : (
                 <button className="header-new-task" onClick={beginNewTask}>开始新任务</button>
               )}
@@ -1856,6 +1859,13 @@ export function App() {
               </details>
             </div>
             <div className="composer-buttons">
+              <span className={`run-capacity ${activeRuns.length >= 2 ? "blocked" : ""}`} aria-live="polite">
+                {activeRuns.length === 0
+                  ? "当前没有任务在进行"
+                  : activeRuns.length === 1
+                  ? "已有 1 个任务在进行，还可以开始 1 个"
+                  : "已有 2 个任务在进行，请先等待或停止一个"}
+              </span>
               <button
                 className="start-button"
                 onClick={startRun}

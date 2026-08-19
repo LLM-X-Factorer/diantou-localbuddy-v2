@@ -126,6 +126,16 @@ test("declares Windows-first CI plus low-frequency Linux maintenance boundaries"
   assert.match(installedGray, /Provider credential was not available for verification/);
   assert.match(installedGray, /ensureGoalContractExpanded/);
   assert.match(installedGray, /getByRole\("button", \{ name: "任务要求（可选）" \}\)/);
+  assert.match(installedGray, /ensureAdvancedSettingsExpanded/);
+  assert.match(installedGray, /getByLabel\("同时处理几步"\)/);
+  assert.match(installedGray, /locator\("\.provider-entry"\), \/OpenAI · 已连接\//);
+  assert.match(installedGray, /composerGoal\.count\(\) === 0/);
+  assert.match(installedGray, /Composer retained the previous goal after the Run started/);
+  assert.match(installedGray, /ensureNewTaskComposer/);
+  assert.match(installedGray, /locator\("\.header-new-task"\)\.click\(\)/);
+  assert.match(installedGray, /waitForActiveRuns/);
+  assert.match(installedGray, /Active Run count did not reach/);
+  assert.doesNotMatch(installedGray, /\.global-capacity/);
 
   const linuxMaintenance = await readFile(resolve(repository, ".github", "workflows", "linux-maintenance.yml"), "utf8");
   assert.match(linuxMaintenance, /ubuntu-24\.04/);
