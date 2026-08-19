@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { chmodSync, mkdirSync } from "node:fs";
 import { chmod, writeFile, mkdir, readFile, realpath, stat } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, extname, join, resolve, sep } from "node:path";
@@ -94,6 +94,7 @@ app.setName("LocalBuddy");
 if (!process.argv.some((argument) => argument.startsWith("--user-data-dir="))) {
   const productUserData = resolve(app.getPath("appData"), "LocalBuddy");
   mkdirSync(productUserData, { recursive: true, mode: 0o700 });
+  if (process.platform !== "win32") chmodSync(productUserData, 0o700);
   app.setPath("userData", productUserData);
 }
 if (app.isPackaged && process.env.PLAYWRIGHT_BROWSERS_PATH === undefined) {

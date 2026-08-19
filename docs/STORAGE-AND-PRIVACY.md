@@ -21,6 +21,7 @@ LocalBuddy 把本地数据分为三类：工作区 Run 数据、应用偏好、�
 
 ## 权限和完整性规则
 
+- macOS/Linux 的默认应用数据目录会在启动时收紧到 `0700`；显式测试用 `--user-data-dir` 由调用者负责隔离和权限。
 - macOS/Linux 新建的 LocalBuddy Run 目录使用 `0700`，Run 文件使用 `0600`。LocalBuddy 在持有工作区进程锁并安全打开旧 Run 时，会原地收紧已知 Run/checkpoint/Artifact 路径的权限。
 - Windows 上 Node 权限位不能构成可靠 ACL 保证，文件继承所选工作区的 Windows ACL。敏感 Run 应放在本人本机用户目录，不应放在广泛共享目录。
 - Run JSON 和 Artifact 使用私有原子写；事件使用只追加的私有文件句柄。托管私有文件和目录遇到符号链接会拒绝继续，不会跟随它写到别处。

@@ -11,6 +11,7 @@ test("desktop runtime uses the privileged local protocol and Electron isolation 
   assert.match(main, /app\.enableSandbox\(\)/);
   assert.match(main, /app\.setName\("LocalBuddy"\)/);
   assert.match(main, /resolve\(app\.getPath\("appData"\), "LocalBuddy"\)/);
+  assert.match(main, /chmodSync\(productUserData, 0o700\)/);
   assert.match(main, /app\.setPath\("userData", productUserData\)/);
   assert.match(main, /argument\.startsWith\("--user-data-dir="\)/);
   assert.match(main, /const rendererUrl = "localbuddy:\/\/app\/index\.html"/);
