@@ -36,7 +36,7 @@
 
 当前固定 Release 为 `v0.12.8`。`main` CI [`32121808822`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32121808822) 通过 macOS/Windows 合同、Windows 干净安装和 `v0.12.7 -> 0.12.8-canary`，`profilePreserved=true`。固定 Tag workflow [`32122329408`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32122329408) 全绿：stable 安装版灰度、`v0.12.7 -> v0.12.8` 本地升级、五项资产发布和第一方公网升级均通过；公网检查、下载、安装分别为 1.302 秒、4.787 秒、18.812 秒。五项资产已独立回下载并匹配清单/GitHub digest。
 
-`v0.13.1` 候选实现提交 `788c48b` 的 [`main` CI `32225426992`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32225426992) 已通过 macOS 回归、Windows 全量检查、干净安装和从 `v0.12.8` 到 Canary 的原位升级。`v0.13.0` [Release Gate `32229083025`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32229083025) 在安装版验收脚本将帮助文案误判为连接状态后停止，没有发布资产；补丁候选改为检查精确状态和按钮可用性。固定版本提交、Tag Release、公网 `v0.12.8 -> v0.13.1` 和资产回读仍待完成。
+`v0.13.1` 候选实现提交 `788c48b` 的 [`main` CI `32225426992`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32225426992) 已通过 macOS 回归、Windows 全量检查、干净安装和从 `v0.12.8` 到 Canary 的原位升级。`v0.13.0` [Release Gate `32229083025`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32229083025) 先暴露模糊状态断言，原生 Windows 灰度 `32230476312` 再确认用户选择 OpenAI 后会被迟到初始化改回 DeepSeek；两次都没有发布资产。补丁候选让用户选择优先，并检查精确连接状态与按钮可用性。固定版本提交、Tag Release、公网 `v0.12.8 -> v0.13.1` 和资产回读仍待完成。
 
 该阶段不使用真实 Provider Key，不产生模型费用，也不能证明 Windows 11 消费者桌面环境。
 

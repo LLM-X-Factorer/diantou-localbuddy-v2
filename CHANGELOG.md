@@ -27,6 +27,7 @@
 - 同 Run checkpoint 恢复不再构造整个工作区快照；只复核实际读取证据。即使 Run 目录中存在一千个以上无关文件，也不会因安全 checkpoint 条目上限阻断恢复。
 - 工作区就绪检查不再枚举或计算无关文件大小；运行位置和本次资料继续分离，LocalBuddy 不会因为选择了一个目录就自动扫描其中所有文件。
 - 模型已经就绪时，第一次任务不再重复要求“连接模型”；系统打开结果后不再没有反馈。
+- 用户在应用初始化完成前选择 OpenAI 时，迟到的初始化结果不再把选择改回 DeepSeek；用户刚做出的选择优先。
 - Windows 安装版灰度不再用帮助文案中的“已连接”判断凭据状态；它只接受精确的 `OpenAI · 已连接` 状态，并在每次故障探测前后确认“验证连接”按钮已经恢复可用。
 
 ### Candidate evidence
@@ -35,7 +36,7 @@
 - `pnpm audit --prod --audit-level high` 返回无已知漏洞；完整开发依赖审计仍只命中 Electron Forge 打包链中的 `extract-zip 2.0.1` 公告 `GHSA-jmr9-qjv8-65gv`，上游报告无可用修复版本。该依赖不进入用户运行时，发布只在受控 Runner 中打包，不通过忽略规则伪装为全绿；
 - `0.13.1` macOS arm64 App、ZIP 和 DMG 已在补丁候选上重新生成；ad-hoc 签名、DMG 完整性、隔离无凭据首启和真实 Electron 首次任务界面通过，方法与连接目录在隔离工作区中通过且没有尝试真实 MCP 连接；
 - [`main` CI `32225426992`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32225426992) 全绿：macOS 回归、Windows 全量检查、Windows 干净安装和从 `v0.12.8` 到 Canary 的原位升级均通过；
-- `v0.13.0` 注解标签的 [Release Gate `32229083025`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32229083025) 在安装版故障矩阵中发现上述验收脚本歧义后停止；没有发布 Release 或正式资产，标签不移动、不重用；
+- `v0.13.0` 注解标签的 [Release Gate `32229083025`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32229083025) 在安装版故障矩阵中停止；后续原生 Windows 灰度 `32230476312` 用精确断言确认了 Provider 选择会被迟到初始化覆盖的产品竞态。两次均未发布 Release 或正式资产；失败标签不移动、不重用；
 - DOCX 完整任务使用 loopback 确定性 Provider，并在 Pages 中实际打开标题、关键结论、行动项表格和待确认事项。这是 synthetic novice regression，不是真实 DeepSeek/OpenAI 或 `RD-NONAUTHOR` 证据；
 - 固定 Tag、stable 安装版灰度、`v0.12.8 -> v0.13.1` 本地/公网升级、五项正式资产和独立回下载仍属于发布门禁，未完成前不得写成已发布。
 

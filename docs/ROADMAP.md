@@ -18,7 +18,7 @@
 - “方法与连接”只发现 `.localbuddy/skills` 与 `.localbuddy/mcp.json` 中的受限元数据，必须由用户明确选择；发现不等于安装、连接或副作用授权，真实第三方 MCP/Marketplace 仍未验收；
 - checkpoint 恢复只复核实际读取证据，不再构造整个工作区快照；工作区就绪检查不枚举或测量无关文件，修复 `workspace snapshot exceeded the safe checkpoint entry limit`；
 - 本机 226 项合同通过；`0.13.1` macOS arm64 App/ZIP/DMG、ad-hoc 签名、DMG 完整性、隔离无凭据首启和方法与连接目录已在补丁候选上重新通过，合成新手完整 DOCX 路径和 Pages 打开沿用同一产品实现证据；生产依赖无已知高危漏洞，开发打包链仍保留无上游修复的 `extract-zip` 公告并明确隔离；[`main` CI `32225426992`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32225426992) 的 macOS、Windows 全量、干净安装和原位升级全绿；
-- `v0.13.0` [Release Gate `32229083025`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32229083025) 在安装版故障矩阵中发现验收脚本把帮助文案误当成连接状态后停止，没有发布 Release 或正式资产；补丁候选改为精确状态和按钮可用性检查，失败标签不移动、不重用；
+- `v0.13.0` [Release Gate `32229083025`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32229083025) 先暴露模糊连接状态断言，原生 Windows 灰度 `32230476312` 再确认用户选择 OpenAI 后会被迟到初始化改回 DeepSeek；两次均未发布 Release 或正式资产。补丁候选让用户选择优先，并改用精确状态和按钮可用性检查；失败标签不移动、不重用；
 - Issues [#35](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/35)、[#37](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/37)、[#38](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/38) 已关闭；[#36](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/issues/36) 继续约束 Word/XLSX/PPTX 能力真值；
 - 候选仍需版本提交的 `main` CI、annotated Tag、stable 安装版灰度、`v0.12.8 -> v0.13.1` 本地/公网升级、五项资产发布和独立回下载；完成前不写成公开 Release，完成后也不等于 M13 `advance`。
 

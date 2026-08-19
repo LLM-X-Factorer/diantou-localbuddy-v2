@@ -90,6 +90,7 @@ export function App() {
   const [concurrency, setConcurrency] = useState(3);
   const [mode, setMode] = useState<DesktopRunMode>("research");
   const [providerId, setProviderId] = useState<"deepseek" | "openai">("deepseek");
+  const providerSelectionChangedRef = useRef(false);
   const [providerModel, setProviderModel] = useState("");
   const [providerBaseUrl, setProviderBaseUrl] = useState("");
   const [providerApiKey, setProviderApiKey] = useState("");
@@ -159,7 +160,9 @@ export function App() {
         setRuns(bootstrap.runs);
         setSelectedRunId(bootstrap.runs[0]?.runId);
         setProviderAvailability(bootstrap.providerAvailability);
-        setProviderId(preferredProviderId(bootstrap.providerAvailability));
+        if (!providerSelectionChangedRef.current) {
+          setProviderId(preferredProviderId(bootstrap.providerAvailability));
+        }
         setWorkspaceReadiness(bootstrap.workspaceReadiness);
         setOnboarding(bootstrap.onboarding);
         setGuideVisible(!bootstrap.onboarding.guideSeen);
@@ -504,6 +507,7 @@ export function App() {
   }
 
   function selectProvider(nextProviderId: "deepseek" | "openai") {
+    providerSelectionChangedRef.current = true;
     if (nextProviderId !== providerId) {
       setProviderModel("");
       setProviderBaseUrl("");

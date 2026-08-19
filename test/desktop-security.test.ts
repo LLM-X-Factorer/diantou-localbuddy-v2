@@ -46,6 +46,9 @@ test("desktop runtime uses the privileged local protocol and Electron isolation 
   assert.match(renderer, /还没有 API Key？按这三步完成/);
   assert.match(renderer, /LocalBuddy 不销售模型额度，也不会代扣费用/);
   assert.match(renderer, /setProviderId\(preferredProviderId\(bootstrap\.providerAvailability\)\)/);
+  assert.match(renderer, /providerSelectionChangedRef = useRef\(false\)/);
+  assert.match(renderer, /if \(!providerSelectionChangedRef\.current\)/);
+  assert.match(renderer, /providerSelectionChangedRef\.current = true/);
   assert.match(renderer, /没有生成内容，也没有产生模型用量/);
   assert.match(renderer, /provider-settings-error/);
   assert.match(main, /requestedWorkspace === undefined\s*\? ""/);

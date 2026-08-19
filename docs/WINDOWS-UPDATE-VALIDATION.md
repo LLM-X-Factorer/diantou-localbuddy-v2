@@ -8,7 +8,8 @@
 - 本机 `pnpm check` 为 226 项：224 passed、2 项 Windows-only 跳过、0 failed；`0.13.1` macOS arm64 App/ZIP/DMG、ad-hoc 签名、DMG 完整性、隔离无凭据首启和“方法与连接”目录已在补丁候选上重新通过；合成新手会议纪要任务和 Pages 打开沿用同一产品实现证据；
 - `pnpm audit --prod --audit-level high` 返回无已知漏洞；完整开发依赖审计仍只命中 Electron Forge 打包链中的 `extract-zip 2.0.1` 公告 `GHSA-jmr9-qjv8-65gv`，上游报告无可用修复版本。该依赖不进入用户运行时，只在受控 Runner 中承担打包风险；
 - `v0.13.0` 注解标签的 [Release Gate `32229083025`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32229083025) 已通过生产依赖审计、完整合同和 stable 包构建，但安装版故障矩阵因模糊文本匹配提前进入禁用按钮而停止；升级、资产收集、Release 发布和公网更新均未执行。`v0.13.0` 标签保留且不移动，不计作公开 Release；
-- `v0.13.1` 补丁将凭据验收改为精确的 `OpenAI · 已连接`，并在每次故障探测前后等待验证按钮可用；这修复的是发布夹具歧义，不扩大产品能力；
+- 补丁提交 `8c4b8c0` 的原生 Windows 灰度 [`32230476312`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/actions/runs/32230476312) 使用精确断言继续定位到产品竞态：用户已选择 OpenAI 后，迟到的 bootstrap 仍会把 Provider 改回 DeepSeek。该轮同样在发布前停止；
+- `v0.13.1` 后续补丁让明确的用户选择优先于迟到初始化，并将凭据验收改为精确的 `OpenAI · 已连接`，在每次故障探测前后等待验证按钮可用；它修复首次设置可靠性，不扩大产品能力；
 - 发布门禁必须在 `v0.13.1` Tag 上重复生产依赖审计、完整合同、stable 安装版合成灰度、`v0.12.8 -> v0.13.1` 本地原位升级、五项资产发布，以及独立第一方公网 feed 真升级；
 - 发布后还要在新临时目录回下载五项资产，逐项核对清单、字节数、本机 SHA-256 和 GitHub digest。完成前本节保持候选状态。
 
