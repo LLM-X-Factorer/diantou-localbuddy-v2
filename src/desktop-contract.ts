@@ -3,11 +3,13 @@ export const DESKTOP_CHANNELS = {
   selectWorkspace: "localbuddy:select-workspace",
   selectResearchSources: "localbuddy:select-research-sources",
   inspectWorkspace: "localbuddy:inspect-workspace",
+  inspectWorkspaceExtensions: "localbuddy:inspect-workspace-extensions",
   createTutorialWorkspace: "localbuddy:create-tutorial-workspace",
   updateOnboarding: "localbuddy:update-onboarding",
   storeProviderCredential: "localbuddy:store-provider-credential",
   deleteProviderCredential: "localbuddy:delete-provider-credential",
   verifyProviderConnection: "localbuddy:verify-provider-connection",
+  openProviderSetup: "localbuddy:open-provider-setup",
   checkForUpdates: "localbuddy:check-for-updates",
   quitAndInstallUpdate: "localbuddy:quit-and-install-update",
   openLatestRelease: "localbuddy:open-latest-release",
@@ -116,6 +118,40 @@ export interface DesktopEventView {
   detail?: string;
 }
 
+export type DesktopRunStoryStatus =
+  | "queued"
+  | "running"
+  | "waiting"
+  | "succeeded"
+  | "failed"
+  | "interrupted";
+
+export interface DesktopRunStoryStageView {
+  id: string;
+  label: string;
+  status: DesktopRunStoryStatus;
+  startedAt?: string;
+  completedAt?: string;
+  durationMs?: number;
+}
+
+export interface DesktopRunTimelineSpanView {
+  id: string;
+  lane: "task" | "model" | "tool" | "approval" | "review";
+  label: string;
+  status: Exclude<DesktopRunStoryStatus, "queued" | "waiting"> | "denied";
+  startedAt: string;
+  completedAt?: string;
+  durationMs?: number;
+  taskId?: string;
+}
+
+export interface DesktopRunStoryView {
+  stages: readonly DesktopRunStoryStageView[];
+  timeline: readonly DesktopRunTimelineSpanView[];
+  omittedTimelineSpans: number;
+}
+
 export interface DesktopWorktreeView {
   taskId: string;
   path: string;
@@ -156,6 +192,7 @@ export interface DesktopRunView {
   artifactRevision?: DesktopArtifactRevisionView;
   recentEvents: readonly DesktopEventView[];
   eventCount: number;
+  story: DesktopRunStoryView;
   worktrees: readonly DesktopWorktreeView[];
   checkpoint?: DesktopCheckpointView;
   integration?: DesktopIntegrationView;
@@ -478,6 +515,7 @@ export interface DesktopApi {
   selectWorkspace(): Promise<string | null>;
   selectResearchSources(kind: "files" | "folders"): Promise<readonly string[]>;
   inspectWorkspace(workspace: string): Promise<DesktopWorkspaceReadiness>;
+  inspectWorkspaceExtensions(workspace: string): Promise<WorkspaceExtensionCatalog>;
   createTutorialWorkspace(): Promise<DesktopTutorialWorkspaceResult>;
   updateOnboarding(request: UpdateDesktopOnboardingRequest): Promise<DesktopOnboardingState>;
   storeProviderCredential(
@@ -489,6 +527,7 @@ export interface DesktopApi {
   verifyProviderConnection(
     request: VerifyDesktopProviderConnectionRequest,
   ): Promise<VerifyDesktopProviderConnectionResult>;
+  openProviderSetup(request: { providerId: "deepseek" | "openai" }): Promise<void>;
   checkForUpdates(): Promise<DesktopUpdateView>;
   quitAndInstallUpdate(): Promise<DesktopUpdateView>;
   openLatestRelease(): Promise<void>;
@@ -517,8 +556,15 @@ export interface DesktopApi {
   onUpdateUpdate(listener: (update: DesktopUpdateView) => void): () => void;
 }
 import type { RunExtensionSelection } from "./extension-contract.js";
+import type { WorkspaceExtensionCatalog } from "./extension-catalog-contract.js";
 import type { ProviderSelection } from "./provider-config.js";
 import type { DesktopUpdateView } from "./desktop-update.js";
 import type { WorkspaceStorageAssessment } from "./workspace-storage-contract.js";
 
 export type { DesktopUpdateView } from "./desktop-update.js";
+export type {
+  WorkspaceExtensionCatalog,
+  WorkspaceExtensionCatalogIssue,
+  WorkspaceMcpCatalogEntry,
+  WorkspaceSkillCatalogEntry,
+} from "./extension-catalog-contract.js";

@@ -46,27 +46,22 @@ const DEFAULT_STATE: OnboardingState = {
   contextHelpEnabled: true,
 };
 
+const TUTORIAL_VERSION = 2 as const;
 const TUTORIAL_FILES = {
-  "project-brief.md": `# Aurora pilot brief
+  "示例会议记录.txt": `这是 LocalBuddy 为第一次任务编写的完全虚构会议记录，不包含真实人员或业务信息。
 
-Aurora is a fictional internal knowledge assistant preparing for a small pilot.
+会议主题：秋季客户培训准备会
+会议时间：2026 年 8 月 18 日 10:00–10:45
+参会人：林晓（主持）、周然、陈一、王宁
 
-- The pilot audience is the customer-success team.
-- The team wants answers grounded in approved internal notes.
-- The launch decision has not been made.
-`,
-  "customer-notes.md": `# Fictional customer notes
+零散记录：
 
-- Interview Alpha: people lose time checking which document is current.
-- Interview Beta: people want every answer to name its source file.
-- Interview Gamma: people want uncertain claims marked as unknown rather than guessed.
-`,
-  "delivery-constraints.md": `# Fictional delivery constraints
-
-- The first pilot must stay read-only.
-- External side effects require a human decision.
-- The review should identify facts, open questions, and next actions.
-- No budget or success-rate target has been approved.
+- 9 月客户培训先做一场 30 人以内的小范围试讲，确认内容和现场流程后再扩大。
+- 周然负责在 8 月 25 日前整理课程大纲，并把需要业务团队确认的案例单独标出来。
+- 陈一负责联系场地和直播支持，场地报价还没有确认，截止时间也没有定。
+- 王宁建议报名表增加“最想解决的问题”，方便讲师在培训前调整案例。
+- 是否录制课程没有结论，需要确认客户授权和存储位置。
+- 下次碰头暂定 8 月 28 日，具体时间待确认。
 `,
 } as const;
 
@@ -160,7 +155,7 @@ export async function ensureTutorialWorkspace(
     await writeFile(join(workspace, fileName), content, { encoding: "utf8", flag: "wx", mode: 0o600 });
   }
   await writeFile(join(workspace, TUTORIAL_MARKER), `${JSON.stringify({
-    version: ONBOARDING_VERSION,
+    version: TUTORIAL_VERSION,
     kind: "first-trusted-run",
     files: Object.keys(TUTORIAL_FILES),
   }, null, 2)}\n`, { encoding: "utf8", flag: "wx", mode: 0o600 });
@@ -210,7 +205,7 @@ async function validTutorialMarker(workspace: string): Promise<boolean> {
     const marker = JSON.parse(await readFile(join(workspace, TUTORIAL_MARKER), "utf8")) as unknown;
     if (marker === null || typeof marker !== "object" || Array.isArray(marker)) return false;
     const record = marker as Record<string, unknown>;
-    return record.version === ONBOARDING_VERSION && record.kind === "first-trusted-run";
+    return record.version === TUTORIAL_VERSION && record.kind === "first-trusted-run";
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") return false;
     if (error instanceof SyntaxError) return false;

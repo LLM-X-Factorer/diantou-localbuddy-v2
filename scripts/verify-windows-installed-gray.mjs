@@ -175,7 +175,10 @@ try {
 
 async function assertCleanFirstLaunch(page) {
   await page.locator(".provider-entry").waitFor({ state: "visible" });
-  assert.equal(await page.locator(".start-button").isDisabled(), true);
+  assert.match(await page.locator(".first-task-primary").innerText(), /使用示例会议记录/);
+  assert.match(await page.locator(".first-task-secondary").innerText(), /使用我自己的会议记录/);
+  assert.equal(await page.locator(".composer").count(), 0);
+  assert.match(await page.locator(".guide-state").innerText(), /不会自动扫描电脑/);
   await page.locator(".provider-entry").click();
   const dialog = page.locator(".provider-settings-dialog");
   await dialog.waitFor({ state: "visible" });
@@ -191,13 +194,13 @@ async function configureProvider(page) {
   const dialog = page.locator(".provider-settings-dialog");
   await dialog.locator(".provider-choice-grid button").filter({ hasText: "OpenAI" }).click();
   if (credentialMode === "environment") {
-    await waitForText(dialog.locator(".provider-credential-summary"), /环境变量可用/);
+    await waitForText(dialog.locator(".provider-credential-summary"), /已连接/);
     return;
   }
   await dialog.locator('input[type="password"]').fill(FIXTURE_KEY);
-  await dialog.getByRole("button", { name: "安全保存" }).click();
-  await waitForText(dialog.locator(".provider-settings-status"), /系统安全存储/);
-  await waitForText(dialog.locator(".provider-credential-summary"), /系统凭据已配置/);
+  await dialog.getByRole("button", { name: "安全保存到本机" }).click();
+  await waitForText(dialog.locator(".provider-settings-status"), /安全保存到本机/);
+  await waitForText(dialog.locator(".provider-credential-summary"), /已连接/);
 }
 
 async function verifyFaultMatrix(page) {
@@ -221,6 +224,8 @@ async function verifyProvider(page, baseUrl) {
   await waitForText(page.locator(".provider-settings-status"), /连接验证通过/);
   await page.locator(".provider-settings-dialog").getByRole("button", { name: "完成" }).click();
   await page.locator(".provider-settings-dialog").waitFor({ state: "hidden" });
+  await page.getByRole("button", { name: /进入完整工作台/ }).click();
+  await page.locator(".start-button").waitFor({ state: "visible" });
 }
 
 async function setProviderBaseUrl(page, baseUrl) {
@@ -337,7 +342,7 @@ async function assertPersistedState(page, succeededRunId) {
   await page.locator(".provider-choice-grid button").filter({ hasText: "OpenAI" }).click();
   await waitForText(
     page.locator(".provider-credential-summary"),
-    credentialMode === "system" ? /系统凭据已配置/ : /环境变量可用/,
+    /已连接/,
   );
   await page.locator(".provider-settings-dialog").getByRole("button", { name: "完成" }).click();
 }

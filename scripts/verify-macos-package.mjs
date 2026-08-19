@@ -100,12 +100,13 @@ assert.equal(diagnostics.url, "localbuddy://app/index.html");
 assert.equal(diagnostics.api, "object");
 assert.equal(diagnostics.rootChildren, 1);
 assert.ok(diagnostics.bodyCharacters > 100);
-assert.equal(diagnostics.goalContractVisible, true);
-assert.equal(diagnostics.goalFieldCount, 3);
+assert.equal(diagnostics.goalContractVisible, false);
+assert.equal(diagnostics.goalFieldCount, 0);
 assert.equal(diagnostics.planReviewGuideVisible, true);
-assert.equal(diagnostics.storageDisclosureVisible, true);
-assert.equal(diagnostics.storageDetailsVisible, true);
-assert.match(diagnostics.startButtonText, /生成计划/);
+assert.equal(diagnostics.dataBoundaryVisible, true);
+assert.equal(diagnostics.advancedWorkbenchHidden, true);
+assert.match(diagnostics.firstTaskActionText, /使用示例会议记录/);
+assert.equal(diagnostics.ownMeetingRecordActionVisible, true);
 assert.ok((await stat(screenshot)).size > 10_000);
 
 await execFileAsync("hdiutil", ["verify", dmgPath]);

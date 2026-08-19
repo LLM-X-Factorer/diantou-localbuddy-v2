@@ -63,7 +63,23 @@ Electron production build 从 JSONL 重建一个已完成的 M4 Run，真实窗�
 - exact-origin allowlist 不是 OS 网络沙箱；MCP server 和项目检查命令仍是本机进程。
 - MCP stdio command 来自用户工作区配置，本身等同本地程序执行；M4 没有容器隔离。
 - `readOnlyTools` 是本地人工声明；错误声明可能把有副作用的远端工具降级为只读，因此应只信任用户审阅过的 MCP 配置。
-- Browser action/MCP write 是 Run 级总开关，不是每次 tool call 的交互式批准。
+- 这是 M4 当时的边界：Browser action/MCP write 还是 Run 级总开关；M5 之后 Desktop 已增加精确 tool call 的逐次交互批准，本节后面的 2026-08-19 回归记录当前界面。
 - Skills 是用户显式启用的本地指令，不做签名、市场安装或远程更新。
 - OpenAI 只完成 adapter 协议测试，未在本次会话使用真实 OpenAI Key 产生账单请求。
 - OS/容器隔离、HTTP MCP/OAuth、自动冲突解决、跨进程全局协调和正式安装包属于 M4 之后的 hardening/packaging。
+
+## 2026-08-19 Desktop“方法与连接”回归
+
+在工作区发现和安全合同已经成立之后，Desktop 再次收窄普通用户路径：主界面不要求用户先理解 Skills、MCP、transport、authentication 或写权限总开关。本轮确定性验证覆盖：
+
+- 只枚举 `.localbuddy/skills` 和 `.localbuddy/mcp.json`，工作区其他大文件不进入发现结果；
+- Renderer 只收到方法的标题/说明/适用模式/信任元数据，以及连接的用户名称/用途/连接类别/认证类别和风险摘要；不返回 Skill 指令正文、环境变量对应的 secret 或绝对路径；
+- 主路径按结果分成“按固定方法完成”和“使用其他服务或本机工具”，已添加项以简短标签回到任务区；Skill/MCP 技术名只在折叠的高级信息中出现；
+- 无效 Skill 单独报告，不隐藏同目录中的有效 Skill；本地 stdio MCP 在 Windows 明确显示不可用；
+- MCP 配置超过 256 KiB、配置文件符号链接或符号链接 `.localbuddy` 目录会在解析和连接前失败；
+- Desktop 不再展示容易误读的 MCP 写入预开关。添加连接后，真实 effectful tool call 仍必须进入逐次 `InteractiveToolApprovalBroker`，底层 contract hash、事件和 checkpoint 语义不变；
+- `pnpm check`：223 项测试，221 passed、2 项 Windows-only contract skipped、0 failed；
+- `pnpm package:dir` 重新生成 macOS arm64 Electron package；`pnpm verify:extension-catalog-package` 使用隔离用户目录和合成工作区验收：1 个方法/1 个连接默认均未启用，点击后计数变为 2，任务区标签可见，主层不出现 raw ID 或 MCP，技术边界只在高级区域出现；
+- 打包应用截图保存在 Git 忽略的 `.localbuddy/extension-catalog-smoke/darwin/method-and-connection-picker.png`。验收不读取现有用户资料、凭据或历史 Run，也不连接真实 MCP。
+
+这项回归证明当前本地方法/连接能以低术语路径被发现、选择并进入原有审计与审批合同；不证明 Marketplace、远程安装、模型自动选择方法或任意第三方生产 MCP 可用，这些能力仍未实现。

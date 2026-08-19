@@ -114,6 +114,8 @@ test("validates MCP config selection and browser origin policy", async (context)
     version: 1,
     servers: [{
       id: "local-tools",
+      title: "Local tools",
+      description: "Use the reviewed local tool set.",
       command: process.execPath,
       args: ["server.js"],
       cwd: ".",
@@ -126,6 +128,8 @@ test("validates MCP config selection and browser origin policy", async (context)
   assert.notEqual(selected?.transport, "streamable-http");
   if (selected?.transport === "streamable-http") throw new Error("expected stdio config");
   assert.equal(selected?.cwd, await realpath(workspace));
+  assert.equal(selected?.title, "Local tools");
+  assert.equal(selected?.description, "Use the reviewed local tool set.");
   assert.deepEqual(selected?.readOnlyTools, ["echo"]);
   assert.throws(() => resolveSelectedMcpServers(config, ["missing"]), /not configured/);
   assert.deepEqual(normalizeRunExtensions({
@@ -199,4 +203,19 @@ test("normalizes OAuth MCP accounts and rejects mixed bearer authentication", as
     }],
   })}\n`, "utf8");
   await assert.rejects(loadMcpConfig(workspace), /cannot combine/);
+});
+
+test("rejects symlinked and oversized MCP configuration before parsing", async (context) => {
+  const workspace = await mkdtemp(join(tmpdir(), "localbuddy-mcp-config-bound-"));
+  context.after(async () => rm(workspace, { recursive: true, force: true }));
+  const extensionRoot = join(workspace, ".localbuddy");
+  await mkdir(extensionRoot, { recursive: true });
+  const outside = join(workspace, "outside-mcp.json");
+  await writeFile(outside, '{"version":1,"servers":[]}\n', "utf8");
+  await symlink(outside, join(extensionRoot, "mcp.json"));
+  await assert.rejects(loadMcpConfig(workspace), /real file/);
+
+  await rm(join(extensionRoot, "mcp.json"));
+  await writeFile(join(extensionRoot, "mcp.json"), " ".repeat(256 * 1024 + 1), "utf8");
+  await assert.rejects(loadMcpConfig(workspace), /exceeds 262144 bytes/);
 });

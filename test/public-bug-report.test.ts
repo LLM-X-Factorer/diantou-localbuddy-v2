@@ -67,6 +67,20 @@ function sensitiveRun(): DesktopRunView {
       },
     ],
     eventCount: 141,
+    story: {
+      stages: [{ id: "private", label: "Read private strategy", status: "failed" }],
+      timeline: [{
+        id: "private-span",
+        lane: "task",
+        label: "Private customer task",
+        status: "failed",
+        startedAt: "2026-08-17T01:00:00.000Z",
+        completedAt: "2026-08-17T01:01:00.000Z",
+        durationMs: 60_000,
+        taskId: "private-task-id",
+      }],
+      omittedTimelineSpans: 0,
+    },
     worktrees: [{ taskId: "private-task-id", path: "/Users/alice/private-worktree", status: "retained" }],
     checkpoint: { status: "blocked", completedTasks: 1, resumableTasks: 1, reason: "private reason" },
     integration: {

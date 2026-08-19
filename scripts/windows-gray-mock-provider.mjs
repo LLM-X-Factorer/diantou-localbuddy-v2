@@ -126,13 +126,40 @@ async function respondToModelProbe(pathname, response) {
 function respondToCompletion(body, response) {
   const messages = Array.isArray(body.messages) ? body.messages : [];
   const promptText = lastUserPrompt(body);
+  const serializedRequest = JSON.stringify(body);
+  const firstUseRequest = serializedRequest.includes("会议纪要.docx");
+  const artifactReviewRequest = serializedRequest.includes("LOCALBUDDY_INDEPENDENT_ARTIFACT_REVIEW_V1");
   const toolResultIds = new Set(
     messages
       .filter((message) => message?.role === "tool" && typeof message.tool_call_id === "string")
       .map((message) => message.tool_call_id),
   );
 
+  if (artifactReviewRequest) {
+    sendContent(response, JSON.stringify({
+      verdict: "accept",
+      summary: "The meeting minutes satisfy the stated structure and do not invent missing details.",
+      findings: [],
+    }));
+    return;
+  }
+
   if (body.response_format?.type === "json_object") {
+    if (firstUseRequest) {
+      sendContent(response, JSON.stringify({
+        tasks: [{
+          id: "organize-meeting",
+          title: "整理会议记录",
+          instructions: "读取一份明确添加的会议记录，整理关键结论、行动项和待确认事项；没有的信息不得猜测。",
+          sourceIds: ["source-1"],
+        }],
+        integration: {
+          instructions: "只根据已读取的会议记录生成可编辑 Word 会议纪要，不修改原文件。",
+          fileName: "会议纪要.docx",
+        },
+      }));
+      return;
+    }
     sendContent(response, JSON.stringify({
       tasks: [{
         id: "inspect-fixture",
@@ -144,6 +171,56 @@ function respondToCompletion(body, response) {
         fileName: "windows-gray-report.md",
       },
     }));
+    return;
+  }
+
+  if (firstUseRequest && promptText.includes("Task ID: organize-meeting")) {
+    if (!toolResultIds.has("meeting-source")) {
+      sendToolCall(response, "meeting-source", "read_file", { path: "source-1" });
+      return;
+    }
+    sendContent(response, [
+      "结论：9 月先进行一场 30 人以内的小范围试讲。[示例会议记录.txt]",
+      "行动：周然在 8 月 25 日前整理课程大纲，并标出需要业务确认的案例。[示例会议记录.txt]",
+      "行动：陈一联系场地和直播支持；截止时间待确认。[示例会议记录.txt]",
+      "行动：王宁在报名表中增加参会者最想解决的问题。[示例会议记录.txt]",
+      "待确认：场地报价、是否录制课程、客户授权、存储位置和下次会议具体时间。[示例会议记录.txt]",
+    ].join("\n"));
+    return;
+  }
+
+  if (firstUseRequest && promptText.includes("Task ID: integrate")) {
+    if (!toolResultIds.has("meeting-artifact")) {
+      sendToolCall(response, "meeting-artifact", "write_docx_artifact", {
+        fileName: "会议纪要.docx",
+        content: [
+          "# 秋季客户培训准备会会议纪要",
+          "",
+          "## 会议信息",
+          "- 时间：2026 年 8 月 18 日 10:00–10:45",
+          "- 参会人：林晓、周然、陈一、王宁",
+          "",
+          "## 关键结论",
+          "- 9 月先进行一场 30 人以内的小范围试讲，确认内容和现场流程后再扩大。",
+          "",
+          "## 行动项",
+          "| 事项 | 负责人 | 截止时间 |",
+          "|---|---|---|",
+          "| 整理课程大纲并标出待确认案例 | 周然 | 2026-08-25 |",
+          "| 联系场地和直播支持 | 陈一 | 待确认 |",
+          "| 报名表增加最想解决的问题 | 王宁 | 待确认 |",
+          "",
+          "## 待确认事项",
+          "- 场地报价与联系截止时间。",
+          "- 是否录制课程、客户授权和存储位置。",
+          "- 8 月 28 日下次碰头的具体时间。",
+          "",
+        ].join("\n"),
+        calculationIds: [],
+      });
+      return;
+    }
+    sendContent(response, "The editable first-use meeting minutes were written and registered.");
     return;
   }
 

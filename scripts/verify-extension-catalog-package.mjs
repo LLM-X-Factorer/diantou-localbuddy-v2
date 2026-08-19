@@ -1,62 +1,79 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
 const executable = resolve(process.argv[2] ?? defaultExecutable());
 const evidenceRoot = resolve(
-  process.argv[3] ?? join(".localbuddy", "first-run-smoke", process.platform),
+  process.argv[3] ?? join(".localbuddy", "extension-catalog-smoke", process.platform),
 );
-const screenshot = join(evidenceRoot, "clean-first-launch.png");
-const isolatedRoot = await mkdtemp(join(tmpdir(), "localbuddy-clean-first-launch-"));
+const screenshot = join(evidenceRoot, "method-and-connection-picker.png");
+const isolatedRoot = await mkdtemp(join(tmpdir(), "localbuddy-extension-catalog-"));
 const emptyPath = join(isolatedRoot, "empty-path");
 const userData = join(isolatedRoot, "user-data");
+const keychainRoot = join(isolatedRoot, "mock-keychain");
+const workspace = join(isolatedRoot, "workspace");
+const skillRoot = join(workspace, ".localbuddy", "skills", "evidence-review");
+
 await Promise.all([
   mkdir(emptyPath, { recursive: true }),
   mkdir(userData, { recursive: true }),
+  mkdir(keychainRoot, { recursive: true }),
+  mkdir(skillRoot, { recursive: true }),
   mkdir(dirname(screenshot), { recursive: true }),
 ]);
+await writeFile(join(skillRoot, "SKILL.md"), [
+  "---",
+  "version: 1",
+  "id: evidence-review",
+  "title: 证据检查",
+  "description: 在汇总前检查每项结论是否有明确来源。",
+  "appliesTo: research",
+  "---",
+  "Check every claim against an explicitly selected source.",
+  "",
+].join("\n"), "utf8");
+await writeFile(join(workspace, ".localbuddy", "mcp.json"), `${JSON.stringify({
+  version: 1,
+  servers: [{
+    id: "research-tools",
+    title: "研究资料库",
+    description: "查找已经接入的研究资料，并把来源带回当前任务。",
+    transport: "streamable-http",
+    url: "https://mcp.example.com/tools",
+    oauth: { scopes: ["mcp:read"] },
+    readOnlyTools: ["search"],
+  }],
+}, null, 2)}\n`, "utf8");
 
 try {
-  await runApp(executable, [`--user-data-dir=${userData}`], cleanEnvironment(emptyPath, screenshot));
+  await runApp(executable, [`--user-data-dir=${userData}`], cleanEnvironment());
   const diagnostics = JSON.parse(await readFile(`${screenshot}.json`, "utf8"));
-
   assert.equal(diagnostics.url, "localbuddy://app/index.html");
   assert.equal(diagnostics.title, "LocalBuddy V2");
-  assert.equal(diagnostics.api, "object");
-  assert.equal(diagnostics.rootChildren, 1);
-  assert.ok(diagnostics.bodyCharacters > 100);
-  assert.equal(diagnostics.guideVisible, true);
-  assert.equal(diagnostics.goalContractVisible, false);
-  assert.equal(diagnostics.goalFieldCount, 0);
-  assert.equal(diagnostics.planReviewGuideVisible, true);
-  assert.equal(diagnostics.dataBoundaryVisible, true);
-  assert.equal(diagnostics.advancedWorkbenchHidden, true);
-  assert.match(diagnostics.firstTaskActionText, /使用示例会议记录/);
-  assert.equal(diagnostics.ownMeetingRecordActionVisible, true);
-  assert.match(diagnostics.buildIdentity, /^(DEV|CANARY|BETA|STABLE)\s+v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)? · [a-f0-9]{7,40}(?:\+dirty)?$/);
-  assert.equal(diagnostics.providerDialogVisible, true);
-  assert.match(diagnostics.providerEntry, /DeepSeek/);
-  assert.match(diagnostics.providerEntry, /未连接/);
-  assert.equal(diagnostics.providerChoices.length, 2);
-  assert.ok(diagnostics.providerChoices.some((choice) => /DeepSeek/.test(choice) && /尚未保存 API Key/.test(choice)));
-  assert.ok(diagnostics.providerChoices.some((choice) => /OpenAI/.test(choice) && /尚未保存 API Key/.test(choice)));
-  assert.match(diagnostics.providerSummary, /DeepSeek/);
-  assert.match(diagnostics.providerSummary, /未连接/);
-  assert.match(diagnostics.providerSetupHelp, /还没有 API Key/);
-  assert.match(diagnostics.providerSetupHelp, /模型服务商可能按用量收费/);
-  assert.match(diagnostics.providerSetupAction, /打开 DeepSeek 官方平台/);
-  assert.equal(diagnostics.verifyDisabled, true);
-  assert.equal(diagnostics.startDisabled, true);
+  assert.equal(diagnostics.requestedView, "extensions");
+  assert.equal(diagnostics.dialogVisible, true);
+  assert.match(diagnostics.methodHeading, /按固定方法完成/);
+  assert.match(diagnostics.connectionHeading, /使用其他服务或本机工具/);
+  assert.equal(diagnostics.methodCount, 1);
+  assert.equal(diagnostics.connectionCount, 1);
+  assert.equal(diagnostics.initiallySelected, 0);
+  assert.equal(diagnostics.selectedAfterClick, 2);
+  assert.equal(diagnostics.technicalHiddenByDefault, true);
+  assert.equal(diagnostics.technicalBoundaryVisible, true);
+  assert.equal(diagnostics.primaryCopyUsesOutcomes, true);
+  assert.equal(diagnostics.justInTimeApprovalVisible, true);
+  assert.equal(diagnostics.selectedChipsVisible, true);
+  assert.match(diagnostics.extensionToggleText, /方法与连接\s*2/);
   assert.ok((await stat(screenshot)).size > 10_000);
 
   process.stdout.write(`${JSON.stringify({
     executable,
     platform: process.platform,
-    credentialEnvironment: "cleared",
-    credentialCommandPath: "empty",
+    isolatedWorkspace: true,
     isolatedUserData: true,
+    realMcpConnectionAttempted: false,
     screenshot,
     diagnostics,
   }, null, 2)}\n`);
@@ -82,7 +99,7 @@ function defaultExecutable() {
   return join(".localbuddy", "forge-out", `LocalBuddy-linux-${process.arch}`, "localbuddy-v2");
 }
 
-function cleanEnvironment(emptyExecutablePath, screenshotPath) {
+function cleanEnvironment() {
   const environment = Object.fromEntries(Object.entries(process.env).filter(([name]) => {
     const normalized = name.toUpperCase();
     return normalized !== "PATH"
@@ -92,8 +109,11 @@ function cleanEnvironment(emptyExecutablePath, screenshotPath) {
   }));
   return {
     ...environment,
-    PATH: emptyExecutablePath,
-    LOCALBUDDY_SCREENSHOT_PATH: screenshotPath,
+    PATH: emptyPath,
+    LOCALBUDDY_DEFAULT_WORKSPACE: workspace,
+    LOCALBUDDY_SCREENSHOT_PATH: screenshot,
+    LOCALBUDDY_SMOKE_VIEW: "extensions",
+    LOCALBUDDY_TEST_KEYCHAIN_ROOT: keychainRoot,
     LOCALBUDDY_SHARED_COORDINATION: "0",
   };
 }
@@ -105,7 +125,7 @@ async function runApp(command, args, env) {
     let stderr = "";
     const timeout = setTimeout(() => {
       child.kill("SIGKILL");
-      reject(new Error(`clean first-launch smoke timed out; stdout=${stdout}; stderr=${stderr}`));
+      reject(new Error(`extension catalog smoke timed out; stdout=${stdout}; stderr=${stderr}`));
     }, 30_000);
     child.stdout.on("data", (chunk) => { stdout = (stdout + chunk.toString("utf8")).slice(-20_000); });
     child.stderr.on("data", (chunk) => { stderr = (stderr + chunk.toString("utf8")).slice(-20_000); });

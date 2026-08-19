@@ -46,8 +46,10 @@ test("creates an explicit isolated tutorial workspace and never overwrites reuse
 
   const first = await ensureTutorialWorkspace(root);
   assert.equal(first.created, true);
-  assert.equal(first.files.length, 3);
-  assert.match(await readFile(join(first.workspace, "project-brief.md"), "utf8"), /fictional/i);
+  assert.deepEqual(first.files, ["示例会议记录.txt"]);
+  assert.match(await readFile(join(first.workspace, "示例会议记录.txt"), "utf8"), /完全虚构/u);
+  assert.match(await readFile(join(first.workspace, "示例会议记录.txt"), "utf8"), /负责/u);
+  assert.match(await readFile(join(first.workspace, "示例会议记录.txt"), "utf8"), /待确认/u);
   assert.deepEqual(await inspectWorkspaceReadiness(first.workspace), {
     selected: true,
     isGitRepository: false,
@@ -62,18 +64,18 @@ test("creates an explicit isolated tutorial workspace and never overwrites reuse
   });
   if (process.platform !== "win32") {
     assert.equal((await stat(first.workspace)).mode & 0o777, 0o700);
-    assert.equal((await stat(join(first.workspace, "project-brief.md"))).mode & 0o777, 0o600);
+    assert.equal((await stat(join(first.workspace, "示例会议记录.txt"))).mode & 0o777, 0o600);
   }
 
-  await writeFile(join(first.workspace, "project-brief.md"), "user kept this edit\n", "utf8");
+  await writeFile(join(first.workspace, "示例会议记录.txt"), "user kept this edit\n", "utf8");
   const reused = await ensureTutorialWorkspace(root, first.workspace);
   assert.equal(reused.created, false);
   assert.equal(reused.workspace, first.workspace);
-  assert.equal(await readFile(join(first.workspace, "project-brief.md"), "utf8"), "user kept this edit\n");
+  assert.equal(await readFile(join(first.workspace, "示例会议记录.txt"), "utf8"), "user kept this edit\n");
 
   const outside = await mkdtemp(join(tmpdir(), "localbuddy-outside-tutorial-"));
   context.after(async () => rm(outside, { recursive: true, force: true }));
-  await writeFile(join(outside, ".localbuddy-tutorial.json"), JSON.stringify({ version: 1, kind: "first-trusted-run" }), "utf8");
+  await writeFile(join(outside, ".localbuddy-tutorial.json"), JSON.stringify({ version: 2, kind: "first-trusted-run" }), "utf8");
   const replacement = await ensureTutorialWorkspace(root, outside);
   assert.equal(replacement.created, true);
   assert.notEqual(replacement.workspace, outside);

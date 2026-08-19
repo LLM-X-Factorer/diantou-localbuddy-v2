@@ -63,6 +63,53 @@ test("Windows gray Provider fixture streams a valid OpenAI-compatible plan", asy
   assert.equal(provider.state.completionRequests, 1);
 });
 
+test("loopback Provider fixture supports the real first-use tutorial contract", async (context) => {
+  const apiKey = "localbuddy-public-fixture-key";
+  const provider = await fixtureModule.startWindowsGrayMockProvider(apiKey);
+  context.after(() => provider.close());
+  const response = await fetch(`${provider.baseUrl}/v1/chat/completions`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      response_format: { type: "json_object" },
+      messages: [{ role: "user", content: "生成 会议纪要.docx" }],
+    }),
+  });
+  assert.equal(response.status, 200);
+  const body = await response.text();
+  assert.match(body, /organize-meeting/);
+  assert.match(body, /source-1/);
+  assert.match(body, /会议纪要\.docx/u);
+  assert.doesNotMatch(body, /source-2/);
+});
+
+test("loopback Provider fixture accepts the deterministic first-use DOCX review", async (context) => {
+  const apiKey = "localbuddy-public-fixture-key";
+  const provider = await fixtureModule.startWindowsGrayMockProvider(apiKey);
+  context.after(() => provider.close());
+  const response = await fetch(`${provider.baseUrl}/v1/chat/completions`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: "LOCALBUDDY_INDEPENDENT_ARTIFACT_REVIEW_V1" },
+        { role: "user", content: "Review 会议纪要.docx" },
+      ],
+    }),
+  });
+  assert.equal(response.status, 200);
+  const body = await response.text();
+  assert.match(body, /\\"verdict\\":\\"accept\\"/u);
+  assert.doesNotMatch(body, /organize-meeting/);
+});
+
 test("Windows cancel gray still plans before its Worker request becomes interruptible", async (context) => {
   const apiKey = "localbuddy-public-fixture-key";
   const provider = await fixtureModule.startWindowsGrayMockProvider(apiKey);

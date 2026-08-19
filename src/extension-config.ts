@@ -1,11 +1,15 @@
-import { readFile, realpath } from "node:fs/promises";
-import { dirname, isAbsolute, resolve } from "node:path";
+import { lstat, readFile, realpath } from "node:fs/promises";
+import { dirname, isAbsolute, resolve, sep } from "node:path";
 
 import type { RunExtensionSelection } from "./extension-contract.js";
 export type { BrowserExtensionSelection, RunExtensionSelection } from "./extension-contract.js";
 
+const MAX_MCP_CONFIG_BYTES = 256 * 1024;
+
 interface McpServerConfigBase {
   id: string;
+  title?: string;
+  description?: string;
   readOnlyTools: readonly string[];
 }
 
@@ -67,10 +71,29 @@ export function normalizeRunExtensions(
 
 export async function loadMcpConfig(workspaceInput: string): Promise<McpConfigFile> {
   const workspace = await realpath(workspaceInput);
-  const configPath = resolve(workspace, ".localbuddy", "mcp.json");
+  const extensionRoot = resolve(workspace, ".localbuddy");
+  const configPath = resolve(extensionRoot, "mcp.json");
   let raw: unknown;
   try {
-    raw = JSON.parse(await readFile(configPath, "utf8")) as unknown;
+    const [rootStat, configStat] = await Promise.all([lstat(extensionRoot), lstat(configPath)]);
+    if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) {
+      throw new Error("MCP config directory must be a real workspace directory");
+    }
+    if (!configStat.isFile() || configStat.isSymbolicLink()) {
+      throw new Error("MCP config must be a real file");
+    }
+    if (configStat.size > MAX_MCP_CONFIG_BYTES) {
+      throw new Error(`MCP config exceeds ${MAX_MCP_CONFIG_BYTES} bytes`);
+    }
+    const canonical = await realpath(configPath);
+    if (canonical !== workspace && !canonical.startsWith(`${workspace}${sep}`)) {
+      throw new Error("MCP config escaped its workspace");
+    }
+    try {
+      raw = JSON.parse(await readFile(canonical, "utf8")) as unknown;
+    } catch (error) {
+      throw new Error("MCP config is not valid JSON", { cause: error });
+    }
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") {
       return { version: 1, servers: [] };
@@ -87,6 +110,12 @@ export async function loadMcpConfig(workspaceInput: string): Promise<McpConfigFi
     const id = normalizeId(server.id, `servers[${index}].id`);
     if (ids.has(id)) throw new Error(`Duplicate MCP server id: ${id}`);
     ids.add(id);
+    const title = server.title === undefined
+      ? undefined
+      : expectSingleLine(server.title, `servers[${index}].title`, 120);
+    const description = server.description === undefined
+      ? undefined
+      : expectSingleLine(server.description, `servers[${index}].description`, 500);
     const readOnlyTools = server.readOnlyTools === undefined
       ? []
       : expectStringArray(server.readOnlyTools, `servers[${index}].readOnlyTools`, 128, 200);
@@ -103,6 +132,8 @@ export async function loadMcpConfig(workspaceInput: string): Promise<McpConfigFi
       }
       return {
         id,
+        title,
+        description,
         transport: "streamable-http" as const,
         url,
         bearerTokenEnv,
@@ -137,6 +168,8 @@ export async function loadMcpConfig(workspaceInput: string): Promise<McpConfigFi
       : expectBoolean(server.networkAccess, `servers[${index}].networkAccess`);
     return {
       id,
+      title,
+      description,
       transport: "stdio" as const,
       command,
       args,

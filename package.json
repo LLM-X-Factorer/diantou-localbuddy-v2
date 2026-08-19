@@ -39,6 +39,7 @@
     "make:linux": "pnpm package:prepare && electron-forge make --platform=linux --arch=x64",
     "make:win": "pnpm package:prepare && electron-forge make --platform=win32 --arch=x64",
     "verify:first-run-package": "node scripts/verify-clean-first-launch.mjs",
+    "verify:extension-catalog-package": "node scripts/verify-extension-catalog-package.mjs",
     "verify:first-run-windows-installer": "pwsh -NoLogo -NoProfile -File scripts/verify-windows-installer-first-launch.ps1",
     "verify:windows-gray-installer": "pwsh -NoLogo -NoProfile -File scripts/verify-windows-installer-gray.ps1",
     "verify:windows-upgrade-installer": "pwsh -NoLogo -NoProfile -File scripts/verify-windows-installer-upgrade.ps1",

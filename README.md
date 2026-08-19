@@ -142,6 +142,7 @@ LocalBuddy V2 以 [Apache License 2.0](LICENSE) 开源；项目归属说明见 [
 - Provider 可按 Run 选择 DeepSeek 或 OpenAI；两者都支持流式文本、工具调用、JSON Output、usage 与 Keychain/环境变量凭证。
 - 本地 Skill 从 `.localbuddy/skills/<id>/SKILL.md` 显式加载，校验 YAML、大小、路径、符号链接与内容哈希；Skill 不能绕过工具策略。
 - MCP stdio server 从 `.localbuddy/mcp.json` 显式选择，发现与调用均进入审计；本地未声明只读的工具一律按外部副作用处理。
+- Desktop 把这两个固定位置编译为面向任务的“方法与连接”：普通任务不需要理解 Skill/MCP；需要时只按用途添加“固定方法”或“其他服务/本机工具”。技术来源与连接细节收进高级信息，不会递归扫描工作区或自动启用。
 - Playwright Chromium 使用每 Run 独立 context 和 exact-origin 网络白名单；导航/快照与点击/填表分开授权。
 - Provider 与扩展选择进入 Run Request、Desktop 历史和 checkpoint contract；扩展漂移会阻断旧 Run 续跑。
 - 69 项自动测试、真实 DeepSeek + Chromium + MCP 纵向烟测及 Electron 实窗验收见 [`docs/M4-SPEC.md`](docs/M4-SPEC.md) 和 [`docs/M4-VALIDATION.md`](docs/M4-VALIDATION.md)。
@@ -222,7 +223,7 @@ LocalBuddy V2 以 [Apache License 2.0](LICENSE) 开源；项目归属说明见 [
 - 支持保存、替换和经原生确认删除系统凭据；环境变量优先且不能由应用删除；
 - 保存只验证本机安全写入；用户可显式请求 `/models` 验证认证与网络，不调用生成接口；
 - Composer 就近显示 Provider 状态，缺少凭据时阻止启动并直接打开设置；
-- Composer 采用紧凑的任务输入与单行工具栏，扩展配置只在用户展开时占用额外空间；
+- Composer 采用紧凑的任务输入与单行工具栏；可选的“方法与连接”在独立弹窗中选择，已添加项以简短标签回到任务区，不与第一次任务争夺注意力；
 - Windows 托管 Runner 已运行版本对应的 Squirrel Setup，从实际安装目录验证无 Provider 首启并调用卸载清理；安装/更新/卸载生命周期由标准 Squirrel 处理器提前收口；
 - 规格与验收见 [`docs/M10.3-SPEC.md`](docs/M10.3-SPEC.md) 和 [`docs/M10.3-VALIDATION.md`](docs/M10.3-VALIDATION.md)。
 
@@ -306,7 +307,7 @@ pnpm cli -- \
   --browser-origin https://example.com
 ```
 
-浏览器点击/填表和 MCP 副作用工具默认拒绝；CLI 仅在确认该 Run 需要时添加 `--allow-browser-actions` 或 `--allow-mcp-writes`。Desktop 中这两个选项只允许调用进入逐次审批队列，不会提前批准。stdio/Streamable HTTP 配置和安全边界见 [`docs/M4-SPEC.md`](docs/M4-SPEC.md) 与 [`docs/M5-SPEC.md`](docs/M5-SPEC.md)。
+浏览器点击/填表和 MCP 副作用工具默认拒绝；CLI 仅在确认该 Run 需要时添加 `--allow-browser-actions` 或 `--allow-mcp-writes`。Desktop 把网页访问保留在高级设置中；添加连接后，MCP 的每个实际副作用调用仍进入逐次审批队列，不会提前批准。stdio/Streamable HTTP 配置和安全边界见 [`docs/M4-SPEC.md`](docs/M4-SPEC.md) 与 [`docs/M5-SPEC.md`](docs/M5-SPEC.md)。
 
 CLI 同 Run 恢复：
 
@@ -365,6 +366,6 @@ pnpm cli -- \
 pnpm desktop
 ```
 
-Desktop 侧边栏的“Provider 设置”可查看凭据来源、安全保存/替换/删除 Key、显式验证连接，并在高级设置中填写当前 Run 的 model/base URL；Renderer 不读取既有 secret。“扩展配置”只管理 Skills、MCP 和 Browser。代码集成审批区可在写回前校验并查看组合 Diff，顶部可导出脱敏诊断包。
+Desktop 侧边栏的“模型设置”可查看连接状态、安全保存/替换/删除 Key、显式验证连接，并在高级设置中填写当前 Run 的 model/base URL；Renderer 不读取既有 secret。任务输入区的“方法与连接”只在需要固定做法或使用其他服务时打开；主界面显示用户可理解的名称，Skill/MCP 标识、配置来源和 Browser 白名单只放在高级信息中。添加连接不代表批准外部改动，真正的发送、创建、修改或删除仍在执行前逐次确认。代码集成审批区可在写回前校验并查看组合 Diff，顶部可导出脱敏诊断包。
 
 架构边界见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)，当前工程路线与暂缓项见 [`docs/ROADMAP.md`](docs/ROADMAP.md)。M0-M10.3 的规格和验证记录均在 [`docs/`](docs/) 下；面向内部安装包用户的入口见 [`docs/QUICKSTART.md`](docs/QUICKSTART.md)。

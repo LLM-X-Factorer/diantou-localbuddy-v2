@@ -21,6 +21,7 @@ if (requireForSquirrel("electron-squirrel-startup") === true) {
 }
 
 import { normalizeRunExtensions, type RunExtensionSelection } from "../src/extension-config.js";
+import { inspectWorkspaceExtensionCatalog } from "../src/extension-catalog.js";
 import { normalizeProviderSelection, type ProviderSelection } from "../src/provider-config.js";
 import { createConfiguredProvider } from "../src/provider-factory.js";
 import { verifyProviderConnection as probeProviderConnection } from "../src/provider-connection.js";
@@ -311,6 +312,11 @@ function registerIpcHandlers(): void {
     return inspectWorkspaceReadiness(expectString(workspace, "workspace"));
   });
 
+  ipcMain.handle(DESKTOP_CHANNELS.inspectWorkspaceExtensions, async (event, workspace: unknown) => {
+    assertTrustedSender(event);
+    return inspectWorkspaceExtensionCatalog(expectString(workspace, "workspace"));
+  });
+
   ipcMain.handle(DESKTOP_CHANNELS.createTutorialWorkspace, async (event) => {
     assertTrustedSender(event);
     const current = await getOnboardingStateStore().load();
@@ -389,6 +395,15 @@ function registerIpcHandlers(): void {
       id: providerId,
       baseUrl: expectOptionalString(record.baseUrl, "baseUrl"),
     });
+  });
+
+  ipcMain.handle(DESKTOP_CHANNELS.openProviderSetup, async (event, request: unknown) => {
+    assertTrustedSender(event);
+    const providerId = parseProviderIdRequest(request);
+    const target = providerId === "deepseek"
+      ? "https://platform.deepseek.com/api_keys"
+      : "https://platform.openai.com/api-keys";
+    await shell.openExternal(target);
   });
 
   ipcMain.handle(DESKTOP_CHANNELS.checkForUpdates, async (event) => {
@@ -743,6 +758,8 @@ function parseProviderSelection(value: unknown): ProviderSelection | undefined {
 function parseRunExtensions(value: unknown): RunExtensionSelection | undefined {
   if (value === undefined) return undefined;
   const record = expectRecord(value, "extensions");
+  const mcpServerIds = expectOptionalStringArray(record.mcpServerIds, "extensions.mcpServerIds");
+  expectOptionalBoolean(record.allowMcpWrites, "extensions.allowMcpWrites");
   let browser: RunExtensionSelection["browser"];
   if (record.browser !== undefined) {
     const browserRecord = expectRecord(record.browser, "extensions.browser");
@@ -753,8 +770,10 @@ function parseRunExtensions(value: unknown): RunExtensionSelection | undefined {
   }
   return normalizeRunExtensions({
     skillIds: expectOptionalStringArray(record.skillIds, "extensions.skillIds"),
-    mcpServerIds: expectOptionalStringArray(record.mcpServerIds, "extensions.mcpServerIds"),
-    allowMcpWrites: expectOptionalBoolean(record.allowMcpWrites, "extensions.allowMcpWrites"),
+    mcpServerIds,
+    // Desktop connections may propose effectful actions, but every exact call still enters
+    // InteractiveToolApprovalBroker. Avoid a second, misleading pre-authorization toggle.
+    allowMcpWrites: (mcpServerIds?.length ?? 0) > 0,
     browser,
   });
 }
@@ -1021,21 +1040,77 @@ async function captureSmokeScreenshotIfRequested(window: BrowserWindow): Promise
         duplicateStatus: dialog.querySelector('.duplicate-status')?.innerText.trim() ?? ''
       };
     }
+    if (requestedView === 'extensions') {
+      if (document.querySelector('.guide-state') !== null) {
+        const enterWorkbench = [...document.querySelectorAll('.guide-header-actions button')]
+          .find((element) => element.innerText.includes('进入完整工作台'));
+        enterWorkbench?.click();
+      }
+      await waitFor('.composer');
+      const toggle = await waitFor('.extensions-toggle');
+      toggle.click();
+      const dialog = await waitFor('.capability-picker-dialog');
+      const methodSection = await waitFor('[aria-labelledby="method-picker-heading"]');
+      const connectionSection = await waitFor('[aria-labelledby="connection-picker-heading"]');
+      const methodButton = await waitFor('[aria-labelledby="method-picker-heading"] .capability-choice > button');
+      const connectionButton = await waitFor('[aria-labelledby="connection-picker-heading"] .capability-choice > button');
+      const initiallySelected = dialog.querySelectorAll('.capability-choice > button[aria-pressed="true"]').length;
+      const primaryCopyBeforeAdvanced = methodSection.innerText + '\\n' + connectionSection.innerText;
+      const technicalDetails = dialog.querySelector('.capability-technical-details');
+      const technicalHiddenByDefault = !dialog.innerText.includes('.localbuddy/mcp.json')
+        && !dialog.innerText.includes('MCP');
+      methodButton.click();
+      connectionButton.click();
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, 100));
+      const selectedAfterClick = dialog.querySelectorAll('.capability-choice > button[aria-pressed="true"]').length;
+      technicalDetails.open = true;
+      const technicalBoundaryVisible = technicalDetails.innerText.includes('不会扫描其他文件夹')
+        && technicalDetails.innerText.includes('不会自动连接')
+        && technicalDetails.innerText.includes('MCP');
+      dialog.querySelector('.capability-done')?.click();
+      const selectedCapabilities = await waitFor('.selected-capabilities');
+      toggle.click();
+      await waitFor('.capability-picker-dialog');
+      return {
+        url: location.href,
+        title: document.title,
+        requestedView,
+        buildIdentity: buildIdentity.innerText.trim(),
+        dialogVisible: true,
+        methodHeading: methodSection.querySelector('h3')?.innerText.trim() ?? '',
+        connectionHeading: connectionSection.querySelector('h3')?.innerText.trim() ?? '',
+        methodCount: methodSection.querySelectorAll('.capability-choice').length,
+        connectionCount: connectionSection.querySelectorAll('.capability-choice').length,
+        initiallySelected,
+        selectedAfterClick,
+        technicalHiddenByDefault,
+        technicalBoundaryVisible,
+        primaryCopyUsesOutcomes: primaryCopyBeforeAdvanced.includes('证据检查')
+          && primaryCopyBeforeAdvanced.includes('研究资料库')
+          && !primaryCopyBeforeAdvanced.includes('evidence-review')
+          && !primaryCopyBeforeAdvanced.includes('research-tools')
+          && !primaryCopyBeforeAdvanced.includes('MCP'),
+        justInTimeApprovalVisible: dialog.innerText.includes('实际执行前单独询问你'),
+        selectedChipsVisible: selectedCapabilities.innerText.includes('证据检查')
+          && selectedCapabilities.innerText.includes('研究资料库'),
+        extensionToggleText: toggle.innerText.trim()
+      };
+    }
     const providerEntry = await waitFor('.provider-entry');
-    const startButton = await waitFor('.start-button');
-    const goalContract = await waitFor('.goal-contract-heading');
-    const goalFields = [...document.querySelectorAll('.goal-outcome-field textarea, .goal-contract-grid textarea')];
-    const planReviewGuideVisible = document.body?.innerText?.includes('批准前 Worker 不启动') ?? false;
-    const storageDisclosure = await waitFor('.storage-disclosure > button');
-    storageDisclosure.click();
-    const storageDetails = await waitFor('#storage-disclosure-details');
+    const firstTaskAction = await waitFor('.first-task-primary');
+    const planReviewGuideVisible = document.body?.innerText?.includes('确认前不会处理资料') ?? false;
+    const dataBoundaryVisible = document.body?.innerText?.includes('不会自动扫描电脑')
+      && document.body?.innerText?.includes('1 份虚构会议记录')
+      && document.body?.innerText?.includes('原文件不会被修改');
     providerEntry.click();
     const providerDialog = await waitFor('.provider-settings-dialog');
     const providerChoices = [...providerDialog.querySelectorAll('.provider-choice-grid button')]
       .map((element) => element.innerText.trim());
     const providerSummary = providerDialog.querySelector('.provider-credential-summary')?.innerText.trim() ?? '';
+    const providerSetupHelp = providerDialog.querySelector('.provider-getting-started')?.innerText.trim() ?? '';
+    const providerSetupAction = providerDialog.querySelector('.provider-getting-started button')?.innerText.trim() ?? '';
     const verifyDisabled = providerDialog.querySelector('.verify-provider-button')?.disabled ?? null;
-    providerDialog.querySelector('[aria-label="关闭 Provider 设置"]')?.click();
+    providerDialog.querySelector('[aria-label="关闭模型设置"]')?.click();
     await new Promise((resolvePromise) => setTimeout(resolvePromise, 100));
     return {
       url: location.href,
@@ -1044,21 +1119,24 @@ async function captureSmokeScreenshotIfRequested(window: BrowserWindow): Promise
       api: typeof globalThis.localbuddy,
       rootChildren: document.getElementById('root')?.childElementCount ?? -1,
       guideVisible: document.querySelector('.guide-state') !== null,
-      goalContractVisible: goalContract.innerText.includes('GOAL CONTRACT'),
-      goalFieldCount: goalFields.length,
+      goalContractVisible: document.querySelector('.goal-contract-heading') !== null,
+      goalFieldCount: document.querySelectorAll('.goal-outcome-field textarea, .goal-contract-grid textarea').length,
       planReviewGuideVisible,
-      storageDisclosureVisible: storageDisclosure.innerText.includes('存储与隐私'),
-      storageDetailsVisible: (storageDetails.innerText.includes('.localbuddy')
-          && storageDetails.innerText.includes('操作系统凭据库'))
-        || storageDetails.innerText.includes('不会在未选择运行位置时创建 Run 数据'),
-      startButtonText: startButton.innerText.trim(),
+      dataBoundaryVisible,
+      advancedWorkbenchHidden: document.querySelector('.composer') === null,
+      firstTaskActionText: firstTaskAction.innerText.trim(),
+      ownMeetingRecordActionVisible: [...document.querySelectorAll('.first-task-secondary')]
+        .some((element) => element.innerText.includes('使用我自己的会议记录')),
+      startButtonText: firstTaskAction.innerText.trim(),
       buildIdentity: buildIdentity.innerText.trim(),
       providerEntry: providerEntry.innerText.trim(),
       providerDialogVisible: true,
       providerChoices,
       providerSummary,
+      providerSetupHelp,
+      providerSetupAction,
       verifyDisabled,
-      startDisabled: startButton.disabled
+      startDisabled: !firstTaskAction.innerText.includes('生成执行计划')
     };
   })()`);
   const image = await window.webContents.capturePage();

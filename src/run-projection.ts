@@ -9,7 +9,11 @@ import type {
   DesktopEventView,
   DesktopIntegrationView,
   DesktopRunMetricsView,
+  DesktopRunStoryStageView,
+  DesktopRunStoryStatus,
+  DesktopRunStoryView,
   DesktopRunStatus,
+  DesktopRunTimelineSpanView,
   DesktopRunView,
   DesktopTaskView,
   DesktopWorktreeView,
@@ -272,6 +276,7 @@ export function projectRun(
     artifactRevision,
     recentEvents: events.slice(-14).map(toEventView),
     eventCount: events.length,
+    story: projectRunStory(events, tasks, status, artifactReview),
     worktrees: [...worktrees.values()],
     checkpoint,
     integration,
@@ -284,6 +289,330 @@ export function projectRun(
     pendingApprovals: [],
     metrics,
   };
+}
+
+const MAX_TIMELINE_SPANS = 160;
+
+function projectRunStory(
+  events: readonly RuntimeEvent[],
+  tasks: ReadonlyMap<string, DesktopTaskView>,
+  runStatus: DesktopRunStatus,
+  artifactReview: DesktopArtifactReviewView | undefined,
+): DesktopRunStoryView {
+  const stages: DesktopRunStoryStageView[] = [];
+  const runStarted = events.find((event) => event.type === "run.started");
+  const planCreated = events.find((event) => event.type === "plan.created");
+  const planReviewRequested = events.find((event) => event.type === "plan.review_requested");
+  const planApproved = events.find((event) => event.type === "plan.approved");
+  const planRejected = events.find((event) => event.type === "plan.rejected");
+
+  stages.push(stageView({
+    id: "prepare",
+    label: "理解任务并准备计划",
+    status: planCreated !== undefined
+      ? "succeeded"
+      : terminalStoryStatus(runStatus) ?? "running",
+    startedAt: runStarted?.timestamp,
+    completedAt: planCreated?.timestamp,
+  }));
+
+  if (planReviewRequested !== undefined) {
+    stages.push(stageView({
+      id: "plan-review",
+      label: "确认执行计划",
+      status: planApproved !== undefined
+        ? "succeeded"
+        : planRejected !== undefined
+        ? "failed"
+        : "waiting",
+      startedAt: planReviewRequested.timestamp,
+      completedAt: planApproved?.timestamp ?? planRejected?.timestamp,
+    }));
+  }
+
+  for (const task of tasks.values()) {
+    const started = events.find((event) => event.taskId === task.id && event.type === "task.started");
+    const completed = events.findLast((event) => event.taskId === task.id && [
+      "task.succeeded",
+      "task.failed",
+      "task.blocked",
+      "task.cancelled",
+    ].includes(event.type));
+    stages.push(stageView({
+      id: `task:${task.id}`,
+      label: userFacingTaskTitle(task),
+      status: taskStoryStatus(task.status),
+      startedAt: started?.timestamp,
+      completedAt: completed?.timestamp,
+    }));
+  }
+
+  const reviewStarted = events.find((event) => event.type === "artifact.review_requested");
+  const reviewCompleted = events.findLast((event) =>
+    event.type === "artifact.review_completed" || event.type === "artifact.review_failed");
+  if (reviewStarted !== undefined || artifactReview !== undefined) {
+    stages.push(stageView({
+      id: "artifact-review",
+      label: "检查最终结果",
+      status: artifactReview === undefined || artifactReview.status === "reviewing"
+        ? "running"
+        : artifactReview.status === "accepted"
+        ? "succeeded"
+        : artifactReview.status === "revision_requested"
+        ? "running"
+        : "failed",
+      startedAt: reviewStarted?.timestamp,
+      completedAt: artifactReview?.status === "accepted" || artifactReview?.status === "failed"
+        ? reviewCompleted?.timestamp
+        : undefined,
+    }));
+  }
+
+  const terminalEvent = events.findLast((event) => [
+    "run.succeeded",
+    "run.failed",
+    "run.cancelled",
+    "run.interrupted",
+  ].includes(event.type));
+  stages.push(stageView({
+    id: "complete",
+    label: "结果准备完成",
+    status: runStatus === "succeeded"
+      ? "succeeded"
+      : runStatus === "failed"
+      ? "failed"
+      : runStatus === "cancelled" || runStatus === "interrupted"
+      ? "interrupted"
+      : "queued",
+    startedAt: terminalEvent?.timestamp,
+    completedAt: terminalEvent?.timestamp,
+  }));
+
+  const timeline = projectTimeline(events, tasks, runStatus);
+  const omittedTimelineSpans = Math.max(0, timeline.length - MAX_TIMELINE_SPANS);
+  const boundedTimeline = omittedTimelineSpans === 0
+    ? timeline
+    : [...timeline.slice(0, 32), ...timeline.slice(-(MAX_TIMELINE_SPANS - 32))];
+  return { stages, timeline: boundedTimeline, omittedTimelineSpans };
+}
+
+function projectTimeline(
+  events: readonly RuntimeEvent[],
+  tasks: ReadonlyMap<string, DesktopTaskView>,
+  runStatus: DesktopRunStatus,
+): DesktopRunTimelineSpanView[] {
+  const spans: DesktopRunTimelineSpanView[] = [];
+  const taskSpans = new Map<string, DesktopRunTimelineSpanView>();
+  const toolSpans = new Map<string, DesktopRunTimelineSpanView>();
+  const approvalSpans = new Map<string, DesktopRunTimelineSpanView>();
+  const modelQueues = new Map<string, DesktopRunTimelineSpanView[]>();
+  const reviewQueue: DesktopRunTimelineSpanView[] = [];
+  let planReviewSpan: DesktopRunTimelineSpanView | undefined;
+
+  for (const event of events) {
+    if (event.type === "task.started" && event.taskId !== undefined) {
+      const task = tasks.get(event.taskId);
+      const span: DesktopRunTimelineSpanView = {
+        id: `task:${event.taskId}:${event.sequence}`,
+        lane: "task",
+        label: task === undefined ? "处理任务" : userFacingTaskTitle(task),
+        status: "running",
+        startedAt: event.timestamp,
+        taskId: event.taskId,
+      };
+      taskSpans.set(event.taskId, span);
+      spans.push(span);
+    } else if (
+      event.taskId !== undefined
+      && ["task.succeeded", "task.failed", "task.blocked", "task.cancelled"].includes(event.type)
+    ) {
+      const span = taskSpans.get(event.taskId);
+      if (span !== undefined) closeTimelineSpan(
+        span,
+        event.timestamp,
+        event.type === "task.succeeded"
+          ? "succeeded"
+          : event.type === "task.cancelled"
+          ? "interrupted"
+          : "failed",
+      );
+    } else if (event.type === "model.requested") {
+      const key = `${event.taskId ?? "run"}\u0000${event.agentId ?? "agent"}`;
+      const span: DesktopRunTimelineSpanView = {
+        id: `model:${event.sequence}`,
+        lane: "model",
+        label: "模型处理",
+        status: "running",
+        startedAt: event.timestamp,
+        ...(event.taskId === undefined ? {} : { taskId: event.taskId }),
+      };
+      const queue = modelQueues.get(key) ?? [];
+      queue.push(span);
+      modelQueues.set(key, queue);
+      spans.push(span);
+    } else if (event.type === "model.completed" || event.type === "model.failed") {
+      const key = `${event.taskId ?? "run"}\u0000${event.agentId ?? "agent"}`;
+      const span = modelQueues.get(key)?.find((candidate) => candidate.completedAt === undefined);
+      if (span !== undefined) closeTimelineSpan(
+        span,
+        event.timestamp,
+        event.type === "model.completed" ? "succeeded" : "failed",
+      );
+    } else if (event.type === "tool.requested") {
+      const toolCallId = getString(event.data?.toolCallId) ?? `sequence-${event.sequence}`;
+      const span: DesktopRunTimelineSpanView = {
+        id: `tool:${toolCallId}:${event.sequence}`,
+        lane: "tool",
+        label: friendlyToolLabel(getString(event.data?.toolName)),
+        status: "running",
+        startedAt: event.timestamp,
+        ...(event.taskId === undefined ? {} : { taskId: event.taskId }),
+      };
+      toolSpans.set(toolCallId, span);
+      spans.push(span);
+    } else if (["tool.completed", "tool.reused", "tool.failed", "tool.denied"].includes(event.type)) {
+      const toolCallId = getString(event.data?.toolCallId);
+      const span = toolCallId === undefined ? undefined : toolSpans.get(toolCallId);
+      if (span !== undefined) closeTimelineSpan(
+        span,
+        event.timestamp,
+        event.type === "tool.completed" || event.type === "tool.reused"
+          ? "succeeded"
+          : event.type === "tool.denied"
+          ? "denied"
+          : "failed",
+      );
+    } else if (event.type === "approval.requested") {
+      const approvalId = getString(event.data?.approvalId) ?? `sequence-${event.sequence}`;
+      const span: DesktopRunTimelineSpanView = {
+        id: `approval:${approvalId}:${event.sequence}`,
+        lane: "approval",
+        label: "等待你确认操作",
+        status: "running",
+        startedAt: event.timestamp,
+        ...(event.taskId === undefined ? {} : { taskId: event.taskId }),
+      };
+      approvalSpans.set(approvalId, span);
+      spans.push(span);
+    } else if (event.type === "approval.resolved") {
+      const approvalId = getString(event.data?.approvalId);
+      const span = approvalId === undefined ? undefined : approvalSpans.get(approvalId);
+      if (span !== undefined) closeTimelineSpan(
+        span,
+        event.timestamp,
+        event.data?.decision === "approve" ? "succeeded" : "denied",
+      );
+    } else if (event.type === "plan.review_requested") {
+      planReviewSpan = {
+        id: `review:plan:${event.sequence}`,
+        lane: "approval",
+        label: "等待你确认计划",
+        status: "running",
+        startedAt: event.timestamp,
+      };
+      spans.push(planReviewSpan);
+    } else if (event.type === "plan.approved" || event.type === "plan.rejected") {
+      if (planReviewSpan !== undefined) closeTimelineSpan(
+        planReviewSpan,
+        event.timestamp,
+        event.type === "plan.approved" ? "succeeded" : "denied",
+      );
+    } else if (event.type === "artifact.review_requested") {
+      const span: DesktopRunTimelineSpanView = {
+        id: `review:artifact:${event.sequence}`,
+        lane: "review",
+        label: "检查最终结果",
+        status: "running",
+        startedAt: event.timestamp,
+        ...(event.taskId === undefined ? {} : { taskId: event.taskId }),
+      };
+      reviewQueue.push(span);
+      spans.push(span);
+    } else if (event.type === "artifact.review_completed" || event.type === "artifact.review_failed") {
+      const span = reviewQueue.find((candidate) => candidate.completedAt === undefined);
+      if (span !== undefined) closeTimelineSpan(
+        span,
+        event.timestamp,
+        event.type === "artifact.review_failed" ? "failed" : "succeeded",
+      );
+    }
+  }
+
+  if (["succeeded", "failed", "cancelled", "interrupted"].includes(runStatus)) {
+    const terminalTimestamp = events.at(-1)?.timestamp;
+    if (terminalTimestamp !== undefined) {
+      for (const span of spans) {
+        if (span.completedAt === undefined) closeTimelineSpan(span, terminalTimestamp, "interrupted");
+      }
+    }
+  }
+  return spans.toSorted((left, right) => left.startedAt.localeCompare(right.startedAt));
+}
+
+function stageView(input: Omit<DesktopRunStoryStageView, "durationMs">): DesktopRunStoryStageView {
+  return {
+    ...input,
+    ...durationField(input.startedAt, input.completedAt),
+  };
+}
+
+function closeTimelineSpan(
+  span: DesktopRunTimelineSpanView,
+  completedAt: string,
+  status: DesktopRunTimelineSpanView["status"],
+) {
+  span.completedAt = completedAt;
+  span.status = status;
+  const durationMs = durationBetween(span.startedAt, completedAt);
+  if (durationMs !== undefined) span.durationMs = durationMs;
+}
+
+function durationField(startedAt: string | undefined, completedAt: string | undefined) {
+  const durationMs = durationBetween(startedAt, completedAt);
+  return durationMs === undefined ? {} : { durationMs };
+}
+
+function durationBetween(startedAt: string | undefined, completedAt: string | undefined): number | undefined {
+  if (startedAt === undefined || completedAt === undefined) return undefined;
+  const start = Date.parse(startedAt);
+  const end = Date.parse(completedAt);
+  return Number.isFinite(start) && Number.isFinite(end) && end >= start ? end - start : undefined;
+}
+
+function taskStoryStatus(status: DesktopTaskView["status"]): DesktopRunStoryStatus {
+  if (status === "queued") return "queued";
+  if (status === "running") return "running";
+  if (status === "succeeded") return "succeeded";
+  if (status === "interrupted" || status === "cancelled") return "interrupted";
+  return "failed";
+}
+
+function terminalStoryStatus(status: DesktopRunStatus): DesktopRunStoryStatus | undefined {
+  if (status === "failed") return "failed";
+  if (status === "interrupted" || status === "cancelled") return "interrupted";
+  if (status === "succeeded") return "succeeded";
+  return undefined;
+}
+
+function userFacingTaskTitle(task: DesktopTaskView): string {
+  if (
+    task.id === "integrate"
+    || task.agentId === "integrator"
+    || /^integrate worker results$/iu.test(task.title)
+  ) return "汇总并整理结果";
+  return task.title.trim().length === 0 ? "处理任务" : task.title;
+}
+
+function friendlyToolLabel(toolName: string | undefined): string {
+  if (toolName === undefined) return "使用工具";
+  if (/^(?:read_|search_).*(?:source|file)|^(?:read_source_file|search_source_text)$/iu.test(toolName)) return "查找并读取资料";
+  if (/write_(?:docx_)?artifact/iu.test(toolName)) return "生成结果文件";
+  if (/browser|web_(?:search|fetch)/iu.test(toolName)) return "查找网页资料";
+  if (/mcp|__/iu.test(toolName)) return "使用已连接的服务";
+  if (/execute|command|shell|bash/iu.test(toolName)) return "运行本机检查";
+  return toolName
+    .replaceAll("_", " ")
+    .replace(/\b\w/gu, (value) => value.toUpperCase());
 }
 
 function projectMetrics(

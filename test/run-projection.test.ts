@@ -32,6 +32,76 @@ test("projects task, artifact, and recent event state", () => {
   assert.equal(view.eventCount, 7);
 });
 
+test("projects a bounded plain-language Run story and real concurrent timeline", () => {
+  const events: RuntimeEvent[] = [
+    event(1, "run.started"),
+    event(2, "plan.created"),
+    event(3, "plan.review_requested"),
+    event(4, "plan.approved"),
+    event(5, "task.queued", { taskId: "sources-a", data: { title: "整理政策资料" } }),
+    event(6, "task.queued", { taskId: "sources-b", data: { title: "核对行业资料" } }),
+    event(7, "task.queued", { taskId: "integrate", data: { title: "Integrate worker results" } }),
+    event(8, "task.started", { taskId: "sources-a", agentId: "worker-1" }),
+    event(9, "model.requested", { taskId: "sources-a", agentId: "worker-1" }),
+    event(10, "task.started", { taskId: "sources-b", agentId: "worker-2" }),
+    event(11, "model.completed", { taskId: "sources-a", agentId: "worker-1" }),
+    event(12, "tool.requested", {
+      taskId: "sources-a",
+      agentId: "worker-1",
+      data: { toolCallId: "call-read", toolName: "read_source_file" },
+    }),
+    event(13, "approval.requested", {
+      taskId: "sources-a",
+      agentId: "worker-1",
+      data: { approvalId: "approval-read" },
+    }),
+    event(14, "approval.resolved", {
+      taskId: "sources-a",
+      agentId: "worker-1",
+      data: { approvalId: "approval-read", decision: "approve" },
+    }),
+    event(15, "tool.completed", {
+      taskId: "sources-a",
+      agentId: "worker-1",
+      data: { toolCallId: "call-read", toolName: "read_source_file" },
+    }),
+    event(16, "task.succeeded", { taskId: "sources-a", agentId: "worker-1" }),
+    event(17, "task.succeeded", { taskId: "sources-b", agentId: "worker-2" }),
+    event(18, "task.started", { taskId: "integrate", agentId: "integrator" }),
+    event(19, "artifact.review_requested", { taskId: "integrate", agentId: "artifact-reviewer" }),
+    event(20, "artifact.review_completed", {
+      taskId: "integrate",
+      agentId: "artifact-reviewer",
+      data: { verdict: "accept" },
+    }),
+    event(21, "task.succeeded", { taskId: "integrate", agentId: "integrator" }),
+    event(22, "run.succeeded"),
+  ];
+
+  const view = projectRun("run-story", "/tmp/localbuddy-story", events);
+
+  assert.deepEqual(view.story.stages.map((stage) => [stage.label, stage.status]), [
+    ["理解任务并准备计划", "succeeded"],
+    ["确认执行计划", "succeeded"],
+    ["整理政策资料", "succeeded"],
+    ["核对行业资料", "succeeded"],
+    ["汇总并整理结果", "succeeded"],
+    ["检查最终结果", "succeeded"],
+    ["结果准备完成", "succeeded"],
+  ]);
+  assert.equal(view.story.stages[0]?.durationMs, 1_000);
+  assert.equal(view.story.timeline.find((span) => span.id.startsWith("model:"))?.durationMs, 2_000);
+  assert.equal(view.story.timeline.find((span) => span.id.startsWith("tool:"))?.label, "查找并读取资料");
+  assert.equal(view.story.timeline.find((span) => span.id.startsWith("approval:"))?.status, "succeeded");
+  assert.equal(view.story.timeline.find((span) => span.id.startsWith("review:artifact:"))?.label, "检查最终结果");
+  const taskSpans = view.story.timeline.filter((span) => span.lane === "task");
+  assert.ok(taskSpans.some((left, index) => taskSpans.slice(index + 1).some((right) =>
+    left.startedAt < (right.completedAt ?? right.startedAt)
+    && right.startedAt < (left.completedAt ?? left.startedAt))));
+  assert.equal(view.story.omittedTimelineSpans, 0);
+  assert.doesNotMatch(JSON.stringify(view.story), /worker-1|worker-2|integrator|read_source_file/);
+});
+
 test("projects auditable Run cost, retry, duration, and failure-stage metrics", () => {
   const events: RuntimeEvent[] = [
     event(1, "run.started"),
