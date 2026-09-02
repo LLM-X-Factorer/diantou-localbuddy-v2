@@ -6,6 +6,8 @@ LocalBuddy V2 是一个从零实现的本地多 Agent 工作台。它面向单�
 
 > **产品判断（2026-08-19）**：仓库已按 Apache License 2.0 公开；[`v0.13.1 / User-first Workflows`](https://github.com/LLM-X-Factorer/diantou-localbuddy-v2/releases/tag/v0.13.1) 是当前公开但未签名的 Engineering Alpha Release。固定 Tag 已通过生产依赖审计、完整合同、Windows stable 安装版灰度、`v0.12.8 -> v0.13.1` 本地/第一方公网升级、五项资产发布和独立回下载。`v0.13.0` 标签在门禁中停止，没有 Release 或正式资产，标签不会移动或重用。真实 Provider、真实非作者用户、Windows 11 应用内重启和代码签名仍未验收，M13 不随工程发布自动 `advance`。
 
+> **仓库边界（2026-08-20）**：本仓只维护通用 Agent 平台、公开版本和公开证据。组织专用工作流、私有连接和内部采用证据应由独立下游仓库治理，并使用独立应用身份、数据目录、凭据命名、版本号和更新通道。下游发布不会改写本仓 Release 事实，也不能替代 M13 的真实非作者用户证据；只有经过脱敏、泛化和独立验证的通用能力才回到本仓重新实现。
+
 ## 一页状态
 
 | 维度 | 当前事实 |
@@ -27,7 +29,7 @@ M10.2 把首次体验从静态空状态升级为“第一次可信运行”；M1
 
 ## 文档入口
 
-- [`docs/QUICKSTART.md`](docs/QUICKSTART.md)：内部试用者从安装、凭证到第一个 Run 的最短路径；
+- [`docs/QUICKSTART.md`](docs/QUICKSTART.md)：试用者从安装、凭证到第一个 Run 的最短路径；
 - [`docs/PRODUCT-DEFINITION-V2.md`](docs/PRODUCT-DEFINITION-V2.md)：LocalBuddy“可信本地工作台 + 场景产品包”的产品定义、首批候选场景和晋级门禁；
 - [`docs/PRODUCT-PORTFOLIO-DECISION-2026-08-15.md`](docs/PRODUCT-PORTFOLIO-DECISION-2026-08-15.md)：Research Desk 切入口、Teaching Studio 旗舰假设与 Builder Lab 基准角色的 L0 组合裁决；
 - [`docs/KNOWN-LIMITATIONS.md`](docs/KNOWN-LIMITATIONS.md)：当前 `v0.13.1` Release 与仍开放门禁；
